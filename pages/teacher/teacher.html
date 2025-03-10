@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="dynamic-title">Teacher Profile</title>
+    <link rel="stylesheet" href="/public/styles.css">
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-content">
+            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo">
+            <h1 class="header-title">Rate Your Teachers</h1>
+            <div class="header-buttons">
+                <button class="submit-teacher-btn">Submit a Teacher</button>
+                <button class="admin-btn">Admin Login</button>
+            </div>
+        </div>
+    </header>
+    <div class="teacher-profile-container">
+        <div class="teacher-profile" id="teacher-profile"></div>
+    </div>
+    <footer class="site-footer">
+        <p class="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
+        <p class="footer-message">Welcome to Rate Your Teachers!</p>
+    </footer>
+    <div id="notification" class="notification"></div>
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2>Confirm Deletion</h2>
+            <p>Are you sure you want to delete this teacher and their votes?</p>
+            <button id="confirm-delete" class="modal-btn">Yes</button>
+            <button id="cancel-delete" class="modal-btn">No</button>
+        </div>
+    </div>
+    <script>
+        // Fetch footer settings and update footer content
+        fetch('/api/footer-settings')
+            .then(response => response.json())
+            .then(data => {
+                const footerEmail = document.querySelector('.footer-email a');
+                const footerMessage = document.querySelector('.footer-message');
+                footerEmail.href = `mailto:${data.email}`;
+                footerEmail.textContent = data.email;
+                footerMessage.textContent = data.message;
+                footerMessage.style.display = data.showMessage ? 'block' : 'none';
+            })
+            .catch(error => console.error('Error loading footer settings:', error));
+
+        // Header event listeners
+        document.querySelector('.logo').addEventListener('click', () => window.location.href = '/');
+        document.querySelector('.submit-teacher-btn').addEventListener('click', () => window.location.href = '/pages/teacher/submit-teacher.html');
+        document.querySelector('.admin-btn').addEventListener('click', () => window.location.href = '/pages/admin/login.html');
+    </script>
+    <script src="/pages/teacher/teacher.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/public/styles.css">
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-content">
+            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo" onclick="window.location.href='/'">
+            <h1 class="header-title">Admin Dashboard</h1>
+            <button class="admin-btn" onclick="logout()">Logout</button>
+        </div>
+    </header>
+    <div class="admin-container">
+        <div class="admin-section">
+            <h3>Review Teacher Proposals</h3>
+            <div id="proposals-table"></div>
+            <p class="info-message" id="proposal-message"></p>
+        </div>
+        <div class="admin-section">
+            <h3>Manage Teachers</h3>
+            <div id="teachers-table"></div>
+            <p class="info-message" id="teachers-message"></p>
+        </div>
+        <div class="admin-section">
+            <h3>Manage Votes</h3>
+            <div class="vote-controls">
+                <input type="text" id="vote-search" placeholder="Search votes by teacher ID..." aria-label="Search votes">
+                <label for="votes-per-page">Votes per page:</label>
+                <select id="votes-per-page" aria-label="Votes per page">
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+            <div id="votes-table"></div>
+            <p class="info-message" id="votes-message"></p>
+        </div>
+        <div class="admin-section">
+            <h3>Add New Teacher</h3>
+            <form id="teacher-form" class="admin-form">
+                <div class="form-group">
+                    <label for="teacher-id">Teacher ID:</label>
+                    <input type="text" id="teacher-id" name="id" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-name">Name:</label>
+                    <input type="text" id="teacher-name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-bio">Bio:</label>
+                    <textarea id="teacher-bio" name="bio" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-description">Description:</label>
+                    <input type="text" id="teacher-description" name="description" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-classes">Classes (comma-separated):</label>
+                    <input type="text" id="teacher-classes" name="classes" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-tags">Tags (comma-separated):</label>
+                    <input type="text" id="teacher-tags" name="tags" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-room">Room Number:</label>
+                    <input type="text" id="teacher-room" name="room_number" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-image-link">Image Link (Optional):</label>
+                    <input type="url" id="teacher-image-link" name="image_link" placeholder="https://example.com/teacher.jpg">
+                </div>
+                <div class="schedule-inputs">
+                    <div class="schedule-block">
+                        <h5>Block 1</h5>
+                        <input type="text" name="schedule[0][subject]" placeholder="Subject">
+                        <input type="text" name="schedule[0][grade]" placeholder="Grade">
+                    </div>
+                    <div class="schedule-block">
+                        <h5>Block 2</h5>
+                        <input type="text" name="schedule[1][subject]" placeholder="Subject">
+                        <input type="text" name="schedule[1][grade]" placeholder="Grade">
+                    </div>
+                    <div class="schedule-block">
+                        <h5>Block 3</h5>
+                        <input type="text" name="schedule[2][subject]" placeholder="Subject">
+                        <input type="text" name="schedule[2][grade]" placeholder="Grade">
+                    </div>
+                    <div class="schedule-block">
+                        <h5>Block 4</h5>
+                        <input type="text" name="schedule[3][subject]" placeholder="Subject">
+                        <input type="text" name="schedule[3][grade]" placeholder="Grade">
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">Add Teacher</button>
+            </form>
+        </div>
+        <div class="admin-section">
+            <h3>Manage Footer Settings</h3>
+            <form id="footer-settings-form" class="admin-form">
+                <div class="form-group">
+                    <label for="footer-email">Email:</label>
+                    <input type="email" id="footer-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="footer-message">Message:</label>
+                    <input type="text" id="footer-message" name="message" required>
+                </div>
+                <div class="form-group">
+                    <label for="footer-show-message">Show Message:</label>
+                    <input type="checkbox" id="footer-show-message" name="showMessage">
+                </div>
+                <button type="submit" class="submit-btn">Save Footer Settings</button>
+            </form>
+            <p class="info-message" id="footer-message-status"></p>
+        </div>
+    </div>
+    <footer class="site-footer">
+        <p>Rate Your Teacher © 2025 | <a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
+    </footer>
+    <div id="notification" class="notification"></div>
+    <script src="/pages/admin/dashboard.js" defer></script>
+</body>
+</html>
