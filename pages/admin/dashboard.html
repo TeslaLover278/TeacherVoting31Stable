@@ -23,6 +23,25 @@
         </div>
         <div class="admin-section">
             <h3>Manage Teachers</h3>
+            <div class="teacher-controls">
+                <input type="text" id="teacher-search" placeholder="Search teachers by ID or name..." aria-label="Search teachers">
+                <label for="teacher-sort">Sort by:</label>
+                <select id="teacher-sort" aria-label="Sort teachers">
+                    <option value="id">ID</option>
+                    <option value="name">Name</option>
+                </select>
+                <label for="teacher-sort-direction">Direction:</label>
+                <select id="teacher-sort-direction" aria-label="Sort direction">
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                </select>
+                <label for="teachers-per-page">Teachers per page:</label>
+                <select id="teachers-per-page" aria-label="Teachers per page">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
             <div id="teachers-table"></div>
             <p class="info-message" id="teachers-message"></p>
         </div>
@@ -30,11 +49,21 @@
             <h3>Manage Votes</h3>
             <div class="vote-controls">
                 <input type="text" id="vote-search" placeholder="Search votes by teacher ID..." aria-label="Search votes">
+                <label for="vote-sort">Sort by:</label>
+                <select id="vote-sort" aria-label="Sort votes">
+                    <option value="teacher_id">Teacher ID</option>
+                    <option value="rating">Rating</option>
+                </select>
+                <label for="vote-sort-direction">Direction:</label>
+                <select id="vote-sort-direction" aria-label="Sort direction">
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                </select>
                 <label for="votes-per-page">Votes per page:</label>
                 <select id="votes-per-page" aria-label="Votes per page">
+                    <option value="5">5</option>
                     <option value="10">10</option>
                     <option value="20">20</option>
-                    <option value="50">50</option>
                 </select>
             </div>
             <div id="votes-table"></div>
@@ -99,6 +128,21 @@
                 </div>
                 <button type="submit" class="submit-btn">Add Teacher</button>
             </form>
+        </div>
+        <div class="admin-section">
+            <h3>Manage Main Page Message</h3>
+            <form id="message-settings-form" class="admin-form">
+                <div class="form-group">
+                    <label for="main-message">Message:</label>
+                    <input type="text" id="main-message" name="message" required>
+                </div>
+                <div class="form-group">
+                    <label for="main-show-message">Show Message:</label>
+                    <input type="checkbox" id="main-show-message" name="showMessage">
+                </div>
+                <button type="submit" class="submit-btn">Save Message Settings</button>
+            </form>
+            <p class="info-message" id="message-status"></p>
         </div>
         <div class="admin-section">
             <h3>Manage Footer Settings</h3>

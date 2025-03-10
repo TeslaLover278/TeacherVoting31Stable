@@ -12,10 +12,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const notification = document.getElementById('notification');
     const voteSearch = document.getElementById('vote-search');
     const votesPerPageSelect = document.getElementById('votes-per-page');
+    const voteSort = document.getElementById('vote-sort');
+    const voteSortDirection = document.getElementById('vote-sort-direction');
+    const teacherSearch = document.getElementById('teacher-search');
+    const teachersPerPageSelect = document.getElementById('teachers-per-page');
+    const teacherSort = document.getElementById('teacher-sort');
+    const teacherSortDirection = document.getElementById('teacher-sort-direction');
     const footerSettingsForm = document.getElementById('footer-settings-form');
     const footerMessageStatus = document.getElementById('footer-message-status');
+    const messageSettingsForm = document.getElementById('message-settings-form');
+    const messageStatus = document.getElementById('message-status');
 
-    // Check for missing elements with detailed logging
+    // Check for missing elements
     const missingElements = [];
     if (!teacherForm) missingElements.push('teacher-form');
     if (!teachersTable) missingElements.push('teachers-table');
@@ -27,8 +35,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!notification) missingElements.push('notification');
     if (!voteSearch) missingElements.push('vote-search');
     if (!votesPerPageSelect) missingElements.push('votes-per-page');
+    if (!voteSort) missingElements.push('vote-sort');
+    if (!voteSortDirection) missingElements.push('vote-sort-direction');
+    if (!teacherSearch) missingElements.push('teacher-search');
+    if (!teachersPerPageSelect) missingElements.push('teachers-per-page');
+    if (!teacherSort) missingElements.push('teacher-sort');
+    if (!teacherSortDirection) missingElements.push('teacher-sort-direction');
     if (!footerSettingsForm) missingElements.push('footer-settings-form');
     if (!footerMessageStatus) missingElements.push('footer-message-status');
+    if (!messageSettingsForm) missingElements.push('message-settings-form');
+    if (!messageStatus) missingElements.push('message-status');
 
     if (missingElements.length > 0) {
         console.error('Client - Required elements for dashboard not found:', missingElements);
@@ -48,9 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function checkAdminStatus() {
         try {
             const response = await fetch('/api/admin/votes', { credentials: 'include' });
-            if (!response.ok) {
-                throw new Error('Not authenticated');
-            }
+            if (!response.ok) throw new Error('Not authenticated');
             return true;
         } catch (error) {
             console.error('Client - Admin check failed:', error.message);
@@ -63,9 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadFooterSettings() {
         try {
             const response = await fetch('/api/footer-settings', { credentials: 'include' });
-            if (!response.ok) {
-                throw new Error('Failed to fetch footer settings');
-            }
+            if (!response.ok) throw new Error('Failed to fetch footer settings');
             const settings = await response.json();
             document.getElementById('footer-email').value = settings.email;
             document.getElementById('footer-message').value = settings.message;
@@ -80,6 +92,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Load message settings
+    async function loadMessageSettings() {
+        try {
+            const response = await fetch('/api/message-settings', { credentials: 'include' });
+            if (!response.ok) throw new Error('Failed to fetch message settings');
+            const settings = await response.json();
+            document.getElementById('main-message').value = settings.message;
+            document.getElementById('main-show-message').checked = settings.showMessage;
+            messageStatus.textContent = 'Message settings loaded.';
+            messageStatus.className = 'info-message';
+        } catch (error) {
+            console.error('Client - Error loading message settings:', error.message);
+            messageStatus.textContent = 'Error loading message settings.';
+            messageStatus.className = 'error-message';
+            showNotification('Error loading message settings.', true);
+        }
+    }
+
     // Handle footer settings form submission
     footerSettingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -89,7 +119,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             message: formData.get('message'),
             showMessage: formData.get('showMessage') === 'on'
         };
-
         try {
             const response = await fetch('/api/admin/footer-settings', {
                 method: 'PUT',
@@ -110,6 +139,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             footerMessageStatus.textContent = 'Error saving footer settings.';
             footerMessageStatus.className = 'error-message';
             showNotification('Error saving footer settings.', true);
+        }
+    });
+
+    // Handle message settings form submission
+    messageSettingsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(messageSettingsForm);
+        const settingsData = {
+            message: formData.get('message'),
+            showMessage: formData.get('showMessage') === 'on'
+        };
+        try {
+            const response = await fetch('/api/admin/message-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settingsData),
+                credentials: 'include'
+            });
+            const data = await response.json();
+            if (response.ok) {
+                messageStatus.textContent = 'Message settings saved successfully!';
+                messageStatus.className = 'info-message';
+                showNotification('Message settings saved successfully!');
+            } else {
+                throw new Error(data.error || 'Failed to save message settings');
+            }
+        } catch (error) {
+            console.error('Client - Error saving message settings:', error.message);
+            messageStatus.textContent = 'Error saving message settings.';
+            messageStatus.className = 'error-message';
+            showNotification('Error saving message settings.', true);
         }
     });
 
@@ -134,9 +194,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             tags: formData.get('tags').split(',').map(t => t.trim()),
             room_number: formData.get('room_number'),
             schedule: schedule,
-            image_link: formData.get('image_link') || '' // Add image_link
+            image_link: formData.get('image_link') || ''
         };
-
         try {
             const response = await fetch('/api/teachers', {
                 method: 'POST',
@@ -162,13 +221,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Load teachers
+    // Load teachers with sorting, searching, and pagination
     async function loadTeachers() {
         try {
             const response = await fetch('/api/teachers?perPage=100', { credentials: 'include' });
             const data = await response.json();
             if (response.ok) {
-                const teachers = data.teachers;
+                let teachers = data.teachers;
+                const searchQuery = teacherSearch.value.toLowerCase();
+                const sortField = teacherSort.value;
+                const sortDirection = teacherSortDirection.value;
+                const perPage = parseInt(teachersPerPageSelect.value) || 10;
+
+                if (searchQuery) {
+                    teachers = teachers.filter(teacher =>
+                        teacher.id.toLowerCase().includes(searchQuery) ||
+                        teacher.name.toLowerCase().includes(searchQuery)
+                    );
+                }
+
+                teachers.sort((a, b) => {
+                    const valueA = a[sortField].toString().toLowerCase();
+                    const valueB = b[sortField].toString().toLowerCase();
+                    return sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+                });
+
+                const paginatedTeachers = teachers.slice(0, perPage);
+
                 teachersTable.innerHTML = `
                     <table class="admin-table">
                         <thead>
@@ -180,7 +259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </tr>
                         </thead>
                         <tbody>
-                            ${teachers.map(teacher => `
+                            ${paginatedTeachers.map(teacher => `
                                 <tr onclick="toggleTeacherDetails('${teacher.id}')" style="cursor: pointer;">
                                     <td>${teacher.id}</td>
                                     <td>${teacher.name}</td>
@@ -206,7 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             `).join('')}
                         </tbody>
                     </table>`;
-                teachersMessage.textContent = `Loaded ${teachers.length} teachers.`;
+                teachersMessage.textContent = `Loaded ${paginatedTeachers.length} of ${teachers.length} teachers (total: ${data.teachers.length}).`;
                 teachersMessage.className = 'info-message';
             } else {
                 throw new Error(data.error || 'Failed to load teachers');
@@ -219,20 +298,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Load votes
+    // Load votes with sorting, searching, and pagination
     async function loadVotes() {
         try {
             const response = await fetch('/api/admin/votes', { credentials: 'include' });
-            if (!response.ok) {
-                throw new Error('Failed to fetch votes');
-            }
-            const allVotes = await response.json();
+            if (!response.ok) throw new Error('Failed to fetch votes');
+            let allVotes = await response.json();
             const searchQuery = voteSearch.value.toLowerCase();
-            const votesPerPage = parseInt(votesPerPageSelect.value) || 10;
-            const filteredVotes = searchQuery
-                ? allVotes.filter(vote => vote.teacher_id.toLowerCase().includes(searchQuery))
-                : allVotes;
-            const paginatedVotes = filteredVotes.slice(0, votesPerPage);
+            const sortField = voteSort.value;
+            const sortDirection = voteSortDirection.value;
+            const perPage = parseInt(votesPerPageSelect.value) || 10;
+
+            if (searchQuery) {
+                allVotes = allVotes.filter(vote => vote.teacher_id.toLowerCase().includes(searchQuery));
+            }
+
+            allVotes.sort((a, b) => {
+                const valueA = sortField === 'rating' ? a[sortField] : a[sortField].toString().toLowerCase();
+                const valueB = sortField === 'rating' ? b[sortField] : b[sortField].toString().toLowerCase();
+                return sortDirection === 'asc' ? valueA > valueB ? 1 : -1 : valueB > valueA ? 1 : -1;
+            });
+
+            const paginatedVotes = allVotes.slice(0, perPage);
 
             votesTable.innerHTML = `
                 <table class="admin-table">
@@ -249,7 +336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <tr>
                                 <td>${vote.teacher_id}</td>
                                 <td contenteditable="true" id="edit-rating-${vote.teacher_id}">${vote.rating}</td>
-                                <td contenteditable="true" id="edit-comment-${vote.teacher_id}">${vote.comment}</td>
+                                <td contenteditable="true" id="edit-comment-${vote.teacher_id}">${vote.comment || ''}</td>
                                 <td>
                                     <button class="update-btn" onclick="updateVote('${vote.teacher_id}')">Update</button>
                                     <button class="delete-btn" onclick="deleteVote('${vote.teacher_id}')">Delete</button>
@@ -258,7 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         `).join('')}
                     </tbody>
                 </table>`;
-            votesMessage.textContent = `Loaded ${paginatedVotes.length} of ${filteredVotes.length} votes (total: ${allVotes.length}).`;
+            votesMessage.textContent = `Loaded ${paginatedVotes.length} of ${allVotes.length} votes (total: ${allVotes.length}).`;
             votesMessage.className = 'info-message';
         } catch (error) {
             console.error('Client - Error loading votes:', error.message);
@@ -272,10 +359,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadTeacherProposals() {
         try {
             const response = await fetch('/api/admin/teacher-proposals', { credentials: 'include' });
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(`Server returned ${response.status}: ${text}`);
-            }
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
             const proposals = await response.json();
             proposalsTable.innerHTML = `
                 <table class="admin-table">
@@ -325,7 +409,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             proposalMessage.className = 'info-message';
         } catch (error) {
             console.error('Client - Error loading teacher proposals:', error.message);
-            proposalMessage.textContent = 'Error loading proposals. Please ensure you are logged in.';
+            proposalMessage.textContent = 'Error loading proposals.';
             proposalMessage.className = 'error-message';
             showNotification('Error loading proposals. Redirecting to login...', true);
             setTimeout(() => window.location.href = '/pages/admin/login.html', 2000);
@@ -352,8 +436,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             classes: document.getElementById(`edit-classes-${id}`).textContent.split(',').map(c => c.trim()),
             tags: document.getElementById(`edit-tags-${id}`).textContent.split(',').map(t => t.trim()),
             room_number: document.getElementById(`edit-room-${id}`).textContent,
-            image_link: document.getElementById(`edit-image-${id}`).textContent, // Add image_link
-            schedule: [] // Placeholder; full schedule editing requires additional UI
+            image_link: document.getElementById(`edit-image-${id}`).textContent,
+            schedule: [] // Note: Editable schedule not implemented here; could be added
         };
         try {
             const response = await fetch(`/api/admin/teachers/${id}`, {
@@ -404,7 +488,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.updateVote = async (teacherId) => {
         const voteData = {
-            teacher_id: teacherId,
             rating: parseInt(document.getElementById(`edit-rating-${teacherId}`).textContent),
             comment: document.getElementById(`edit-comment-${teacherId}`).textContent
         };
@@ -515,9 +598,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/pages/admin/login.html';
     };
 
-    // Event listeners for vote filtering
+    // Event listeners for filtering and sorting
+    teacherSearch.addEventListener('input', loadTeachers);
+    teachersPerPageSelect.addEventListener('change', loadTeachers);
+    teacherSort.addEventListener('change', loadTeachers);
+    teacherSortDirection.addEventListener('change', loadTeachers);
     voteSearch.addEventListener('input', loadVotes);
     votesPerPageSelect.addEventListener('change', loadVotes);
+    voteSort.addEventListener('change', loadVotes);
+    voteSortDirection.addEventListener('change', loadVotes);
 
     // Initialize dashboard if authenticated
     const isAuthenticated = await checkAdminStatus();
@@ -526,5 +615,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadVotes();
         loadTeacherProposals();
         loadFooterSettings();
+        loadMessageSettings();
     }
 });

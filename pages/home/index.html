@@ -19,6 +19,11 @@
         </div>
     </header>
     <main class="centered-container">
+        <!-- Popup message container -->
+        <div id="main-message" class="main-message" style="display: none;">
+            <p id="message-text"></p>
+            <button id="close-message" class="close-btn">✕</button>
+        </div>
         <div class="content-container">
             <h2 class="directory-title">Teacher Directory</h2>
             <div class="controls">
@@ -65,6 +70,23 @@
             })
             .catch(error => console.error('Error loading footer settings:', error));
 
+        // Fetch and display main page message (popup logic)
+        fetch('/api/message-settings')
+            .then(response => response.json())
+            .then(data => {
+                const messageDiv = document.getElementById('main-message');
+                const messageText = document.getElementById('message-text');
+                const closeButton = document.getElementById('close-message');
+                if (data.showMessage) {
+                    messageText.textContent = data.message;
+                    messageDiv.style.display = 'block'; // Show popup if showMessage is true
+                    closeButton.addEventListener('click', () => {
+                        messageDiv.style.display = 'none'; // Hide on close
+                    });
+                }
+            })
+            .catch(error => console.error('Error loading message settings:', error));
+
         // Header event listeners and admin button update
         document.addEventListener('DOMContentLoaded', () => {
             const logo = document.querySelector('.logo');
@@ -80,6 +102,7 @@
                 adminBtn.textContent = 'Admin Dashboard';
                 adminBtn.onclick = () => window.location.href = '/pages/admin/dashboard.html';
             } else {
+                adminBtn.textContent = 'Admin Login';
                 adminBtn.onclick = () => window.location.href = '/pages/admin/login.html';
             }
         });
