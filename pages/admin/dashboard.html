@@ -3,171 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>Admin Dashboard - Rate Your Teachers</title>
     <link rel="stylesheet" href="/public/styles.css">
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
 </head>
 <body>
     <header class="site-header">
         <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo" onclick="window.location.href='/'">
+            <img src="/public/images/logo.png" alt="Logo" class="logo">
             <h1 class="header-title">Admin Dashboard</h1>
-            <button class="admin-btn" onclick="logout()">Logout</button>
+            <div class="header-buttons">
+                <button class="submit-teacher-btn">Submit Teacher</button>
+            </div>
         </div>
     </header>
-    <div class="admin-container">
-        <div class="admin-section">
-            <h3>Review Teacher Proposals</h3>
-            <div id="proposals-table"></div>
-            <p class="info-message" id="proposal-message"></p>
-        </div>
-        <div class="admin-section">
-            <h3>Manage Teachers</h3>
-            <div class="teacher-controls">
-                <input type="text" id="teacher-search" placeholder="Search teachers by ID or name..." aria-label="Search teachers">
-                <label for="teacher-sort">Sort by:</label>
-                <select id="teacher-sort" aria-label="Sort teachers">
-                    <option value="id">ID</option>
-                    <option value="name">Name</option>
-                </select>
-                <label for="teacher-sort-direction">Direction:</label>
-                <select id="teacher-sort-direction" aria-label="Sort direction">
-                    <option value="asc">Ascending</option>
-                    <option value="desc">Descending</option>
-                </select>
-                <label for="teachers-per-page">Teachers per page:</label>
-                <select id="teachers-per-page" aria-label="Teachers per page">
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                </select>
+
+    <main class="centered-container admin-dashboard">
+        <div class="content-container">
+            <div class="admin-section">
+                <h3>Add New Teacher</h3>
+                <form id="teacher-form" class="edit-form">
+                    <div class="form-group">
+                        <label for="id">Teacher ID:</label>
+                        <input type="text" id="id" name="id" required placeholder="e.g., T001">
+                        <span class="tooltip">Unique teacher identifier</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Name:</label>
+                        <input type="text" id="name" name="name" required placeholder="e.g., John Doe">
+                        <span class="tooltip">Full name of the teacher</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="bio">Bio:</label>
+                        <textarea id="bio" name="bio" required placeholder="Short biography"></textarea>
+                        <span class="tooltip">Teacher's background</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher">
+                        <span class="tooltip">Brief description</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="classes">Classes (comma-separated):</label>
+                        <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus">
+                        <span class="tooltip">List of classes taught</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="tags">Tags (comma-separated):</label>
+                        <input type="text" id="tags" name="tags" required placeholder="e.g., Math, Science">
+                        <span class="tooltip">Keywords for search</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="room_number">Room Number:</label>
+                        <input type="text" id="room_number" name="room_number" required placeholder="e.g., 101">
+                        <span class="tooltip">Classroom number</span>
+                    </div>
+                    <div class="schedule-edit">
+                        <h3>Schedule</h3>
+                        <div class="schedule-block">
+                            <label>Block 1:</label>
+                            <input type="text" name="schedule[0][subject]" placeholder="e.g., Math">
+                            <input type="text" name="schedule[0][grade]" placeholder="e.g., 9">
+                        </div>
+                        <div class="schedule-block">
+                            <label>Block 2:</label>
+                            <input type="text" name="schedule[1][subject]" placeholder="e.g., Science">
+                            <input type="text" name="schedule[1][grade]" placeholder="e.g., 10">
+                        </div>
+                        <div class="schedule-block">
+                            <label>Block 3:</label>
+                            <input type="text" name="schedule[2][subject]" placeholder="e.g., English">
+                            <input type="text" name="schedule[2][grade]" placeholder="e.g., 11">
+                        </div>
+                        <div class="schedule-block">
+                            <label>Block 4:</label>
+                            <input type="text" name="schedule[3][subject]" placeholder="e.g., History">
+                            <input type="text" name="schedule[3][grade]" placeholder="e.g., 12">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="image_link">Image Link (optional):</label>
+                        <input type="text" id="image_link" name="image_link" placeholder="e.g., http://example.com/image.jpg">
+                        <span class="tooltip">URL to teacher’s photo</span>
+                    </div>
+                    <button type="submit" class="submit-btn">Add Teacher</button>
+                </form>
+                <p id="teachers-message" class="info-message"></p>
             </div>
-            <div id="teachers-table"></div>
-            <p class="info-message" id="teachers-message"></p>
-        </div>
-        <div class="admin-section">
-            <h3>Manage Votes</h3>
-            <div class="vote-controls">
-                <input type="text" id="vote-search" placeholder="Search votes by teacher ID..." aria-label="Search votes">
-                <label for="vote-sort">Sort by:</label>
-                <select id="vote-sort" aria-label="Sort votes">
-                    <option value="teacher_id">Teacher ID</option>
-                    <option value="rating">Rating</option>
-                </select>
-                <label for="vote-sort-direction">Direction:</label>
-                <select id="vote-sort-direction" aria-label="Sort direction">
-                    <option value="asc">Ascending</option>
-                    <option value="desc">Descending</option>
-                </select>
-                <label for="votes-per-page">Votes per page:</label>
-                <select id="votes-per-page" aria-label="Votes per page">
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                </select>
+
+            <div class="admin-section">
+                <h3>Manage Teachers</h3>
+                <div class="controls">
+                    <input type="text" id="teacher-search" class="search-input" placeholder="Search by ID or Name">
+                    <div class="sort-options">
+                        <select id="teachers-per-page" class="sort-select">
+                            <option value="5">5 per page</option>
+                            <option value="10" selected>10 per page</option>
+                            <option value="20">20 per page</option>
+                        </select>
+                        <select id="teacher-sort" class="sort-select">
+                            <option value="id">Sort by ID</option>
+                            <option value="name">Sort by Name</option>
+                            <option value="description">Sort by Description</option>
+                        </select>
+                        <select id="teacher-sort-direction" class="sort-select">
+                            <option value="asc">Ascending</option>
+                            <option value="desc">Descending</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="teachers-table"></div>
             </div>
-            <div id="votes-table"></div>
-            <p class="info-message" id="votes-message"></p>
-        </div>
-        <div class="admin-section">
-            <h3>Add New Teacher</h3>
-            <form id="teacher-form" class="admin-form">
-                <div class="form-group">
-                    <label for="teacher-id">Teacher ID:</label>
-                    <input type="text" id="teacher-id" name="id" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-name">Name:</label>
-                    <input type="text" id="teacher-name" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-bio">Bio:</label>
-                    <textarea id="teacher-bio" name="bio" rows="3" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-description">Description:</label>
-                    <input type="text" id="teacher-description" name="description" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-classes">Classes (comma-separated):</label>
-                    <input type="text" id="teacher-classes" name="classes" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-tags">Tags (comma-separated):</label>
-                    <input type="text" id="teacher-tags" name="tags" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-room">Room Number:</label>
-                    <input type="text" id="teacher-room" name="room_number" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-image-link">Image Link (Optional):</label>
-                    <input type="url" id="teacher-image-link" name="image_link" placeholder="https://example.com/teacher.jpg">
-                </div>
-                <div class="schedule-inputs">
-                    <div class="schedule-block">
-                        <h5>Block 1</h5>
-                        <input type="text" name="schedule[0][subject]" placeholder="Subject">
-                        <input type="text" name="schedule[0][grade]" placeholder="Grade">
-                    </div>
-                    <div class="schedule-block">
-                        <h5>Block 2</h5>
-                        <input type="text" name="schedule[1][subject]" placeholder="Subject">
-                        <input type="text" name="schedule[1][grade]" placeholder="Grade">
-                    </div>
-                    <div class="schedule-block">
-                        <h5>Block 3</h5>
-                        <input type="text" name="schedule[2][subject]" placeholder="Subject">
-                        <input type="text" name="schedule[2][grade]" placeholder="Grade">
-                    </div>
-                    <div class="schedule-block">
-                        <h5>Block 4</h5>
-                        <input type="text" name="schedule[3][subject]" placeholder="Subject">
-                        <input type="text" name="schedule[3][grade]" placeholder="Grade">
+
+            <div class="admin-section">
+                <h3>Manage Votes</h3>
+                <div class="controls">
+                    <input type="text" id="vote-search" class="search-input" placeholder="Search by Teacher ID">
+                    <div class="sort-options">
+                        <select id="votes-per-page" class="sort-select">
+                            <option value="5">5 per page</option>
+                            <option value="10" selected>10 per page</option>
+                            <option value="20">20 per page</option>
+                        </select>
+                        <select id="vote-sort" class="sort-select">
+                            <option value="teacher_id">Sort by Teacher ID</option>
+                            <option value="rating">Sort by Rating</option>
+                        </select>
+                        <select id="vote-sort-direction" class="sort-select">
+                            <option value="asc">Ascending</option>
+                            <option value="desc">Descending</option>
+                        </select>
                     </div>
                 </div>
-                <button type="submit" class="submit-btn">Add Teacher</button>
-            </form>
+                <div id="votes-table"></div>
+                <p id="votes-message" class="info-message"></p>
+            </div>
+
+            <div class="admin-section">
+                <h3>Teacher Proposals</h3>
+                <div id="proposals-table"></div>
+                <p id="proposal-message" class="info-message"></p>
+            </div>
+
+            <div class="admin-section">
+                <h3>Main Message Settings</h3>
+                <form id="message-settings-form" class="edit-form">
+                    <div class="form-group">
+                        <label for="main-message">Message:</label>
+                        <input type="text" id="main-message" name="message" required placeholder="Enter main page message">
+                        <span class="tooltip">Message shown on the main page</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="main-show-message">Show Message:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="main-show-message" name="showMessage">
+                            <span class="slider"></span>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn">Update Main Message</button>
+                </form>
+                <p id="message-status" class="info-message"></p>
+            </div>
+
+            <div class="admin-section">
+                <h3>Footer Settings</h3>
+                <form id="footer-settings-form" class="edit-form">
+                    <div class="form-group">
+                        <label for="footer-email">Email:</label>
+                        <input type="email" id="footer-email" name="email" required placeholder="e.g., admin@example.com">
+                        <span class="tooltip">Contact email in footer</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="footer-message">Message:</label>
+                        <input type="text" id="footer-message" name="message" required placeholder="Enter footer message">
+                        <span class="tooltip">Message shown in footer</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="footer-show-message">Show Message:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="footer-show-message" name="showMessage">
+                            <span class="slider"></span>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn">Update Footer</button>
+                </form>
+                <p id="footer-message-status" class="info-message"></p>
+            </div>
+
+            <div class="admin-section">
+                <button onclick="logout()" class="cancel-btn">Logout</button>
+            </div>
         </div>
-        <div class="admin-section">
-            <h3>Manage Main Page Message</h3>
-            <form id="message-settings-form" class="admin-form">
-                <div class="form-group">
-                    <label for="main-message">Message:</label>
-                    <input type="text" id="main-message" name="message" required>
-                </div>
-                <div class="form-group">
-                    <label for="main-show-message">Show Message:</label>
-                    <input type="checkbox" id="main-show-message" name="showMessage">
-                </div>
-                <button type="submit" class="submit-btn">Save Message Settings</button>
-            </form>
-            <p class="info-message" id="message-status"></p>
-        </div>
-        <div class="admin-section">
-            <h3>Manage Footer Settings</h3>
-            <form id="footer-settings-form" class="admin-form">
-                <div class="form-group">
-                    <label for="footer-email">Email:</label>
-                    <input type="email" id="footer-email" name="email" required>
-                </div>
-                <div class="form-group">
-                    <label for="footer-message">Message:</label>
-                    <input type="text" id="footer-message" name="message" required>
-                </div>
-                <div class="form-group">
-                    <label for="footer-show-message">Show Message:</label>
-                    <input type="checkbox" id="footer-show-message" name="showMessage">
-                </div>
-                <button type="submit" class="submit-btn">Save Footer Settings</button>
-            </form>
-            <p class="info-message" id="footer-message-status"></p>
-        </div>
-    </div>
+    </main>
+
     <footer class="site-footer">
-        <p>Rate Your Teacher © 2025 | <a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
+        <p id="footer-email">Email: <a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-message">Welcome to Rate Your Teachers!</p>
     </footer>
-    <div id="notification" class="notification"></div>
-    <script src="/pages/admin/dashboard.js" defer></script>
+
+    <div id="notification" class="notification" style="display: none;"></div>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+    <script src="/pages/admin/dashboard.js"></script>
+    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91e550ef99a82ba1',t:'MTc0MTYzNTk2NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>

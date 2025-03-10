@@ -31,7 +31,7 @@ body {
 .logo {
     height: 40px;
     cursor: pointer;
-    margin-right: 2rem; /* Increased buffer between logo and title */
+    margin-right: 2rem;
 }
 
 .header-title {
@@ -43,7 +43,7 @@ body {
 
 .header-buttons {
     display: flex;
-    gap: 0.25rem; /* Minimal gap between buttons */
+    gap: 0.25rem;
 }
 
 .admin-btn, .submit-teacher-btn {
@@ -54,11 +54,12 @@ body {
     border-radius: 5px;
     cursor: pointer;
     font-size: 1rem;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, transform 0.2s ease;
 }
 
 .admin-btn:hover, .submit-teacher-btn:hover {
     background-color: #e0e0e0;
+    transform: translateY(-2px);
 }
 
 /* Footer Styles */
@@ -87,19 +88,46 @@ body {
 
 .footer-message {
     font-size: 0.9rem;
-    display: none; /* Initially hidden, controlled by JS based on showMessage */
+    display: none;
 }
 
 /* Notification Styles */
 .notification {
     position: fixed;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
-    padding: 1rem;
+    padding: 1rem 1.5rem;
     color: white;
-    border-radius: 5px;
+    border-radius: 8px;
     z-index: 1000;
-    display: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.notification::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-size: cover;
+}
+
+.notification.success {
+    background-color: #00B7D1;
+}
+
+.notification.success::before {
+    background-image: url('/public/images/check.png');
+}
+
+.notification.error {
+    background-color: #FF0000;
+}
+
+.notification.error::before {
+    background-image: url('/public/images/error.png');
 }
 
 /* Homepage Styles */
@@ -288,30 +316,151 @@ body {
 
 /* Editing UI */
 .admin-actions { margin-top: 2rem; text-align: center; }
-.submit-btn { padding: 0.75rem 1.5rem; background-color: #00B7D1; color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s; }
-.submit-btn:hover { background-color: #009bb5; }
+.submit-btn { padding: 0.75rem 1.5rem; background-color: #00B7D1; color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, transform 0.2s ease; }
+.submit-btn:hover { background-color: #009bb5; transform: translateY(-2px); }
 .edit-form { background-color: #f9f9f9; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top: 2rem; }
-.form-group { margin-bottom: 1rem; }
+.form-group { margin-bottom: 1rem; position: relative; }
 .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: #333; }
 .form-group input, .form-group textarea { width: 100%; padding: 0.75rem; border: 2px solid #00B7D1; border-radius: 5px; font-size: 1rem; transition: border-color 0.3s; }
 .form-group input:focus, .form-group textarea:focus { border-color: #009bb5; outline: none; }
+.form-group input:focus + .tooltip, .form-group textarea:focus + .tooltip { display: block; }
+.tooltip { display: none; position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 0.3rem 0.6rem; border-radius: 5px; font-size: 0.8rem; white-space: nowrap; }
 .schedule-edit { margin-bottom: 1rem; }
 .schedule-block { display: flex; gap: 1rem; align-items: center; }
 .schedule-block label { flex: 0 0 80px; }
 .schedule-block input { flex: 1; }
-.cancel-btn { padding: 0.75rem 1.5rem; background-color: #FF0000; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin-left: 1rem; transition: background-color 0.3s; }
-.cancel-btn:hover { background-color: #cc0000; }
+.cancel-btn { padding: 0.75rem 1.5rem; background-color: #FF0000; color: #fff; border: none; border-radius: 8px; cursor: pointer; margin-left: 1rem; transition: background-color 0.3s, transform 0.2s ease; }
+.cancel-btn:hover { background-color: #cc0000; transform: translateY(-2px); }
 
 /* Modal Styles */
-.modal { display: none; position: fixed; top: 0; left: 0; width Conversion failed: CSS parsing error near line 324: Expected a declaration but found '*'. Skipped to next declaration.%.5; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; }
-.modal-content { background-color: #fff; max-width: 400px; margin: 15% auto; padding: 2rem; border-radius: 10px; text-align: center; }
-.modal-content h2 { margin-bottom: 1rem; color: #333; }
-.modal-content p { margin-bottom: 2rem; color: #666; }
-.modal-btn { padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer; margin: 0 0.5rem; transition: background-color 0.3s; }
-#confirm-delete { background-color: #FF0000; color: white; }
-#confirm-delete:hover { background-color: #cc0000; }
-#cancel-delete { background-color: #e0e0e0; color: #333; }
-#cancel-delete:hover { background-color: #d0d0d0; }
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal.active {
+    display: flex;
+    opacity: 1;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #fff;
+    max-width: 500px;
+    width: 90%;
+    margin: 0;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    position: relative;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.modal.active .modal-content {
+    transform: translateY(0);
+}
+
+.modal-content h2 {
+    color: #00B7D1;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.modal-content p {
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+.modal-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.modal-btn:hover {
+    transform: translateY(-2px);
+}
+
+#confirm-delete {
+    background-color: #FF0000;
+    color: white;
+}
+
+#confirm-delete:hover {
+    background-color: #cc0000;
+}
+
+#cancel-delete {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+#cancel-delete:hover {
+    background-color: #d0d0d0;
+}
+
+/* Main Message Popup */
+.main-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    border: 3px solid #00B7D1;
+    padding: 2rem;
+    z-index: 1001;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.main-message.active {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.main-message p {
+    font-size: 1.25rem;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #FF0000;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.close-btn:hover {
+    background-color: #cc0000;
+}
 
 /* Error and Info Messages */
 .error-message { color: #FF0000; margin-top: 0.5rem; }
@@ -333,41 +482,52 @@ body {
 .approve-btn { background-color: #00B7D1; color: white; padding: 0.3rem 0.6rem; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s; margin-right: 0.5rem; }
 .approve-btn:hover { background-color: #009bb5; }
 
-/* Main Message Popup (Large Version) */
-.main-message {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: #fff;
-    border: 2px solid #00B7D1;
-    padding: 20px;
-    z-index: 1000;
-    width: 80%;
-    max-width: 600px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    text-align: center;
-    font-size: 1.5em;
-    border-radius: 10px;
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
 }
 
-.main-message p {
-    margin: 0 0 10px;
-    color: #333;
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
-.close-btn {
+.slider {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 1.5em;
     cursor: pointer;
-    color: #FF0000;
-    transition: color 0.3s;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: background-color 0.3s ease;
+    border-radius: 24px;
 }
 
-.close-btn:hover {
-    color: #cc0000;
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: transform 0.3s ease;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .slider {
+    background-color: #00B7D1;
+}
+
+.toggle-switch input:checked + .slider:before {
+    transform: translateX(26px);
+}
+.admin-dashboard .content-container {
+    width: 85%; /* 20% wider than 80% */
+    max-width: 1640px; /* Adjust if original max-width differs */
 }

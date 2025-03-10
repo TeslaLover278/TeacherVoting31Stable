@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const teachersMessage = document.getElementById('teachers-message');
     const votesMessage = document.getElementById('votes-message');
     const proposalMessage = document.getElementById('proposal-message');
-    const notification = document.getElementById('notification');
     const voteSearch = document.getElementById('vote-search');
     const votesPerPageSelect = document.getElementById('votes-per-page');
     const voteSort = document.getElementById('vote-sort');
@@ -32,7 +31,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!teachersMessage) missingElements.push('teachers-message');
     if (!votesMessage) missingElements.push('votes-message');
     if (!proposalMessage) missingElements.push('proposal-message');
-    if (!notification) missingElements.push('notification');
     if (!voteSearch) missingElements.push('vote-search');
     if (!votesPerPageSelect) missingElements.push('votes-per-page');
     if (!voteSort) missingElements.push('vote-sort');
@@ -48,16 +46,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (missingElements.length > 0) {
         console.error('Client - Required elements for dashboard not found:', missingElements);
+        showNotification('Dashboard initialization failed due to missing elements.', true);
         return;
     }
     console.log('Client - All required elements found, proceeding with dashboard setup');
 
-    // Notification function
+    // Notification function with modern styling
     function showNotification(messageText, isError = false) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${isError ? 'error' : 'success'}`;
         notification.textContent = messageText;
-        notification.style.display = 'block';
-        notification.style.backgroundColor = isError ? '#FF0000' : '#00B7D1';
-        setTimeout(() => notification.style.display = 'none', 3000);
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
     }
 
     // Check admin authentication
@@ -83,7 +83,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('footer-message').value = settings.message;
             document.getElementById('footer-show-message').checked = settings.showMessage;
             footerMessageStatus.textContent = 'Footer settings loaded.';
-            footerMessageStatus.className = 'info-message';
+            // Update footer display
+            const footerEmail = document.getElementById('footer-email');
+            const footerMessageDisplay = document.getElementById('footer-message');
+            if (footerEmail) footerEmail.innerHTML = `Email: <a href="mailto:${settings.email}">${settings.email}</a>`;
+            if (footerMessageDisplay) {
+                footerMessageDisplay.textContent = settings.message;
+                footerMessageDisplay.style.display = settings.showMessage ? 'block' : 'none';
+            }
         } catch (error) {
             console.error('Client - Error loading footer settings:', error.message);
             footerMessageStatus.textContent = 'Error loading footer settings.';
@@ -101,7 +108,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('main-message').value = settings.message;
             document.getElementById('main-show-message').checked = settings.showMessage;
             messageStatus.textContent = 'Message settings loaded.';
-            messageStatus.className = 'info-message';
         } catch (error) {
             console.error('Client - Error loading message settings:', error.message);
             messageStatus.textContent = 'Error loading message settings.';
@@ -110,46 +116,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Handle footer settings form submission
-    footerSettingsForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(footerSettingsForm);
-        const settingsData = {
-            email: formData.get('email'),
-            message: formData.get('message'),
-            showMessage: formData.get('showMessage') === 'on'
-        };
-        try {
-            const response = await fetch('/api/admin/footer-settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settingsData),
-                credentials: 'include'
-            });
-            const data = await response.json();
-            if (response.ok) {
-                footerMessageStatus.textContent = 'Footer settings saved successfully!';
-                footerMessageStatus.className = 'info-message';
-                showNotification('Footer settings saved successfully!');
-            } else {
-                throw new Error(data.error || 'Failed to save footer settings');
-            }
-        } catch (error) {
-            console.error('Client - Error saving footer settings:', error.message);
-            footerMessageStatus.textContent = 'Error saving footer settings.';
-            footerMessageStatus.className = 'error-message';
-            showNotification('Error saving footer settings.', true);
-        }
-    });
-
-    // Handle message settings form submission
-    messageSettingsForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(messageSettingsForm);
-        const settingsData = {
-            message: formData.get('message'),
-            showMessage: formData.get('showMessage') === 'on'
-        };
+    // Save message settings
+    async function saveMessageSettings() {
+        const message = document.getElementById('main-message').value;
+        const showMessage = document.getElementById('main-show-message').checked;
+        const settingsData = { message, showMessage };
         try {
             const response = await fetch('/api/admin/message-settings', {
                 method: 'PUT',
@@ -171,7 +142,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             messageStatus.className = 'error-message';
             showNotification('Error saving message settings.', true);
         }
+    }
+
+    // Handle footer settings form submission
+    footerSettingsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(footerSettingsForm);
+        const settingsData = {
+            email: formData.get('email'),
+            message: formData.get('message'),
+            showMessage: document.getElementById('footer-show-message').checked
+        };
+        try {
+            const response = await fetch('/api/admin/footer-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settingsData),
+                credentials: 'include'
+            });
+            const data = await response.json();
+            if (response.ok) {
+                footerMessageStatus.textContent = 'Footer settings saved successfully!';
+                footerMessageStatus.className = 'info-message';
+                showNotification('Footer settings saved successfully!');
+                loadFooterSettings(); // Refresh footer display
+            } else {
+                throw new Error(data.error || 'Failed to save footer settings');
+            }
+        } catch (error) {
+            console.error('Client - Error saving footer settings:', error.message);
+            footerMessageStatus.textContent = 'Error saving footer settings.';
+            footerMessageStatus.className = 'error-message';
+            showNotification('Error saving footer settings.', true);
+        }
     });
+
+    // Handle message settings form submission
+    messageSettingsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveMessageSettings();
+    });
+
+    // Add toggle listener for main message
+    const mainShowMessage = document.getElementById('main-show-message');
+    if (mainShowMessage) {
+        mainShowMessage.addEventListener('change', saveMessageSettings);
+    } else {
+        console.warn('Client - main-show-message element not found');
+    }
 
     // Handle teacher form submission
     teacherForm.addEventListener('submit', async (e) => {
@@ -179,22 +197,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const formData = new FormData(teacherForm);
         const schedule = [];
         for (let i = 0; i < 4; i++) {
-            const subject = formData.get(`schedule[${i}][subject]`);
-            const grade = formData.get(`schedule[${i}][grade]`);
+            const subject = formData.get(`schedule[${i}][subject]`)?.trim();
+            const grade = formData.get(`schedule[${i}][grade]`)?.trim();
             if (subject || grade) {
                 schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
             }
         }
         const teacherData = {
-            id: formData.get('id'),
-            name: formData.get('name'),
-            bio: formData.get('bio'),
-            description: formData.get('description'),
-            classes: formData.get('classes').split(',').map(c => c.trim()),
-            tags: formData.get('tags').split(',').map(t => t.trim()),
-            room_number: formData.get('room_number'),
-            schedule: schedule,
-            image_link: formData.get('image_link') || ''
+            id: formData.get('id').trim(),
+            name: formData.get('name').trim(),
+            bio: formData.get('bio').trim(),
+            description: formData.get('description').trim(),
+            classes: formData.get('classes').split(',').map(c => c.trim()).filter(c => c),
+            tags: formData.get('tags').split(',').map(t => t.trim()).filter(t => t),
+            room_number: formData.get('room_number').trim(),
+            schedule,
+            image_link: formData.get('image_link')?.trim() || ''
         };
         try {
             const response = await fetch('/api/teachers', {
@@ -215,7 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Client - Error adding teacher:', error.message);
-            teachersMessage.textContent = 'Error adding teacher.';
+            teachersMessage.textContent = 'Error adding teacher: ' + error.message;
             teachersMessage.className = 'error-message';
             showNotification('Error adding teacher.', true);
         }
@@ -265,7 +283,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     <td>${teacher.name}</td>
                                     <td>${teacher.description}</td>
                                     <td>
-                                        <button class="delete-btn" onclick="event.stopPropagation(); deleteTeacher('${teacher.id}')">Delete</button>
+                                        <button class="delete-btn" onclick="event.stopPropagation(); showDeleteTeacherModal('${teacher.id}', '${teacher.name}')">Delete</button>
                                     </td>
                                 </tr>
                                 <tr id="teacher-details-${teacher.id}" class="teacher-details" style="display: none;">
@@ -278,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                             <p><strong>Tags:</strong> <span contenteditable="true" id="edit-tags-${teacher.id}">${teacher.tags.join(', ')}</span></p>
                                             <p><strong>Room Number:</strong> <span contenteditable="true" id="edit-room-${teacher.id}">${teacher.room_number}</span></p>
                                             <p><strong>Image Link:</strong> <span contenteditable="true" id="edit-image-${teacher.id}">${teacher.image_link || 'N/A'}</span></p>
-                                            <button class="update-btn" onclick="updateTeacher('${teacher.id}')">Update</button>
+                                            <button class="submit-btn" onclick="updateTeacher('${teacher.id}')">Update</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -316,7 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             allVotes.sort((a, b) => {
                 const valueA = sortField === 'rating' ? a[sortField] : a[sortField].toString().toLowerCase();
                 const valueB = sortField === 'rating' ? b[sortField] : b[sortField].toString().toLowerCase();
-                return sortDirection === 'asc' ? valueA > valueB ? 1 : -1 : valueB > valueA ? 1 : -1;
+                return sortDirection === 'asc' ? (valueA > valueB ? 1 : -1) : (valueB > valueA ? 1 : -1);
             });
 
             const paginatedVotes = allVotes.slice(0, perPage);
@@ -338,8 +356,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <td contenteditable="true" id="edit-rating-${vote.teacher_id}">${vote.rating}</td>
                                 <td contenteditable="true" id="edit-comment-${vote.teacher_id}">${vote.comment || ''}</td>
                                 <td>
-                                    <button class="update-btn" onclick="updateVote('${vote.teacher_id}')">Update</button>
-                                    <button class="delete-btn" onclick="deleteVote('${vote.teacher_id}')">Delete</button>
+                                    <button class="submit-btn" onclick="updateVote('${vote.teacher_id}')">Update</button>
+                                    <button class="delete-btn" onclick="showDeleteVoteModal('${vote.teacher_id}')">Delete</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -380,9 +398,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <td>${proposal.email}</td>
                                 <td>${proposal.description}</td>
                                 <td>
-                                    <button class="expand-btn" onclick="toggleProposalDetails('${proposal.id}')">Expand</button>
+                                    <button class="toggle-btn" onclick="toggleProposalDetails('${proposal.id}')">Expand</button>
                                     <button class="approve-btn" onclick="approveProposal('${proposal.id}')">Approve</button>
-                                    <button class="delete-btn" onclick="deleteProposal('${proposal.id}')">Delete</button>
+                                    <button class="delete-btn" onclick="showDeleteProposalModal('${proposal.id}', '${proposal.name}')">Delete</button>
                                 </td>
                             </tr>
                             <tr id="details-${proposal.id}" class="proposal-details" style="display: none;">
@@ -411,8 +429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Client - Error loading teacher proposals:', error.message);
             proposalMessage.textContent = 'Error loading proposals.';
             proposalMessage.className = 'error-message';
-            showNotification('Error loading proposals. Redirecting to login...', true);
-            setTimeout(() => window.location.href = '/pages/admin/login.html', 2000);
+            showNotification('Error loading proposals.', true);
         }
     }
 
@@ -430,14 +447,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.updateTeacher = async (id) => {
         const teacherData = {
             id,
-            name: document.getElementById(`edit-name-${id}`).textContent,
-            description: document.getElementById(`edit-desc-${id}`).textContent,
-            bio: document.getElementById(`edit-bio-${id}`).textContent,
-            classes: document.getElementById(`edit-classes-${id}`).textContent.split(',').map(c => c.trim()),
-            tags: document.getElementById(`edit-tags-${id}`).textContent.split(',').map(t => t.trim()),
-            room_number: document.getElementById(`edit-room-${id}`).textContent,
-            image_link: document.getElementById(`edit-image-${id}`).textContent,
-            schedule: [] // Note: Editable schedule not implemented here; could be added
+            name: document.getElementById(`edit-name-${id}`).textContent.trim(),
+            description: document.getElementById(`edit-desc-${id}`).textContent.trim(),
+            bio: document.getElementById(`edit-bio-${id}`).textContent.trim(),
+            classes: document.getElementById(`edit-classes-${id}`).textContent.split(',').map(c => c.trim()).filter(c => c),
+            tags: document.getElementById(`edit-tags-${id}`).textContent.split(',').map(t => t.trim()).filter(t => t),
+            room_number: document.getElementById(`edit-room-${id}`).textContent.trim(),
+            image_link: document.getElementById(`edit-image-${id}`).textContent.trim(),
+            schedule: [] // Schedule editing not implemented here; could be expanded
         };
         try {
             const response = await fetch(`/api/admin/teachers/${id}`, {
@@ -462,8 +479,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.deleteTeacher = async (id) => {
-        if (confirm('Are you sure you want to delete this teacher?')) {
+    window.showDeleteTeacherModal = (id, name) => {
+        const modalHtml = `
+            <div class="modal active">
+                <div class="modal-content">
+                    <h2>Confirm Deletion</h2>
+                    <p>Are you sure you want to delete ${name}?</p>
+                    <button id="confirm-delete" class="modal-btn">Delete</button>
+                    <button id="cancel-delete" class="modal-btn">Cancel</button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = document.querySelector('.modal');
+        document.getElementById('confirm-delete').addEventListener('click', async () => {
             try {
                 const response = await fetch(`/api/admin/teachers/${id}`, {
                     method: 'DELETE',
@@ -483,13 +512,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 teachersMessage.className = 'error-message';
                 showNotification('Error deleting teacher.', true);
             }
-        }
+            modal.remove();
+        });
+        document.getElementById('cancel-delete').addEventListener('click', () => modal.remove());
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); });
     };
 
     window.updateVote = async (teacherId) => {
         const voteData = {
             rating: parseInt(document.getElementById(`edit-rating-${teacherId}`).textContent),
-            comment: document.getElementById(`edit-comment-${teacherId}`).textContent
+            comment: document.getElementById(`edit-comment-${teacherId}`).textContent.trim()
         };
         if (isNaN(voteData.rating) || voteData.rating < 1 || voteData.rating > 5) {
             showNotification('Rating must be between 1 and 5.', true);
@@ -518,8 +550,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.deleteVote = async (teacherId) => {
-        if (confirm('Are you sure you want to delete this vote?')) {
+    window.showDeleteVoteModal = (teacherId) => {
+        const modalHtml = `
+            <div class="modal active">
+                <div class="modal-content">
+                    <h2>Confirm Deletion</h2>
+                    <p>Are you sure you want to delete the vote for teacher ID ${teacherId}?</p>
+                    <button id="confirm-delete" class="modal-btn">Delete</button>
+                    <button id="cancel-delete" class="modal-btn">Cancel</button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = document.querySelector('.modal');
+        document.getElementById('confirm-delete').addEventListener('click', async () => {
             try {
                 const response = await fetch(`/api/admin/votes/${teacherId}`, {
                     method: 'DELETE',
@@ -539,14 +583,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                 votesMessage.className = 'error-message';
                 showNotification('Error deleting vote.', true);
             }
-        }
+            modal.remove();
+        });
+        document.getElementById('cancel-delete').addEventListener('click', () => modal.remove());
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); });
     };
 
     window.approveProposal = async (proposalId) => {
-        if (confirm('Are you sure you want to approve this teacher proposal?')) {
+        const modalHtml = `
+            <div class="modal active">
+                <div class="modal-content" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+                    <h2 id="modal-title">Approve Teacher Proposal</h2>
+                    <p>Assign a unique Teacher ID for this proposal (Temp ID: ${proposalId}):</p>
+                    <div class="form-group">
+                        <label for="teacher-id">Teacher ID:</label>
+                        <input type="text" id="teacher-id" name="id" required placeholder="e.g., T123">
+                    </div>
+                    <button id="confirm-approve" class="modal-btn">Approve</button>
+                    <button id="cancel-approve" class="modal-btn">Cancel</button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = document.querySelector('.modal');
+        document.getElementById('confirm-approve').addEventListener('click', async () => {
+            const teacherId = document.getElementById('teacher-id').value.trim();
+            if (!teacherId) {
+                showNotification('Teacher ID is required.', true);
+                return;
+            }
             try {
                 const response = await fetch(`/api/admin/teacher-proposals/approve/${proposalId}`, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: teacherId }),
                     credentials: 'include'
                 });
                 const data = await response.json();
@@ -556,6 +626,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showNotification(data.message);
                     loadTeacherProposals();
                     loadTeachers();
+                    modal.remove();
                 } else {
                     throw new Error(data.error || 'Failed to approve proposal');
                 }
@@ -565,11 +636,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 proposalMessage.className = 'error-message';
                 showNotification('Error approving proposal.', true);
             }
-        }
+        });
+        document.getElementById('cancel-approve').addEventListener('click', () => modal.remove());
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); });
     };
 
-    window.deleteProposal = async (proposalId) => {
-        if (confirm('Are you sure you want to delete this teacher proposal?')) {
+    window.showDeleteProposalModal = (proposalId, name) => {
+        const modalHtml = `
+            <div class="modal active">
+                <div class="modal-content">
+                    <h2>Confirm Deletion</h2>
+                    <p>Are you sure you want to delete the proposal for ${name} (ID: ${proposalId})?</p>
+                    <button id="confirm-delete" class="modal-btn">Delete</button>
+                    <button id="cancel-delete" class="modal-btn">Cancel</button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = document.querySelector('.modal');
+        document.getElementById('confirm-delete').addEventListener('click', async () => {
             try {
                 const response = await fetch(`/api/admin/teacher-proposals/${proposalId}`, {
                     method: 'DELETE',
@@ -590,7 +675,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 proposalMessage.className = 'error-message';
                 showNotification('Error deleting proposal.', true);
             }
-        }
+            modal.remove();
+        });
+        document.getElementById('cancel-delete').addEventListener('click', () => modal.remove());
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); });
     };
 
     window.logout = () => {
@@ -607,6 +695,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     votesPerPageSelect.addEventListener('change', loadVotes);
     voteSort.addEventListener('change', loadVotes);
     voteSortDirection.addEventListener('change', loadVotes);
+    document.querySelector('.logo').addEventListener('click', () => window.location.href = '/');
+    document.querySelector('.submit-teacher-btn').addEventListener('click', () => window.location.href = '/pages/submit-teacher.html');
 
     // Initialize dashboard if authenticated
     const isAuthenticated = await checkAdminStatus();

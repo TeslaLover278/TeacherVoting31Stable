@@ -20,12 +20,20 @@ function checkAdminStatus() {
 async function loadTeacherProfile() {
     if (!teacherId) {
         showNotification('No teacher ID provided.', true);
+        setTimeout(() => window.location.href = '/', 2000);
         return;
     }
 
     try {
         const response = await fetch(`/api/teachers/${teacherId}`);
-        if (!response.ok) throw new Error('Teacher not found');
+        if (!response.ok) {
+            if (response.status === 404) {
+                showNotification('Teacher not found, redirecting to home...', true);
+                setTimeout(() => window.location.href = '/', 2000);
+                return;
+            }
+            throw new Error('Failed to load teacher');
+        }
         teacherData = await response.json();
         hasVoted = votedTeachers.includes(teacherId);
         renderTeacherProfile();
@@ -39,7 +47,7 @@ function renderTeacherProfile() {
     const profileContainer = document.querySelector('.teacher-profile');
     profileContainer.innerHTML = `
         <div class="teacher-header">
-            <img src="/public/images/teacher${teacherId}.jpg" alt="${teacherData.name}" class="teacher-image" onerror="this.src='/public/images/default-teacher.jpg'">
+            <img src="${teacherData.image_link || '/public/images/default-teacher.jpg'}" alt="${teacherData.name}" class="teacher-image">
             <h1 class="teacher-name">${teacherData.name}</h1>
             <p class="teacher-room">Room: ${teacherData.room_number}</p>
         </div>
@@ -110,7 +118,6 @@ function renderTeacherProfile() {
     if (!hasVoted) setupRatingStars();
     if (isAdmin) setupAdminActions();
 
-    // Setup toggle button for reviews
     const toggleBtn = document.querySelector('.toggle-btn');
     const reviewsList = document.querySelector('.reviews-list');
     if (toggleBtn && reviewsList) {
@@ -168,7 +175,7 @@ async function submitRating() {
 
     try {
         const response = await fetch('/api/ratings', {
-            method: 'POST', // Ensured this is POST, as it should be for submitting new ratings
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ teacher_id: teacherId, rating, comment })

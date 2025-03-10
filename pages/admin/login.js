@@ -1,52 +1,52 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('login-form');
-    const loginMessage = document.getElementById('login-message');
-    const notification = document.getElementById('notification');
-
-    if (!loginForm || !loginMessage || !notification) {
-        console.error('Client - Required elements for login not found');
-        return;
+    function showNotification(message, isError = false) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${isError ? 'error' : 'success'}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
     }
 
-    function showNotification(messageText, isError = false) {
-        notification.textContent = messageText;
-        notification.style.display = 'block';
-        notification.style.backgroundColor = isError ? '#FF0000' : '#00B7D1';
-        setTimeout(() => notification.style.display = 'none', 3000);
-    }
+    fetch('/api/admin/votes', { credentials: 'include' })
+        .then(response => {
+            if (response.ok) window.location.href = '/pages/admin/dashboard.html';
+        });
 
-    // Check if already logged in
-    const isAdmin = document.cookie.split('; ').find(row => row.startsWith('adminToken='))?.split('=')[1] === 'admin-token';
-    if (isAdmin) {
-        window.location.href = '/pages/admin/dashboard.html';
-        return;
-    }
-
-    loginForm.addEventListener('submit', async (e) => {
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
+        const formData = new FormData(e.target);
+        const credentials = {
+            username: formData.get('username'),
+            password: formData.get('password')
+        };
         try {
             const response = await fetch('/api/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify(credentials),
                 credentials: 'include'
             });
             const data = await response.json();
             if (response.ok) {
-                document.cookie = 'adminToken=admin-token; Path=/; Max-Age=3600'; // 1 hour
                 showNotification('Login successful!');
                 setTimeout(() => window.location.href = '/pages/admin/dashboard.html', 1000);
             } else {
                 throw new Error(data.error || 'Login failed');
             }
         } catch (error) {
-            console.error('Client - Error logging in:', error.message);
-            loginMessage.textContent = 'Login failed. Please check your credentials.';
-            loginMessage.className = 'error-message';
-            showNotification('Error logging in.', true);
+            showNotification(error.message, true);
         }
     });
+
+    document.querySelector('.logo').addEventListener('click', () => window.location.href = '/');
+    document.querySelector('.submit-teacher-btn').addEventListener('click', () => window.location.href = '/pages/submit-teacher.html');
+
+    fetch('/api/footer-settings')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('footer-email').innerHTML = `Email: <a href="mailto:${data.email}">${data.email}</a>`;
+            const footerMessage = document.getElementById('footer-message');
+            footerMessage.textContent = data.message;
+            if (data.showMessage) footerMessage.style.display = 'block';
+        });
 });

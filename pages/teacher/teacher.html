@@ -22,8 +22,8 @@
         <div class="teacher-profile" id="teacher-profile"></div>
     </div>
     <footer class="site-footer">
-        <p class="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
-        <p class="footer-message">Welcome to Rate Your Teachers!</p>
+        <p id="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
+        <p id="footer-message">Welcome to Rate Your Teachers!</p>
     </footer>
     <div id="notification" class="notification"></div>
     <div id="modal" class="modal">
@@ -34,25 +34,6 @@
             <button id="cancel-delete" class="modal-btn">No</button>
         </div>
     </div>
-    <script>
-        // Fetch footer settings and update footer content
-        fetch('/api/footer-settings')
-            .then(response => response.json())
-            .then(data => {
-                const footerEmail = document.querySelector('.footer-email a');
-                const footerMessage = document.querySelector('.footer-message');
-                footerEmail.href = `mailto:${data.email}`;
-                footerEmail.textContent = data.email;
-                footerMessage.textContent = data.message;
-                footerMessage.style.display = data.showMessage ? 'block' : 'none';
-            })
-            .catch(error => console.error('Error loading footer settings:', error));
-
-        // Header event listeners
-        document.querySelector('.logo').addEventListener('click', () => window.location.href = '/');
-        document.querySelector('.submit-teacher-btn').addEventListener('click', () => window.location.href = '/pages/teacher/submit-teacher.html');
-        document.querySelector('.admin-btn').addEventListener('click', () => window.location.href = '/pages/admin/login.html');
-    </script>
-    <script src="/pages/teacher/teacher.js" defer></script>
+    <script src="/pages/teacher/teacher.js"></script>
 </body>
 </html>

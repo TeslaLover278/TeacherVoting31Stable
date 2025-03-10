@@ -1,6 +1,7 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const { v4: uuidv4 } = require('uuid'); // Added
 require('dotenv').config();
 const cookieParser = require('cookie-parser');
 const app = express();
@@ -8,6 +9,7 @@ const port = process.env.PORT || 3000;
 
 console.log('Server - Starting initialization...');
 
+// Middleware
 app.use('/public', express.static(path.join(__dirname, 'public'), { maxAge: '1d' }), (req, res, next) => {
     console.log('Server - Serving static file from public for:', req.path);
     next();
@@ -27,7 +29,7 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
     }
 });
 
-// Create tables if they don’t exist
+// Create tables and populate sample data
 db.serialize(() => {
     db.run(`
         CREATE TABLE IF NOT EXISTS teachers (
@@ -40,7 +42,8 @@ db.serialize(() => {
             room_number TEXT NOT NULL,
             schedule TEXT NOT NULL,
             image_link TEXT
-        )`);
+        )`, [], (err) => err && console.error('Server - Error creating teachers table:', err.message));
+
     db.run(`
         CREATE TABLE IF NOT EXISTS votes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +51,8 @@ db.serialize(() => {
             rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
             comment TEXT,
             FOREIGN KEY (teacher_id) REFERENCES teachers(id)
-        )`);
+        )`, [], (err) => err && console.error('Server - Error creating votes table:', err.message));
+
     db.run(`
         CREATE TABLE IF NOT EXISTS teacher_proposals (
             id TEXT PRIMARY KEY,
@@ -61,21 +65,30 @@ db.serialize(() => {
             email TEXT NOT NULL,
             schedule TEXT NOT NULL,
             image_link TEXT
-        )`);
+        )`, [], (err) => err && console.error('Server - Error creating teacher_proposals table:', err.message));
+
     db.run(`
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
-        )`);
-    // Insert default settings if not present
+        )`, [], (err) => err && console.error('Server - Error creating settings table:', err.message));
+
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('footer', ?)`, [
         JSON.stringify({ email: 'admin@example.com', message: 'Welcome to Rate Your Teachers!', showMessage: true })
-    ]);
+    ], (err) => err && console.error('Server - Error inserting default footer settings:', err.message));
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('message', ?)`, [
         JSON.stringify({ message: 'Welcome!', showMessage: false })
-    ]);
+    ], (err) => err && console.error('Server - Error inserting default message settings:', err.message));
+
+    db.run(`INSERT OR IGNORE INTO teachers (id, name, bio, description, classes, tags, room_number, schedule, image_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+        'T001', 'Mr. Kalder', 'Experienced educator', 'Math Teacher', JSON.stringify(['Algebra', 'Calculus']),
+        JSON.stringify(['math', 'stem']), 'Room 101',
+        JSON.stringify([{ block: 'A', subject: 'Algebra', grade: '9' }, { block: 'B', subject: 'Calculus', grade: '11' }]),
+        '/public/images/default-teacher.jpg'
+    ], (err) => err && console.error('Server - Error inserting sample teacher:', err.message));
 });
 
+// Favicon handling
 app.get('/favicon.ico', (req, res) => {
     const faviconPath = path.join(__dirname, 'public', 'favicon.ico');
     res.sendFile(faviconPath, (err) => {
@@ -88,26 +101,31 @@ app.get('/favicon.ico', (req, res) => {
     });
 });
 
+// Admin credentials from environment variables
 const ADMIN_CREDENTIALS = {
     username: process.env.ADMIN_USERNAME || 'admin',
     password: process.env.ADMIN_PASSWORD || 'password123'
 };
 
+// Utility function to set cookies
+function setCookie(res, name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    res.setHeader('Set-Cookie', `${name}=${value}; Expires=${date.toUTCString()}; Path=/; SameSite=Strict; HttpOnly`);
+}
+
+// Admin authentication middleware
 function authenticateAdmin(req, res, next) {
     const token = req.cookies.adminToken;
     if (!token || token !== 'admin-token') {
         console.log('Server - Authentication failed for:', req.path);
         return res.status(401).json({ error: 'Unauthorized access. Please log in as an admin.' });
     }
+    console.log('Server - Admin authenticated for:', req.path);
     next();
 }
 
-function setCookie(res, name, value, days) {
-    const date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    res.setHeader('Set-Cookie', `${name}=${value}; Expires=${date.toUTCString()}; Path=/; SameSite=Strict`);
-}
-
+// Admin login endpoint
 app.post('/api/admin/login', (req, res) => {
     console.log('Server - Admin login attempt for:', req.body.username);
     const { username, password } = req.body;
@@ -122,27 +140,29 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
+// Get all votes (admin only)
 app.get('/api/admin/votes', authenticateAdmin, (req, res) => {
     db.all('SELECT * FROM votes', (err, rows) => {
         if (err) {
             console.error('Server - Error fetching votes:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error fetching votes' });
         }
         console.log('Server - Fetched all votes:', rows.length);
         res.json(rows);
     });
 });
 
+// Update a vote (admin only)
 app.put('/api/admin/votes/:teacherId', authenticateAdmin, (req, res) => {
     const teacherId = req.params.teacherId;
     const { rating, comment } = req.body;
     if (!rating || isNaN(rating) || rating < 1 || rating > 5) {
         return res.status(400).json({ error: 'Rating must be a number between 1 and 5.' });
     }
-    db.run('UPDATE votes SET rating = ?, comment = ? WHERE teacher_id = ?', [parseInt(rating), comment || '', teacherId], (err) => {
+    db.run('UPDATE votes SET rating = ?, comment = ? WHERE teacher_id = ?', [parseInt(rating), comment || '', teacherId], function(err) {
         if (err) {
             console.error('Server - Error updating vote:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error updating vote' });
         }
         if (this.changes === 0) return res.status(404).json({ error: 'Vote not found for this teacher.' });
         console.log('Server - Modified vote for teacher:', teacherId, 'New rating:', rating);
@@ -150,12 +170,13 @@ app.put('/api/admin/votes/:teacherId', authenticateAdmin, (req, res) => {
     });
 });
 
+// Delete a vote (admin only)
 app.delete('/api/admin/votes/:teacherId', authenticateAdmin, (req, res) => {
     const teacherId = req.params.teacherId;
-    db.run('DELETE FROM votes WHERE teacher_id = ?', [teacherId], (err) => {
+    db.run('DELETE FROM votes WHERE teacher_id = ?', [teacherId], function(err) {
         if (err) {
             console.error('Server - Error deleting vote:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error deleting vote' });
         }
         if (this.changes === 0) return res.status(404).json({ error: 'No vote found for this teacher.' });
         console.log('Server - Deleted vote for teacher:', teacherId);
@@ -163,16 +184,17 @@ app.delete('/api/admin/votes/:teacherId', authenticateAdmin, (req, res) => {
     });
 });
 
+// Get all teachers (public endpoint)
 app.get('/api/teachers', (req, res) => {
     db.all('SELECT * FROM teachers', (err, teachers) => {
         if (err) {
             console.error('Server - Error fetching teachers:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error fetching teachers' });
         }
         db.all('SELECT teacher_id, rating FROM votes', (err, votes) => {
             if (err) {
                 console.error('Server - Error fetching votes for teachers:', err.message);
-                return res.status(500).json({ error: 'Database error' });
+                return res.status(500).json({ error: 'Database error fetching votes' });
             }
             let teachersWithRatings = teachers.map(teacher => {
                 const teacherRatings = votes.filter(v => v.teacher_id === teacher.id);
@@ -214,11 +236,10 @@ app.get('/api/teachers', (req, res) => {
 
             const searchQuery = req.query.search || '';
             if (searchQuery) {
-                teachersWithRatings = teachersWithRatings.filter(t => {
-                    const nameMatch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
-                    const tagMatch = t.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-                    return nameMatch || tagMatch;
-                });
+                teachersWithRatings = teachersWithRatings.filter(t =>
+                    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    t.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+                );
             }
 
             const page = parseInt(req.query.page) || 1;
@@ -234,19 +255,20 @@ app.get('/api/teachers', (req, res) => {
     });
 });
 
+// Get a specific teacher (public endpoint)
 app.get('/api/teachers/:id', (req, res) => {
     const id = req.params.id;
     db.get('SELECT * FROM teachers WHERE id = ?', [id], (err, teacher) => {
         if (err) {
             console.error('Server - Error fetching teacher:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error fetching teacher' });
         }
         if (!teacher) return res.status(404).json({ error: 'Teacher not found.' });
 
         db.all('SELECT * FROM votes WHERE teacher_id = ?', [id], (err, teacherRatings) => {
             if (err) {
                 console.error('Server - Error fetching votes for teacher:', err.message);
-                return res.status(500).json({ error: 'Database error' });
+                return res.status(500).json({ error: 'Database error fetching votes' });
             }
             const avgRating = teacherRatings.length
                 ? teacherRatings.reduce((sum, r) => sum + r.rating, 0) / teacherRatings.length
@@ -270,6 +292,7 @@ app.get('/api/teachers/:id', (req, res) => {
     });
 });
 
+// Submit a rating (public endpoint)
 app.post('/api/ratings', (req, res) => {
     const { teacher_id, rating, comment } = req.body;
     if (!teacher_id || !rating || isNaN(rating) || rating < 1 || rating > 5) {
@@ -284,10 +307,10 @@ app.post('/api/ratings', (req, res) => {
         return res.status(400).json({ error: 'You have already voted for this teacher.' });
     }
 
-    db.run('INSERT INTO votes (teacher_id, rating, comment) VALUES (?, ?, ?)', [teacherId, parseInt(rating), comment || ''], (err) => {
+    db.run('INSERT INTO votes (teacher_id, rating, comment) VALUES (?, ?, ?)', [teacherId, parseInt(rating), comment || ''], function(err) {
         if (err) {
             console.error('Server - Error adding rating:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error adding rating' });
         }
         votedArray.push(teacherId);
         setCookie(res, 'votedTeachers', votedArray.join(','), 365);
@@ -296,6 +319,7 @@ app.post('/api/ratings', (req, res) => {
     });
 });
 
+// Add a teacher (admin only)
 app.post('/api/teachers', authenticateAdmin, (req, res) => {
     const { name, bio, classes, description, id, tags, room_number, schedule, image_link } = req.body;
     if (!name || !bio || !classes || !Array.isArray(classes) || !description || !id || !tags || !Array.isArray(tags) || !room_number || !schedule || !Array.isArray(schedule)) {
@@ -314,22 +338,23 @@ app.post('/api/teachers', authenticateAdmin, (req, res) => {
     };
     db.run('INSERT INTO teachers (id, name, bio, description, classes, tags, room_number, schedule, image_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [newTeacher.id, newTeacher.name, newTeacher.bio, newTeacher.description, newTeacher.classes, newTeacher.tags, newTeacher.room_number, newTeacher.schedule, newTeacher.image_link],
-        (err) => {
+        function(err) {
             if (err) {
                 console.error('Server - Error adding teacher:', err.message);
-                return res.status(500).json({ error: 'Database error' });
+                return res.status(500).json({ error: 'Database error adding teacher' });
             }
             console.log('Server - Added new teacher:', newTeacher.name);
-            res.json(newTeacher);
+            res.json({ message: 'Teacher added successfully!', teacher: newTeacher });
         });
 });
 
+// Delete a teacher (admin only)
 app.delete('/api/admin/teachers/:id', authenticateAdmin, (req, res) => {
     const id = req.params.id;
-    db.run('DELETE FROM teachers WHERE id = ?', [id], (err) => {
+    db.run('DELETE FROM teachers WHERE id = ?', [id], function(err) {
         if (err) {
             console.error('Server - Error deleting teacher:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error deleting teacher' });
         }
         if (this.changes === 0) return res.status(404).json({ error: 'Teacher not found.' });
         db.run('DELETE FROM votes WHERE teacher_id = ?', [id], (err) => {
@@ -340,6 +365,7 @@ app.delete('/api/admin/teachers/:id', authenticateAdmin, (req, res) => {
     });
 });
 
+// Update a teacher (admin only)
 app.put('/api/admin/teachers/:id', authenticateAdmin, (req, res) => {
     const id = req.params.id;
     const { name, bio, classes, description, tags, room_number, schedule, image_link } = req.body;
@@ -363,10 +389,10 @@ app.put('/api/admin/teachers/:id', authenticateAdmin, (req, res) => {
     };
     db.run('UPDATE teachers SET name = ?, bio = ?, classes = ?, description = ?, tags = ?, room_number = ?, schedule = ?, image_link = ? WHERE id = ?',
         [updatedTeacher.name, updatedTeacher.bio, updatedTeacher.classes, updatedTeacher.description, updatedTeacher.tags, updatedTeacher.room_number, updatedTeacher.schedule, updatedTeacher.image_link, id],
-        (err) => {
+        function(err) {
             if (err) {
                 console.error('Server - Error updating teacher:', err.message);
-                return res.status(500).json({ error: 'Database error' });
+                return res.status(500).json({ error: 'Database error updating teacher' });
             }
             if (this.changes === 0) return res.status(404).json({ error: 'Teacher not found.' });
             console.log('Server - Updated teacher:', id);
@@ -374,13 +400,15 @@ app.put('/api/admin/teachers/:id', authenticateAdmin, (req, res) => {
         });
 });
 
+// Submit a teacher proposal (public endpoint)
 app.post('/api/teacher-proposals', (req, res) => {
-    const { id, name, bio, classes, description, tags, room_number, email, schedule, image_link } = req.body;
-    if (!id || !name || !bio || !classes || !Array.isArray(classes) || !description || !tags || !Array.isArray(tags) || !room_number || !email || !schedule || !Array.isArray(schedule)) {
+    const { name, bio, classes, description, tags, room_number, email, schedule, image_link } = req.body;
+    if (!name || !bio || !classes || !Array.isArray(classes) || !description || !tags || !Array.isArray(tags) || !room_number || !email || !schedule || !Array.isArray(schedule)) {
         return res.status(400).json({ error: 'All fields except image_link are required.' });
     }
+    const tempId = uuidv4();
     const newProposal = {
-        id: id.trim(),
+        id: tempId,
         name,
         description,
         bio,
@@ -393,21 +421,22 @@ app.post('/api/teacher-proposals', (req, res) => {
     };
     db.run('INSERT INTO teacher_proposals (id, name, bio, description, classes, tags, room_number, email, schedule, image_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [newProposal.id, newProposal.name, newProposal.bio, newProposal.description, newProposal.classes, newProposal.tags, newProposal.room_number, newProposal.email, newProposal.schedule, newProposal.image_link],
-        (err) => {
+        function(err) {
             if (err) {
                 console.error('Server - Error adding proposal:', err.message);
-                return res.status(500).json({ error: 'Database error' });
+                return res.status(500).json({ error: 'Database error adding proposal' });
             }
-            console.log('Server - Added teacher proposal:', newProposal.name);
-            res.json({ message: 'Teacher proposal submitted successfully!' });
+            console.log('Server - Added teacher proposal:', newProposal.name, 'Temp ID:', tempId);
+            res.json({ message: 'Teacher proposal submitted successfully!', tempId });
         });
 });
 
+// Get all teacher proposals (admin only)
 app.get('/api/admin/teacher-proposals', authenticateAdmin, (req, res) => {
     db.all('SELECT * FROM teacher_proposals', (err, rows) => {
         if (err) {
             console.error('Server - Error fetching proposals:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error fetching proposals' });
         }
         const proposals = rows.map(row => ({
             ...row,
@@ -420,37 +449,44 @@ app.get('/api/admin/teacher-proposals', authenticateAdmin, (req, res) => {
     });
 });
 
-app.post('/api/admin/teacher-proposals/approve/:id', authenticateAdmin, (req, res) => {
-    const id = req.params.id;
-    db.get('SELECT * FROM teacher_proposals WHERE id = ?', [id], (err, proposal) => {
+// Approve a teacher proposal (admin only)
+app.post('/api/admin/teacher-proposals/approve/:tempId', authenticateAdmin, (req, res) => {
+    const tempId = req.params.tempId;
+    const { id } = req.body;
+    if (!id || typeof id !== 'string' || id.trim().length === 0) {
+        return res.status(400).json({ error: 'A valid teacher ID is required for approval.' });
+    }
+    db.get('SELECT * FROM teacher_proposals WHERE id = ?', [tempId], (err, proposal) => {
         if (err) {
             console.error('Server - Error fetching proposal:', err.message);
-            return res.status(500).json({ error: 'Database ошибка' });
+            return res.status(500).json({ error: 'Database error fetching proposal' });
         }
         if (!proposal) return res.status(404).json({ error: 'Teacher proposal not found.' });
 
+        const finalId = id.trim();
         db.run('INSERT INTO teachers (id, name, bio, description, classes, tags, room_number, schedule, image_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [proposal.id, proposal.name, proposal.bio, proposal.description, proposal.classes, proposal.tags, proposal.room_number, proposal.schedule, proposal.image_link || ''],
-            (err) => {
+            [finalId, proposal.name, proposal.bio, proposal.description, proposal.classes, proposal.tags, proposal.room_number, proposal.schedule, proposal.image_link || ''],
+            function(err) {
                 if (err) {
                     console.error('Server - Error approving proposal:', err.message);
-                    return res.status(500).json({ error: 'Database error' });
+                    return res.status(500).json({ error: 'Database error approving proposal' });
                 }
-                db.run('DELETE FROM teacher_proposals WHERE id = ?', [id], (err) => {
+                db.run('DELETE FROM teacher_proposals WHERE id = ?', [tempId], (err) => {
                     if (err) console.error('Server - Error deleting approved proposal:', err.message);
-                    console.log('Server - Approved teacher proposal:', proposal.name);
-                    res.json({ message: 'Teacher proposal approved!' });
+                    console.log('Server - Approved teacher proposal:', proposal.name, 'Assigned ID:', finalId);
+                    res.json({ message: 'Teacher proposal approved!', teacherId: finalId });
                 });
             });
     });
 });
 
+// Delete a teacher proposal (admin only)
 app.delete('/api/admin/teacher-proposals/:id', authenticateAdmin, (req, res) => {
     const id = req.params.id;
-    db.run('DELETE FROM teacher_proposals WHERE id = ?', [id], (err) => {
+    db.run('DELETE FROM teacher_proposals WHERE id = ?', [id], function(err) {
         if (err) {
             console.error('Server - Error deleting proposal:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error deleting proposal' });
         }
         if (this.changes === 0) return res.status(404).json({ error: 'Teacher proposal not found.' });
         console.log('Server - Deleted teacher proposal ID:', id);
@@ -458,17 +494,19 @@ app.delete('/api/admin/teacher-proposals/:id', authenticateAdmin, (req, res) => 
     });
 });
 
+// Get footer settings (public endpoint)
 app.get('/api/footer-settings', (req, res) => {
     db.get('SELECT value FROM settings WHERE key = "footer"', (err, row) => {
         if (err) {
             console.error('Server - Error fetching footer settings:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error fetching footer settings' });
         }
         console.log('Server - Fetched footer settings');
         res.json(JSON.parse(row.value));
     });
 });
 
+// Update footer settings (admin only)
 app.put('/api/admin/footer-settings', authenticateAdmin, (req, res) => {
     const { email, message, showMessage } = req.body;
     if (!email || typeof message !== 'string' || typeof showMessage !== 'boolean') {
@@ -476,27 +514,29 @@ app.put('/api/admin/footer-settings', authenticateAdmin, (req, res) => {
         return res.status(400).json({ error: 'Email, message (string), and showMessage (boolean) are required.' });
     }
     const settings = JSON.stringify({ email, message, showMessage });
-    db.run('UPDATE settings SET value = ? WHERE key = "footer"', [settings], (err) => {
+    db.run('UPDATE settings SET value = ? WHERE key = "footer"', [settings], function(err) {
         if (err) {
             console.error('Server - Error updating footer settings:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error updating footer settings' });
         }
         console.log('Server - Updated footer settings:', { email, message, showMessage });
         res.json({ message: 'Footer settings updated successfully!' });
     });
 });
 
+// Get message settings (public endpoint)
 app.get('/api/message-settings', (req, res) => {
     db.get('SELECT value FROM settings WHERE key = "message"', (err, row) => {
         if (err) {
             console.error('Server - Error fetching message settings:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error fetching message settings' });
         }
         console.log('Server - Fetched message settings');
         res.json(JSON.parse(row.value));
     });
 });
 
+// Update message settings (admin only)
 app.put('/api/admin/message-settings', authenticateAdmin, (req, res) => {
     const { message, showMessage } = req.body;
     if (typeof message !== 'string' || typeof showMessage !== 'boolean') {
@@ -504,29 +544,32 @@ app.put('/api/admin/message-settings', authenticateAdmin, (req, res) => {
         return res.status(400).json({ error: 'Message (string) and showMessage (boolean) are required.' });
     }
     const settings = JSON.stringify({ message, showMessage });
-    db.run('UPDATE settings SET value = ? WHERE key = "message"', [settings], (err) => {
+    db.run('UPDATE settings SET value = ? WHERE key = "message"', [settings], function(err) {
         if (err) {
             console.error('Server - Error updating message settings:', err.message);
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Database error updating message settings' });
         }
         console.log('Server - Updated message settings:', { message, showMessage });
         res.json({ message: 'Message settings updated successfully!' });
     });
 });
 
+// Serve home page
 app.get('/', (req, res) => {
     console.log('Server - Redirecting to home page...');
     res.sendFile(path.join(__dirname, 'pages/home/index.html'));
 });
 
+// 404 handler
 app.use((req, res) => {
     console.log(`Server - 404 Not Found for ${req.method} ${req.url}`);
     res.status(404).json({ error: 'Not found' });
 });
 
+// Start server
 console.log('Server - Starting server on port', port);
 app.listen(port, () => {
-    console.log(`Server running on port ${port} - Version 1.20 - Started at ${new Date().toISOString()}`);
+    console.log(`Server running on port ${port} - Version 1.21 - Started at ${new Date().toISOString()}`);
 });
 
 // Close database on process exit

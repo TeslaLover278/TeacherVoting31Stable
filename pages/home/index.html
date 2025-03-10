@@ -19,7 +19,6 @@
         </div>
     </header>
     <main class="centered-container">
-        <!-- Popup message container -->
         <div id="main-message" class="main-message" style="display: none;">
             <p id="message-text"></p>
             <button id="close-message" class="close-btn">✕</button>
@@ -35,6 +34,7 @@
                         <option value="alphabetical">Alphabetical</option>
                         <option value="ratings">Rating</option>
                     </select>
+                    <label for="sort-direction">Direction:</label>
                     <select id="sort-direction" aria-label="Sort direction" class="sort-select">
                         <option value="asc">Ascending</option>
                         <option value="desc">Descending</option>
@@ -52,61 +52,10 @@
         </div>
     </main>
     <footer class="site-footer">
-        <p class="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
-        <p class="footer-message">Welcome to Rate Your Teachers!</p>
+        <p id="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
+        <p id="footer-message">Welcome to Rate Your Teachers!</p>
     </footer>
     <div id="notification" class="notification"></div>
-    <script>
-        // Fetch footer settings and update footer content
-        fetch('/api/footer-settings')
-            .then(response => response.json())
-            .then(data => {
-                const footerEmail = document.querySelector('.footer-email a');
-                const footerMessage = document.querySelector('.footer-message');
-                footerEmail.href = `mailto:${data.email}`;
-                footerEmail.textContent = data.email;
-                footerMessage.textContent = data.message;
-                footerMessage.style.display = data.showMessage ? 'block' : 'none';
-            })
-            .catch(error => console.error('Error loading footer settings:', error));
-
-        // Fetch and display main page message (popup logic)
-        fetch('/api/message-settings')
-            .then(response => response.json())
-            .then(data => {
-                const messageDiv = document.getElementById('main-message');
-                const messageText = document.getElementById('message-text');
-                const closeButton = document.getElementById('close-message');
-                if (data.showMessage) {
-                    messageText.textContent = data.message;
-                    messageDiv.style.display = 'block'; // Show popup if showMessage is true
-                    closeButton.addEventListener('click', () => {
-                        messageDiv.style.display = 'none'; // Hide on close
-                    });
-                }
-            })
-            .catch(error => console.error('Error loading message settings:', error));
-
-        // Header event listeners and admin button update
-        document.addEventListener('DOMContentLoaded', () => {
-            const logo = document.querySelector('.logo');
-            const submitTeacherBtn = document.querySelector('.submit-teacher-btn');
-            const adminBtn = document.getElementById('admin-btn');
-
-            logo.addEventListener('click', () => window.location.href = '/');
-            submitTeacherBtn.addEventListener('click', () => window.location.href = '/pages/teacher/submit-teacher.html');
-
-            const cookies = document.cookie.split(';').map(cookie => cookie.trim().split('='));
-            const adminToken = cookies.find(cookie => cookie[0] === 'adminToken')?.[1];
-            if (adminToken === 'admin-token') {
-                adminBtn.textContent = 'Admin Dashboard';
-                adminBtn.onclick = () => window.location.href = '/pages/admin/dashboard.html';
-            } else {
-                adminBtn.textContent = 'Admin Login';
-                adminBtn.onclick = () => window.location.href = '/pages/admin/login.html';
-            }
-        });
-    </script>
-    <script src="/pages/home/index.js" defer></script>
+    <script src="/pages/home/index.js"></script>
 </body>
 </html>
