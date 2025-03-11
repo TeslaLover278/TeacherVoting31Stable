@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const footerMessageStatus = document.getElementById('footer-message-status');
     const messageSettingsForm = document.getElementById('message-settings-form');
     const messageStatus = document.getElementById('message-status');
+    const statsTimeframe = document.getElementById('stats-timeframe');
 
     // Check for missing elements
     const missingElements = [];
@@ -43,6 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!footerMessageStatus) missingElements.push('footer-message-status');
     if (!messageSettingsForm) missingElements.push('message-settings-form');
     if (!messageStatus) missingElements.push('message-status');
+    if (!statsTimeframe) missingElements.push('stats-timeframe');
 
     if (missingElements.length > 0) {
         console.error('Client - Required elements for dashboard not found:', missingElements);
@@ -51,13 +53,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     console.log('Client - All required elements found, proceeding with dashboard setup');
 
-    // Notification function with modern styling
+    // Notification function
     function showNotification(messageText, isError = false) {
         const notification = document.createElement('div');
         notification.className = `notification ${isError ? 'error' : 'success'}`;
         notification.textContent = messageText;
         document.body.appendChild(notification);
         setTimeout(() => notification.remove(), 3000);
+    }
+
+    // Reusable modal function
+    function showModal(title, message, confirmText, onConfirm, extraContent = '') {
+        const modalHtml = `
+            <div class="modal active">
+                <div class="modal-content" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+                    <h2 id="modal-title">${title}</h2>
+                    <p>${message}</p>
+                    ${extraContent}
+                    <button id="confirm-action" class="modal-btn">${confirmText}</button>
+                    <button id="cancel-action" class="modal-btn">Cancel</button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = document.querySelector('.modal');
+        document.getElementById('confirm-action').addEventListener('click', async () => {
+            await onConfirm();
+            modal.remove();
+        });
+        document.getElementById('cancel-action').addEventListener('click', () => modal.remove());
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); }, { once: true });
     }
 
     // Check admin authentication
@@ -79,11 +104,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await fetch('/api/footer-settings', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch footer settings');
             const settings = await response.json();
-            document.getElementById('footer-email').value = settings.email;
-            document.getElementById('footer-message').value = settings.message;
+            document.getElementById('footer-email-input').value = settings.email; // Adjusted ID
+            document.getElementById('footer-message-input').value = settings.message; // Adjusted ID
             document.getElementById('footer-show-message').checked = settings.showMessage;
             footerMessageStatus.textContent = 'Footer settings loaded.';
-            // Update footer display
             const footerEmail = document.getElementById('footer-email');
             const footerMessageDisplay = document.getElementById('footer-message');
             if (footerEmail) footerEmail.innerHTML = `Email: <a href="mailto:${settings.email}">${settings.email}</a>`;
@@ -106,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!response.ok) throw new Error('Failed to fetch message settings');
             const settings = await response.json();
             document.getElementById('main-message').value = settings.message;
-            document.getElementById('main-show-message').checked = settings.showMessage;
+            document.getElementById('show-main-message').checked = settings.showMessage; // Adjusted ID
             messageStatus.textContent = 'Message settings loaded.';
         } catch (error) {
             console.error('Client - Error loading message settings:', error.message);
@@ -119,8 +143,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Save message settings
     async function saveMessageSettings() {
         const message = document.getElementById('main-message').value;
-        const showMessage = document.getElementById('main-show-message').checked;
+        const showMessage = document.getElementById('show-main-message').checked;
         const settingsData = { message, showMessage };
+        console.log('Client - Saving message settings:', settingsData);
         try {
             const response = await fetch('/api/admin/message-settings', {
                 method: 'PUT',
@@ -133,6 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 messageStatus.textContent = 'Message settings saved successfully!';
                 messageStatus.className = 'info-message';
                 showNotification('Message settings saved successfully!');
+                loadMessageSettings();
             } else {
                 throw new Error(data.error || 'Failed to save message settings');
             }
@@ -144,15 +170,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Handle footer settings form submission
-    footerSettingsForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(footerSettingsForm);
-        const settingsData = {
-            email: formData.get('email'),
-            message: formData.get('message'),
-            showMessage: document.getElementById('footer-show-message').checked
-        };
+    // Save footer settings
+    async function saveFooterSettings() {
+        const email = document.getElementById('footer-email-input').value;
+        const message = document.getElementById('footer-message-input').value;
+        const showMessage = document.getElementById('footer-show-message').checked;
+        const settingsData = { email, message, showMessage };
+        console.log('Client - Saving footer settings:', settingsData);
         try {
             const response = await fetch('/api/admin/footer-settings', {
                 method: 'PUT',
@@ -165,7 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 footerMessageStatus.textContent = 'Footer settings saved successfully!';
                 footerMessageStatus.className = 'info-message';
                 showNotification('Footer settings saved successfully!');
-                loadFooterSettings(); // Refresh footer display
+                loadFooterSettings();
             } else {
                 throw new Error(data.error || 'Failed to save footer settings');
             }
@@ -175,20 +199,67 @@ document.addEventListener('DOMContentLoaded', async () => {
             footerMessageStatus.className = 'error-message';
             showNotification('Error saving footer settings.', true);
         }
+    }
+
+    // Toggle sections
+    document.querySelectorAll('.section-toggle').forEach(header => {
+        header.addEventListener('click', () => {
+            const content = header.nextElementSibling;
+            content.style.display = content.style.display === 'none' ? 'block' : 'none';
+            header.classList.toggle('expanded');
+        });
     });
 
-    // Handle message settings form submission
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            const tabContent = document.getElementById(`${btn.dataset.tab}-tab`);
+            tabContent.classList.add('active');
+            if (btn.dataset.tab === 'stats') loadStatistics();
+        });
+    });
+
+    // Handle form submissions and toggle clicks
+    footerSettingsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveFooterSettings();
+    });
+
     messageSettingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         await saveMessageSettings();
     });
 
-    // Add toggle listener for main message
-    const mainShowMessage = document.getElementById('main-show-message');
+    const mainShowMessage = document.getElementById('show-main-message');
+    const footerShowMessage = document.getElementById('footer-show-message');
+    const mainToggleSwitch = messageSettingsForm.querySelector('.toggle-switch');
+    const footerToggleSwitch = footerSettingsForm.querySelector('.toggle-switch');
+
     if (mainShowMessage) {
         mainShowMessage.addEventListener('change', saveMessageSettings);
+        mainToggleSwitch.addEventListener('click', (e) => {
+            if (e.target !== mainShowMessage) {
+                mainShowMessage.checked = !mainShowMessage.checked;
+                saveMessageSettings();
+            }
+        });
     } else {
-        console.warn('Client - main-show-message element not found');
+        console.warn('Client - show-main-message element not found');
+    }
+
+    if (footerShowMessage) {
+        footerShowMessage.addEventListener('change', saveFooterSettings);
+        footerToggleSwitch.addEventListener('click', (e) => {
+            if (e.target !== footerShowMessage) {
+                footerShowMessage.checked = !footerShowMessage.checked;
+                saveFooterSettings();
+            }
+        });
+    } else {
+        console.warn('Client - footer-show-message element not found');
     }
 
     // Handle teacher form submission
@@ -239,7 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Load teachers with sorting, searching, and pagination
+    // Load teachers
     async function loadTeachers() {
         try {
             const response = await fetch('/api/teachers?perPage=100', { credentials: 'include' });
@@ -279,7 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <tbody>
                             ${paginatedTeachers.map(teacher => `
                                 <tr onclick="toggleTeacherDetails('${teacher.id}')" style="cursor: pointer;">
-                                    <td>${teacher.id}</td>
+                                    <td contenteditable="true" id="edit-id-${teacher.id}">${teacher.id}</td>
                                     <td>${teacher.name}</td>
                                     <td>${teacher.description}</td>
                                     <td>
@@ -316,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Load votes with sorting, searching, and pagination
+    // Load votes
     async function loadVotes() {
         try {
             const response = await fetch('/api/admin/votes', { credentials: 'include' });
@@ -433,7 +504,71 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Global functions for table interactions
+    // Load statistics
+    let visitsChart, proposalsChart, topTeachersChart;
+    async function loadStatistics() {
+        try {
+            const timeFrame = statsTimeframe.value;
+            const response = await fetch(`/api/admin/stats?timeFrame=${timeFrame}`, { credentials: 'include' });
+            const stats = await response.json();
+            if (!response.ok) throw new Error(stats.error || 'Failed to load stats');
+
+            const visitsCtx = document.getElementById('visits-chart').getContext('2d');
+            if (visitsChart) visitsChart.destroy();
+            visitsChart = new Chart(visitsCtx, {
+                type: 'bar',
+                data: {
+                    labels: stats.visitsOverTime.map(v => v.time),
+                    datasets: [{
+                        label: 'Visits',
+                        data: stats.visitsOverTime.map(v => v.count),
+                        backgroundColor: '#00B7D1'
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+
+            const proposalsCtx = document.getElementById('proposals-chart').getContext('2d');
+            if (proposalsChart) proposalsChart.destroy();
+            proposalsChart = new Chart(proposalsCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Approved', 'Denied', 'Pending'],
+                    datasets: [{
+                        data: [
+                            stats.proposalApprovedPercent,
+                            stats.proposalDeniedPercent,
+                            (100 - parseFloat(stats.proposalApprovedPercent) - parseFloat(stats.proposalDeniedPercent)).toFixed(2)
+                        ],
+                        backgroundColor: ['#00B7D1', '#FF0000', '#e0e0e0']
+                    }]
+                }
+            });
+
+            const topTeachersCtx = document.getElementById('top-teachers-chart').getContext('2d');
+            if (topTeachersChart) topTeachersChart.destroy();
+            topTeachersChart = new Chart(topTeachersCtx, {
+                type: 'bar',
+                data: {
+                    labels: stats.topTeachers.map(t => t.name),
+                    datasets: [{
+                        label: 'Votes',
+                        data: stats.topTeachers.map(t => t.voteCount),
+                        backgroundColor: '#00B7D1'
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+
+            document.getElementById('stats-message').textContent = `Stats for ${timeFrame}: Total Teachers: ${stats.totalTeachers}, Votes: ${stats.totalVotes}, Visits: ${stats.totalVisits}, Unique: ${stats.uniqueVisits}, Avg Visits: ${stats.avgVisits}`;
+        } catch (error) {
+            console.error('Client - Error loading statistics:', error.message);
+            document.getElementById('stats-message').textContent = 'Error loading statistics.';
+            showNotification('Error loading statistics.', true);
+        }
+    }
+
+    // Global functions
     window.toggleProposalDetails = (proposalId) => {
         const detailsRow = document.getElementById(`details-${proposalId}`);
         detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
@@ -444,20 +579,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
     };
 
-    window.updateTeacher = async (id) => {
+    window.updateTeacher = async (oldId) => {
+        let newId = document.getElementById(`edit-id-${oldId}`).textContent.trim();
+        const allTeachers = (await (await fetch('/api/teachers?perPage=100', { credentials: 'include' })).json()).teachers;
+        if (allTeachers.some(t => t.id === newId && t.id !== oldId)) newId += '1'; // Handle duplicate IDs
         const teacherData = {
-            id,
-            name: document.getElementById(`edit-name-${id}`).textContent.trim(),
-            description: document.getElementById(`edit-desc-${id}`).textContent.trim(),
-            bio: document.getElementById(`edit-bio-${id}`).textContent.trim(),
-            classes: document.getElementById(`edit-classes-${id}`).textContent.split(',').map(c => c.trim()).filter(c => c),
-            tags: document.getElementById(`edit-tags-${id}`).textContent.split(',').map(t => t.trim()).filter(t => t),
-            room_number: document.getElementById(`edit-room-${id}`).textContent.trim(),
-            image_link: document.getElementById(`edit-image-${id}`).textContent.trim(),
-            schedule: [] // Schedule editing not implemented here; could be expanded
+            id: newId,
+            name: document.getElementById(`edit-name-${oldId}`).textContent.trim(),
+            description: document.getElementById(`edit-desc-${oldId}`).textContent.trim(),
+            bio: document.getElementById(`edit-bio-${oldId}`).textContent.trim(),
+            classes: document.getElementById(`edit-classes-${oldId}`).textContent.split(',').map(c => c.trim()).filter(c => c),
+            tags: document.getElementById(`edit-tags-${oldId}`).textContent.split(',').map(t => t.trim()).filter(t => t),
+            room_number: document.getElementById(`edit-room-${oldId}`).textContent.trim(),
+            schedule: [], // Schedule editing not implemented
+            image_link: document.getElementById(`edit-image-${oldId}`).textContent.trim()
         };
         try {
-            const response = await fetch(`/api/admin/teachers/${id}`, {
+            const response = await fetch(`/api/admin/teachers/${oldId}/rename`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(teacherData),
@@ -468,6 +606,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 teachersMessage.textContent = data.message;
                 showNotification(data.message);
                 loadTeachers();
+                loadVotes(); // Reflect ID change in votes
             } else {
                 throw new Error(data.error || 'Failed to update teacher');
             }
@@ -480,19 +619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.showDeleteTeacherModal = (id, name) => {
-        const modalHtml = `
-            <div class="modal active">
-                <div class="modal-content">
-                    <h2>Confirm Deletion</h2>
-                    <p>Are you sure you want to delete ${name}?</p>
-                    <button id="confirm-delete" class="modal-btn">Delete</button>
-                    <button id="cancel-delete" class="modal-btn">Cancel</button>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        const modal = document.querySelector('.modal');
-        document.getElementById('confirm-delete').addEventListener('click', async () => {
+        showModal('Confirm Deletion', `Are you sure you want to delete ${name}?`, 'Delete', async () => {
             try {
                 const response = await fetch(`/api/admin/teachers/${id}`, {
                     method: 'DELETE',
@@ -512,10 +639,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 teachersMessage.className = 'error-message';
                 showNotification('Error deleting teacher.', true);
             }
-            modal.remove();
         });
-        document.getElementById('cancel-delete').addEventListener('click', () => modal.remove());
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); });
     };
 
     window.updateVote = async (teacherId) => {
@@ -551,19 +675,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.showDeleteVoteModal = (teacherId) => {
-        const modalHtml = `
-            <div class="modal active">
-                <div class="modal-content">
-                    <h2>Confirm Deletion</h2>
-                    <p>Are you sure you want to delete the vote for teacher ID ${teacherId}?</p>
-                    <button id="confirm-delete" class="modal-btn">Delete</button>
-                    <button id="cancel-delete" class="modal-btn">Cancel</button>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        const modal = document.querySelector('.modal');
-        document.getElementById('confirm-delete').addEventListener('click', async () => {
+        showModal('Confirm Deletion', `Are you sure you want to delete the vote for teacher ID ${teacherId}?`, 'Delete', async () => {
             try {
                 const response = await fetch(`/api/admin/votes/${teacherId}`, {
                     method: 'DELETE',
@@ -583,30 +695,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 votesMessage.className = 'error-message';
                 showNotification('Error deleting vote.', true);
             }
-            modal.remove();
         });
-        document.getElementById('cancel-delete').addEventListener('click', () => modal.remove());
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); });
     };
 
-    window.approveProposal = async (proposalId) => {
-        const modalHtml = `
-            <div class="modal active">
-                <div class="modal-content" role="dialog" aria-labelledby="modal-title" aria-modal="true">
-                    <h2 id="modal-title">Approve Teacher Proposal</h2>
-                    <p>Assign a unique Teacher ID for this proposal (Temp ID: ${proposalId}):</p>
-                    <div class="form-group">
-                        <label for="teacher-id">Teacher ID:</label>
-                        <input type="text" id="teacher-id" name="id" required placeholder="e.g., T123">
-                    </div>
-                    <button id="confirm-approve" class="modal-btn">Approve</button>
-                    <button id="cancel-approve" class="modal-btn">Cancel</button>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        const modal = document.querySelector('.modal');
-        document.getElementById('confirm-approve').addEventListener('click', async () => {
+    window.approveProposal = (proposalId) => {
+        showModal('Approve Teacher Proposal', `Assign a unique Teacher ID for this proposal (Temp ID: ${proposalId}):`, 'Approve', async () => {
             const teacherId = document.getElementById('teacher-id').value.trim();
             if (!teacherId) {
                 showNotification('Teacher ID is required.', true);
@@ -626,7 +719,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showNotification(data.message);
                     loadTeacherProposals();
                     loadTeachers();
-                    modal.remove();
                 } else {
                     throw new Error(data.error || 'Failed to approve proposal');
                 }
@@ -636,25 +728,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 proposalMessage.className = 'error-message';
                 showNotification('Error approving proposal.', true);
             }
-        });
-        document.getElementById('cancel-approve').addEventListener('click', () => modal.remove());
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); });
+        }, `<div class="form-group"><label for="teacher-id">Teacher ID:</label><input type="text" id="teacher-id" name="id" required placeholder="e.g., T123"></div>`);
     };
 
     window.showDeleteProposalModal = (proposalId, name) => {
-        const modalHtml = `
-            <div class="modal active">
-                <div class="modal-content">
-                    <h2>Confirm Deletion</h2>
-                    <p>Are you sure you want to delete the proposal for ${name} (ID: ${proposalId})?</p>
-                    <button id="confirm-delete" class="modal-btn">Delete</button>
-                    <button id="cancel-delete" class="modal-btn">Cancel</button>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        const modal = document.querySelector('.modal');
-        document.getElementById('confirm-delete').addEventListener('click', async () => {
+        showModal('Confirm Deletion', `Are you sure you want to delete the proposal for ${name} (ID: ${proposalId})?`, 'Delete', async () => {
             try {
                 const response = await fetch(`/api/admin/teacher-proposals/${proposalId}`, {
                     method: 'DELETE',
@@ -675,10 +753,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 proposalMessage.className = 'error-message';
                 showNotification('Error deleting proposal.', true);
             }
-            modal.remove();
         });
-        document.getElementById('cancel-delete').addEventListener('click', () => modal.remove());
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); });
     };
 
     window.logout = () => {
@@ -686,7 +761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/pages/admin/login.html';
     };
 
-    // Event listeners for filtering and sorting
+    // Event listeners for filtering, sorting, and navigation
     teacherSearch.addEventListener('input', loadTeachers);
     teachersPerPageSelect.addEventListener('change', loadTeachers);
     teacherSort.addEventListener('change', loadTeachers);
@@ -695,6 +770,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     votesPerPageSelect.addEventListener('change', loadVotes);
     voteSort.addEventListener('change', loadVotes);
     voteSortDirection.addEventListener('change', loadVotes);
+    statsTimeframe.addEventListener('change', loadStatistics);
     document.querySelector('.logo').addEventListener('click', () => window.location.href = '/');
     document.querySelector('.submit-teacher-btn').addEventListener('click', () => window.location.href = '/pages/submit-teacher.html');
 
@@ -706,5 +782,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadTeacherProposals();
         loadFooterSettings();
         loadMessageSettings();
+        // Statistics loaded on tab click
     }
 });

@@ -1,7 +1,7 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const { v4: uuidv4 } = require('uuid'); // Added
+const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const cookieParser = require('cookie-parser');
 const app = express();
@@ -17,6 +17,16 @@ app.use('/public', express.static(path.join(__dirname, 'public'), { maxAge: '1d'
 app.use('/pages', express.static(path.join(__dirname, 'pages'), { maxAge: '1d' }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Visit tracking middleware
+app.use((req, res, next) => {
+    const visitorId = req.cookies.visitorId || uuidv4();
+    if (!req.cookies.visitorId) setCookie(res, 'visitorId', visitorId, 365);
+    db.run('INSERT INTO stats (visitor_id, timestamp) VALUES (?, ?)', [visitorId, new Date().toISOString()], (err) => {
+        if (err) console.error('Server - Error logging visit:', err.message);
+    });
+    next();
+});
 
 console.log('Server - Middleware configured...');
 
@@ -72,6 +82,13 @@ db.serialize(() => {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         )`, [], (err) => err && console.error('Server - Error creating settings table:', err.message));
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            visitor_id TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        )`, [], (err) => err && console.error('Server - Error creating stats table:', err.message));
 
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('footer', ?)`, [
         JSON.stringify({ email: 'admin@example.com', message: 'Welcome to Rate Your Teachers!', showMessage: true })
@@ -400,6 +417,36 @@ app.put('/api/admin/teachers/:id', authenticateAdmin, (req, res) => {
         });
 });
 
+// Rename a teacher (admin only)
+app.put('/api/admin/teachers/:oldId/rename', authenticateAdmin, (req, res) => {
+    const oldId = req.params.oldId;
+    const { id, name, bio, classes, description, tags, room_number, schedule, image_link } = req.body;
+    if (!id || !name || !bio || !classes || !Array.isArray(classes) || !description || !tags || !Array.isArray(tags) || !room_number || !schedule || !Array.isArray(schedule)) {
+        return res.status(400).json({ error: 'All fields except image_link are required.' });
+    }
+    const newId = id.trim();
+    db.get('SELECT id FROM teachers WHERE id = ?', [newId], (err, existing) => {
+        if (err) return res.status(500).json({ error: 'Database error checking ID' });
+        if (existing && existing.id !== oldId) return res.status(400).json({ error: 'Teacher ID already exists.' });
+        
+        db.serialize(() => {
+            db.run('UPDATE teachers SET id = ?, name = ?, bio = ?, classes = ?, description = ?, tags = ?, room_number = ?, schedule = ?, image_link = ? WHERE id = ?',
+                [newId, name, bio, JSON.stringify(classes), description, JSON.stringify(tags), room_number, JSON.stringify(schedule), image_link || '', oldId], function(err) {
+                    if (err) {
+                        console.error('Server - Error renaming teacher:', err.message);
+                        return res.status(500).json({ error: 'Database error renaming teacher' });
+                    }
+                    if (this.changes === 0) return res.status(404).json({ error: 'Teacher not found.' });
+                });
+            db.run('UPDATE votes SET teacher_id = ? WHERE teacher_id = ?', [newId, oldId], (err) => {
+                if (err) console.error('Server - Error updating votes for renamed teacher:', err.message);
+                console.log('Server - Renamed teacher from', oldId, 'to', newId);
+                res.json({ message: 'Teacher renamed successfully!', teacher: { id: newId, name, bio, classes, description, tags, room_number, schedule, image_link } });
+            });
+        });
+    });
+});
+
 // Submit a teacher proposal (public endpoint)
 app.post('/api/teacher-proposals', (req, res) => {
     const { name, bio, classes, description, tags, room_number, email, schedule, image_link } = req.body;
@@ -407,6 +454,8 @@ app.post('/api/teacher-proposals', (req, res) => {
         return res.status(400).json({ error: 'All fields except image_link are required.' });
     }
     const tempId = uuidv4();
+    const visitorId = req.cookies.visitorId || uuidv4();
+    if (!req.cookies.visitorId) setCookie(res, 'visitorId', visitorId, 365);
     const newProposal = {
         id: tempId,
         name,
@@ -551,6 +600,78 @@ app.put('/api/admin/message-settings', authenticateAdmin, (req, res) => {
         }
         console.log('Server - Updated message settings:', { message, showMessage });
         res.json({ message: 'Message settings updated successfully!' });
+    });
+});
+
+// Get statistics (admin only)
+app.get('/api/admin/stats', authenticateAdmin, (req, res) => {
+    const timeFrame = req.query.timeFrame || '1day';
+    const now = new Date();
+    let startTime;
+    switch (timeFrame) {
+        case '1hour': startTime = new Date(now - 60 * 60 * 1000); break;
+        case '6hours': startTime = new Date(now - 6 * 60 * 60 * 1000); break;
+        case '1day': startTime = new Date(now - 24 * 60 * 60 * 1000); break;
+        case '7days': startTime = new Date(now - 7 * 24 * 60 * 60 * 1000); break;
+        case '1month': startTime = new Date(now - 30 * 24 * 60 * 60 * 1000); break;
+        default: return res.status(400).json({ error: 'Invalid timeFrame' });
+    }
+    const startTimeStr = startTime.toISOString();
+
+    db.serialize(() => {
+        db.all('SELECT COUNT(*) as totalTeachers FROM teachers', (err, teacherCount) => {
+            if (err) return res.status(500).json({ error: 'Error fetching teacher count' });
+            db.all('SELECT COUNT(*) as totalVotes FROM votes', (err, voteCount) => {
+                if (err) return res.status(500).json({ error: 'Error fetching vote count' });
+                db.all('SELECT COUNT(*) as totalProposals FROM teacher_proposals', (err, proposalCount) => {
+                    if (err) return res.status(500).json({ error: 'Error fetching proposal count' });
+                    db.all('SELECT * FROM stats WHERE timestamp >= ?', [startTimeStr], (err, visits) => {
+                        if (err) return res.status(500).json({ error: 'Error fetching visits' });
+                        db.all('SELECT * FROM teacher_proposals', (err, proposals) => {
+                            if (err) return res.status(500).json({ error: 'Error fetching proposals' });
+                            db.all('SELECT t.id, t.name, COUNT(v.id) as voteCount FROM teachers t LEFT JOIN votes v ON t.id = v.teacher_id GROUP BY t.id, t.name ORDER BY voteCount DESC LIMIT 5', (err, topTeachers) => {
+                                if (err) return res.status(500).json({ error: 'Error fetching top teachers' });
+
+                                const totalVisits = visits.length;
+                                const uniqueVisits = [...new Set(visits.map(v => v.visitor_id))].length;
+                                const avgVisits = totalVisits / (timeFrame === '1hour' ? 1 : timeFrame === '6hours' ? 6 : timeFrame === '1day' ? 24 : timeFrame === '7days' ? 168 : 720);
+                                const proposalsPerEmail = proposals.reduce((acc, p) => { acc[p.email] = (acc[p.email] || 0) + 1; return acc; }, {});
+                                const proposalsPerVisitor = visits.reduce((acc, v) => { acc[v.visitor_id] = (acc[v.visitor_id] || 0) + 1; return acc; }, {});
+                                const approvedProposals = proposals.filter(p => db.get('SELECT id FROM teachers WHERE id = ?', [p.id])).length;
+                                const totalProposals = proposalCount[0].totalProposals;
+                                const proposalApprovedPercent = totalProposals ? (approvedProposals / totalProposals * 100).toFixed(2) : 0;
+                                const proposalDeniedPercent = totalProposals ? ((totalProposals - approvedProposals) / totalProposals * 100).toFixed(2) : 0;
+
+                                const visitsOverTime = [];
+                                const interval = timeFrame === '1hour' ? 5 * 60 * 1000 : timeFrame === '6hours' ? 30 * 60 * 1000 : timeFrame === '1day' ? 60 * 60 * 1000 : timeFrame === '7days' ? 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+                                let current = new Date(startTime);
+                                while (current < now) {
+                                    const next = new Date(current.getTime() + interval);
+                                    const count = visits.filter(v => new Date(v.timestamp) >= current && new Date(v.timestamp) < next).length;
+                                    visitsOverTime.push({ time: current.toISOString().slice(11, 16), count });
+                                    current = next;
+                                }
+
+                                res.json({
+                                    totalTeachers: teacherCount[0].totalTeachers,
+                                    totalVotes: voteCount[0].totalVotes,
+                                    totalVisits,
+                                    uniqueVisits,
+                                    avgVisits: avgVisits.toFixed(2),
+                                    totalProposals,
+                                    proposalsPerEmail,
+                                    proposalsPerVisitor,
+                                    proposalApprovedPercent,
+                                    proposalDeniedPercent,
+                                    topTeachers,
+                                    visitsOverTime
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
     });
 });
 
