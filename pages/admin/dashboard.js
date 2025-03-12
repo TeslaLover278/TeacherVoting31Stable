@@ -1,14 +1,15 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Client - Dashboard script loaded, initializing...');
 
-    // Query all required elements
     const teacherForm = document.getElementById('teacher-form');
     const teachersTable = document.getElementById('teachers-table');
     const votesTable = document.getElementById('votes-table');
     const proposalsTable = document.getElementById('proposals-table');
+    const correctionsTable = document.getElementById('corrections-table');
     const teachersMessage = document.getElementById('teachers-message');
     const votesMessage = document.getElementById('votes-message');
     const proposalMessage = document.getElementById('proposal-message');
+    const correctionsMessage = document.getElementById('corrections-message');
     const voteSearch = document.getElementById('vote-search');
     const votesPerPageSelect = document.getElementById('votes-per-page');
     const voteSort = document.getElementById('vote-sort');
@@ -22,16 +23,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const messageSettingsForm = document.getElementById('message-settings-form');
     const messageStatus = document.getElementById('message-status');
     const statsTimeframe = document.getElementById('stats-timeframe');
+    const sectionSettingsContainer = document.getElementById('section-settings-container');
 
-    // Check for missing elements
     const missingElements = [];
     if (!teacherForm) missingElements.push('teacher-form');
     if (!teachersTable) missingElements.push('teachers-table');
     if (!votesTable) missingElements.push('votes-table');
     if (!proposalsTable) missingElements.push('proposals-table');
+    if (!correctionsTable) missingElements.push('corrections-table');
     if (!teachersMessage) missingElements.push('teachers-message');
     if (!votesMessage) missingElements.push('votes-message');
     if (!proposalMessage) missingElements.push('proposal-message');
+    if (!correctionsMessage) missingElements.push('corrections-message');
     if (!voteSearch) missingElements.push('vote-search');
     if (!votesPerPageSelect) missingElements.push('votes-per-page');
     if (!voteSort) missingElements.push('vote-sort');
@@ -45,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!messageSettingsForm) missingElements.push('message-settings-form');
     if (!messageStatus) missingElements.push('message-status');
     if (!statsTimeframe) missingElements.push('stats-timeframe');
+    if (!sectionSettingsContainer) missingElements.push('section-settings-container');
 
     if (missingElements.length > 0) {
         console.error('Client - Required elements for dashboard not found:', missingElements);
@@ -53,16 +57,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     console.log('Client - All required elements found, proceeding with dashboard setup');
 
-    // Notification function
     function showNotification(messageText, isError = false) {
-        const notification = document.createElement('div');
+        const notification = document.getElementById('notification');
         notification.className = `notification ${isError ? 'error' : 'success'}`;
         notification.textContent = messageText;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
+        notification.style.display = 'block';
+        setTimeout(() => notification.style.display = 'none', 3000);
     }
 
-    // Reusable modal function
     function showModal(title, message, confirmText, onConfirm, extraContent = '') {
         const modalHtml = `
             <div class="modal active">
@@ -85,7 +87,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') modal.remove(); }, { once: true });
     }
 
-    // Check admin authentication
     async function checkAdminStatus() {
         try {
             const response = await fetch('/api/admin/votes', { credentials: 'include' });
@@ -97,17 +98,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             return false;
         }
     }
-
-    // Load footer settings
+	
     async function loadFooterSettings() {
         try {
             const response = await fetch('/api/footer-settings', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch footer settings');
             const settings = await response.json();
-            document.getElementById('footer-email-input').value = settings.email; // Adjusted ID
-            document.getElementById('footer-message-input').value = settings.message; // Adjusted ID
+            document.getElementById('footer-email-input').value = settings.email;
+            document.getElementById('footer-message-input').value = settings.message;
             document.getElementById('footer-show-message').checked = settings.showMessage;
-            footerMessageStatus.textContent = 'Footer settings loaded.';
+            if (footerMessageStatus) {
+                footerMessageStatus.textContent = 'Footer settings loaded.';
+            }
             const footerEmail = document.getElementById('footer-email');
             const footerMessageDisplay = document.getElementById('footer-message');
             if (footerEmail) footerEmail.innerHTML = `Email: <a href="mailto:${settings.email}">${settings.email}</a>`;
@@ -117,30 +119,56 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Client - Error loading footer settings:', error.message);
-            footerMessageStatus.textContent = 'Error loading footer settings.';
-            footerMessageStatus.className = 'error-message';
+            if (footerMessageStatus) {
+                footerMessageStatus.textContent = 'Error loading footer settings.';
+                footerMessageStatus.className = 'error-message';
+            }
             showNotification('Error loading footer settings.', true);
         }
     }
 
-    // Load message settings
     async function loadMessageSettings() {
         try {
             const response = await fetch('/api/message-settings', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch message settings');
             const settings = await response.json();
             document.getElementById('main-message').value = settings.message;
-            document.getElementById('show-main-message').checked = settings.showMessage; // Adjusted ID
-            messageStatus.textContent = 'Message settings loaded.';
+            document.getElementById('show-main-message').checked = settings.showMessage;
+            if (messageStatus) {
+                messageStatus.textContent = 'Message settings loaded.';
+            }
+            updateMainMessagePreview(settings);
         } catch (error) {
             console.error('Client - Error loading message settings:', error.message);
-            messageStatus.textContent = 'Error loading message settings.';
-            messageStatus.className = 'error-message';
+            if (messageStatus) {
+                messageStatus.textContent = 'Error loading message settings.';
+                messageStatus.className = 'error-message';
+            }
             showNotification('Error loading message settings.', true);
         }
     }
 
-    // Save message settings
+    function updateMainMessagePreview(settings) {
+        let mainMessagePopup = document.querySelector('.main-message-preview');
+        if (!mainMessagePopup) {
+            document.body.insertAdjacentHTML('beforeend', `
+                <div class="main-message-preview" style="display: none; position: fixed; top: 10%; left: 50%; transform: translateX(-50%); z-index: 1000;">
+                    <p id="main-message-preview-text"></p>
+                    <button class="close-btn">×</button>
+                </div>
+            `);
+            mainMessagePopup = document.querySelector('.main-message-preview');
+            mainMessagePopup.querySelector('.close-btn').addEventListener('click', () => {
+                mainMessagePopup.style.display = 'none';
+            });
+        }
+        const messageText = mainMessagePopup.querySelector('#main-message-preview-text');
+        messageText.textContent = settings.message;
+        mainMessagePopup.style.display = settings.showMessage ? 'block' : 'none';
+        const mainMessageDiv = document.getElementById('main-message');
+        if (mainMessageDiv) mainMessageDiv.style.display = 'none';
+    }
+
     async function saveMessageSettings() {
         const message = document.getElementById('main-message').value;
         const showMessage = document.getElementById('show-main-message').checked;
@@ -155,8 +183,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             const data = await response.json();
             if (response.ok) {
-                messageStatus.textContent = 'Message settings saved successfully!';
-                messageStatus.className = 'info-message';
+                if (messageStatus) {
+                    messageStatus.textContent = 'Message settings saved successfully!';
+                    messageStatus.className = 'info-message';
+                }
                 showNotification('Message settings saved successfully!');
                 loadMessageSettings();
             } else {
@@ -164,13 +194,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Client - Error saving message settings:', error.message);
-            messageStatus.textContent = 'Error saving message settings.';
-            messageStatus.className = 'error-message';
+            if (messageStatus) {
+                messageStatus.textContent = 'Error saving message settings.';
+                messageStatus.className = 'error-message';
+            }
             showNotification('Error saving message settings.', true);
         }
     }
 
-    // Save footer settings
     async function saveFooterSettings() {
         const email = document.getElementById('footer-email-input').value;
         const message = document.getElementById('footer-message-input').value;
@@ -186,8 +217,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             const data = await response.json();
             if (response.ok) {
-                footerMessageStatus.textContent = 'Footer settings saved successfully!';
-                footerMessageStatus.className = 'info-message';
+                if (footerMessageStatus) {
+                    footerMessageStatus.textContent = 'Footer settings saved successfully!';
+                    footerMessageStatus.className = 'info-message';
+                }
                 showNotification('Footer settings saved successfully!');
                 loadFooterSettings();
             } else {
@@ -195,22 +228,126 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Client - Error saving footer settings:', error.message);
-            footerMessageStatus.textContent = 'Error saving footer settings.';
-            footerMessageStatus.className = 'error-message';
+            if (footerMessageStatus) {
+                footerMessageStatus.textContent = 'Error saving footer settings.';
+                footerMessageStatus.className = 'error-message';
+            }
             showNotification('Error saving footer settings.', true);
         }
     }
 
-    // Toggle sections
+    async function loadSectionSettings() {
+        try {
+            const response = await fetch('/api/admin/section-settings', { credentials: 'include' });
+            let settings;
+            if (!response.ok) {
+                settings = {
+                    "Add New Teacher": false,
+                    "Manage Teachers": false,
+                    "Manage Votes": false,
+                    "Teacher Proposals": false,
+                    "Corrections": true,
+                    "Main Message Settings": true,
+                    "Footer Settings": true,
+                    "Statistics": false
+                };
+            } else {
+                settings = await response.json();
+                settings["Main Message Settings"] = settings["Main Message Settings"] ?? true;
+                settings["Footer Settings"] = settings["Footer Settings"] ?? true;
+                settings["Corrections"] = settings["Corrections"] ?? true;
+            }
+
+            sectionSettingsContainer.innerHTML = `
+                ${Object.entries(settings).map(([section, isExpanded]) => `
+                    <div class="form-group toggle-group">
+                        <label>${section}:</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-${section.replace(/\s+/g, '-')}" data-section="${section}" ${isExpanded ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-status">${isExpanded ? 'Expanded' : 'Collapsed'}</span>
+                    </div>
+                `).join('')}
+            `;
+
+            document.querySelectorAll('.toggle-group input[type="checkbox"]').forEach(toggle => {
+                toggle.addEventListener('change', (e) => {
+                    const sectionName = e.target.dataset.section;
+                    const isExpanded = e.target.checked;
+                    e.target.nextElementSibling.nextElementSibling.textContent = isExpanded ? 'Expanded' : 'Collapsed';
+                    const header = Array.from(document.querySelectorAll('.section-toggle')).find(h => h.textContent.trim() === sectionName);
+                    const content = header?.nextElementSibling;
+                    if (header && content) {
+                        content.style.display = isExpanded ? 'block' : 'none';
+                        header.classList.toggle('expanded', isExpanded);
+                    }
+                });
+            });
+
+            document.getElementById('save-section-settings').addEventListener('click', saveSectionSettings);
+            applySectionSettings(settings);
+        } catch (error) {
+            console.error('Client - Error loading section settings:', error.message);
+            sectionSettingsContainer.innerHTML = '<p class="error-message">Error loading section settings.</p>';
+            showNotification('Error loading section settings.', true);
+        }
+    }
+
+    async function saveSectionSettings() {
+        const settings = {};
+        document.querySelectorAll('.toggle-group input[type="checkbox"]').forEach(toggle => {
+            const sectionName = toggle.dataset.section;
+            settings[sectionName] = toggle.checked;
+        });
+        console.log('Client - Saving section settings:', settings);
+        try {
+            const response = await fetch('/api/admin/section-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings),
+                credentials: 'include'
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showNotification('Section settings saved successfully!');
+                applySectionSettings(settings);
+            } else {
+                throw new Error(data.error || 'Failed to save section settings');
+            }
+        } catch (error) {
+            console.error('Client - Error saving section settings:', error.message);
+            showNotification('Error saving section settings.', true);
+        }
+    }
+
+    function applySectionSettings(settings) {
+        document.querySelectorAll('.section-toggle').forEach(header => {
+            const sectionName = header.textContent.trim();
+            const content = header.nextElementSibling;
+            if (settings[sectionName] !== undefined) {
+                content.style.display = settings[sectionName] ? 'block' : 'none';
+                header.classList.toggle('expanded', settings[sectionName]);
+            }
+        });
+    }
+
     document.querySelectorAll('.section-toggle').forEach(header => {
         header.addEventListener('click', () => {
             const content = header.nextElementSibling;
-            content.style.display = content.style.display === 'none' ? 'block' : 'none';
+            const isExpanded = content.style.display === 'none';
+            content.style.display = isExpanded ? 'block' : 'none';
             header.classList.toggle('expanded');
+            const toggle = document.querySelector(`#toggle-${header.textContent.trim().replace(/\s+/g, '-')}`);
+            if (toggle) {
+                toggle.checked = isExpanded;
+                toggle.nextElementSibling.nextElementSibling.textContent = isExpanded ? 'Expanded' : 'Collapsed';
+            } else {
+                console.warn(`Toggle element not found for section: ${header.textContent.trim()}`);
+            }
         });
     });
 
-    // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -219,10 +356,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tabContent = document.getElementById(`${btn.dataset.tab}-tab`);
             tabContent.classList.add('active');
             if (btn.dataset.tab === 'stats') loadStatistics();
+            if (btn.dataset.tab === 'settings') {
+                loadSectionSettings();
+                loadMessageSettings();
+                loadFooterSettings();
+            }
+            if (btn.dataset.tab === 'corrections') loadCorrections();
         });
     });
 
-    // Handle form submissions and toggle clicks
     footerSettingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         await saveFooterSettings();
@@ -262,7 +404,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Client - footer-show-message element not found');
     }
 
-    // Handle teacher form submission
     teacherForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(teacherForm);
@@ -274,22 +415,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
             }
         }
-        const teacherData = {
-            id: formData.get('id').trim(),
-            name: formData.get('name').trim(),
-            bio: formData.get('bio').trim(),
-            description: formData.get('description').trim(),
-            classes: formData.get('classes').split(',').map(c => c.trim()).filter(c => c),
-            tags: formData.get('tags').split(',').map(t => t.trim()).filter(t => t),
-            room_number: formData.get('room_number').trim(),
-            schedule,
-            image_link: formData.get('image_link')?.trim() || ''
-        };
+        formData.set('schedule', JSON.stringify(schedule));
+
         try {
             const response = await fetch('/api/teachers', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(teacherData),
+                body: formData,
                 credentials: 'include'
             });
             const data = await response.json();
@@ -310,7 +441,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Load teachers
     async function loadTeachers() {
         try {
             const response = await fetch('/api/teachers?perPage=100', { credentials: 'include' });
@@ -360,13 +490,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <tr id="teacher-details-${teacher.id}" class="teacher-details" style="display: none;">
                                     <td colspan="4">
                                         <div class="teacher-details-content">
+                                            <p><strong>ID:</strong> <span contenteditable="true" id="edit-id-detail-${teacher.id}">${teacher.id}</span></p>
                                             <p><strong>Name:</strong> <span contenteditable="true" id="edit-name-${teacher.id}">${teacher.name}</span></p>
                                             <p><strong>Description:</strong> <span contenteditable="true" id="edit-desc-${teacher.id}">${teacher.description}</span></p>
                                             <p><strong>Bio:</strong> <span contenteditable="true" id="edit-bio-${teacher.id}">${teacher.bio || 'N/A'}</span></p>
                                             <p><strong>Classes:</strong> <span contenteditable="true" id="edit-classes-${teacher.id}">${teacher.classes.join(', ')}</span></p>
                                             <p><strong>Tags:</strong> <span contenteditable="true" id="edit-tags-${teacher.id}">${teacher.tags.join(', ')}</span></p>
                                             <p><strong>Room Number:</strong> <span contenteditable="true" id="edit-room-${teacher.id}">${teacher.room_number}</span></p>
-                                            <p><strong>Image Link:</strong> <span contenteditable="true" id="edit-image-${teacher.id}">${teacher.image_link || 'N/A'}</span></p>
+                                            <p><strong>Current Image:</strong> ${teacher.image_link ? `<img src="${teacher.image_link}" alt="${teacher.name}" style="max-width: 100px;">` : 'N/A'}</p>
+                                            <p><strong>Update Image:</strong> <input type="file" id="edit-image-${teacher.id}" name="image" accept="image/jpeg, image/png"></p>
+                                            <p><strong>Schedule:</strong></p>
+                                            <div class="schedule-edit">
+                                                ${[0, 1, 2, 3].map(i => `
+                                                    <div class="schedule-block">
+                                                        <label>Block ${i + 1}:</label>
+                                                        <input type="text" id="edit-schedule-${teacher.id}-${i}-subject" value="${teacher.schedule[i]?.subject || ''}" placeholder="Subject">
+                                                        <input type="text" id="edit-schedule-${teacher.id}-${i}-grade" value="${teacher.schedule[i]?.grade || ''}" placeholder="Grade">
+                                                    </div>
+                                                `).join('')}
+                                            </div>
                                             <button class="submit-btn" onclick="updateTeacher('${teacher.id}')">Update</button>
                                         </div>
                                     </td>
@@ -387,64 +529,63 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Load votes
-    async function loadVotes() {
-        try {
-            const response = await fetch('/api/admin/votes', { credentials: 'include' });
-            if (!response.ok) throw new Error('Failed to fetch votes');
-            let allVotes = await response.json();
-            const searchQuery = voteSearch.value.toLowerCase();
-            const sortField = voteSort.value;
-            const sortDirection = voteSortDirection.value;
-            const perPage = parseInt(votesPerPageSelect.value) || 10;
+async function loadVotes() {
+    try {
+        const response = await fetch('/api/admin/votes', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch votes');
+        let allVotes = await response.json();
+        const searchQuery = voteSearch.value.toLowerCase();
+        const sortField = voteSort.value;
+        const sortDirection = voteSortDirection.value;
+        const perPage = parseInt(votesPerPageSelect.value) || 10;
 
-            if (searchQuery) {
-                allVotes = allVotes.filter(vote => vote.teacher_id.toLowerCase().includes(searchQuery));
-            }
-
-            allVotes.sort((a, b) => {
-                const valueA = sortField === 'rating' ? a[sortField] : a[sortField].toString().toLowerCase();
-                const valueB = sortField === 'rating' ? b[sortField] : b[sortField].toString().toLowerCase();
-                return sortDirection === 'asc' ? (valueA > valueB ? 1 : -1) : (valueB > valueA ? 1 : -1);
-            });
-
-            const paginatedVotes = allVotes.slice(0, perPage);
-
-            votesTable.innerHTML = `
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>Teacher ID</th>
-                            <th>Rating</th>
-                            <th>Comment</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${paginatedVotes.map(vote => `
-                            <tr>
-                                <td>${vote.teacher_id}</td>
-                                <td contenteditable="true" id="edit-rating-${vote.teacher_id}">${vote.rating}</td>
-                                <td contenteditable="true" id="edit-comment-${vote.teacher_id}">${vote.comment || ''}</td>
-                                <td>
-                                    <button class="submit-btn" onclick="updateVote('${vote.teacher_id}')">Update</button>
-                                    <button class="delete-btn" onclick="showDeleteVoteModal('${vote.teacher_id}')">Delete</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>`;
-            votesMessage.textContent = `Loaded ${paginatedVotes.length} of ${allVotes.length} votes (total: ${allVotes.length}).`;
-            votesMessage.className = 'info-message';
-        } catch (error) {
-            console.error('Client - Error loading votes:', error.message);
-            votesMessage.textContent = 'Error loading votes.';
-            votesMessage.className = 'error-message';
-            showNotification('Error loading votes.', true);
+        if (searchQuery) {
+            allVotes = allVotes.filter(vote => vote.teacher_id.toLowerCase().includes(searchQuery));
         }
-    }
 
-    // Load teacher proposals
+        allVotes.sort((a, b) => {
+            const valueA = sortField === 'rating' ? a[sortField] : a[sortField].toString().toLowerCase();
+            const valueB = sortField === 'rating' ? b[sortField] : b[sortField].toString().toLowerCase();
+            return sortDirection === 'asc' ? (valueA > valueB ? 1 : -1) : (valueB > valueA ? 1 : -1);
+        });
+
+        const paginatedVotes = allVotes.slice(0, perPage);
+
+        votesTable.innerHTML = `
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Teacher ID</th>
+                        <th>Rating</th>
+                        <th>Comment</th>
+                        <th>Explicit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${paginatedVotes.map(vote => `
+                        <tr>
+                            <td>${vote.teacher_id}</td>
+                            <td contenteditable="true" id="edit-rating-${vote.teacher_id}">${vote.rating}</td>
+                            <td contenteditable="true" id="edit-comment-${vote.teacher_id}">${vote.comment || ''}</td>
+                            <td>${vote.is_explicit ? 'Yes' : 'No'}</td>
+                            <td>
+                                <button class="submit-btn" onclick="updateVote('${vote.teacher_id}')">Update</button>
+                                <button class="delete-btn" onclick="showDeleteVoteModal('${vote.teacher_id}')">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+        votesMessage.textContent = `Loaded ${paginatedVotes.length} of ${allVotes.length} votes (total: ${allVotes.length}).`;
+        votesMessage.className = 'info-message';
+    } catch (error) {
+        console.error('Client - Error loading votes:', error.message);
+        votesMessage.textContent = 'Error loading votes.';
+        votesMessage.className = 'error-message';
+        showNotification('Error loading votes.', true);
+    }
+}
     async function loadTeacherProposals() {
         try {
             const response = await fetch('/api/admin/teacher-proposals', { credentials: 'include' });
@@ -504,7 +645,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Load statistics
+    async function loadCorrections() {
+        try {
+            const response = await fetch('/api/admin/corrections', { credentials: 'include' });
+            if (!response.ok) throw new Error(`Server returned ${response.status}`);
+            const corrections = await response.json();
+            correctionsTable.innerHTML = `
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Teacher</th>
+                            <th>Suggestion</th>
+                            <th>File</th>
+                            <th>Submitted</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${corrections.map(c => `
+                            <tr>
+                                <td>${c.id}</td>
+                                <td>${c.teacher_name || c.teacher_id}</td>
+                                <td>${c.suggestion}</td>
+                                <td>${c.file_path ? `<a href="${c.file_path}" target="_blank">View</a>` : 'N/A'}</td>
+                                <td>${new Date(c.submitted_at).toLocaleString()}</td>
+                                <td>
+                                    <button class="submit-btn" onclick="implementCorrection(${c.id})">Implement</button>
+                                    <button class="delete-btn" onclick="showDeleteCorrectionModal(${c.id})">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>`;
+            correctionsMessage.textContent = `Loaded ${corrections.length} corrections.`;
+            correctionsMessage.className = 'info-message';
+        } catch (error) {
+            console.error('Client - Error loading corrections:', error.message);
+            correctionsMessage.textContent = 'Error loading corrections.';
+            correctionsMessage.className = 'error-message';
+            showNotification('Error loading corrections.', true);
+        }
+    }
+
     let visitsChart, proposalsChart, topTeachersChart;
     async function loadStatistics() {
         try {
@@ -513,52 +696,58 @@ document.addEventListener('DOMContentLoaded', async () => {
             const stats = await response.json();
             if (!response.ok) throw new Error(stats.error || 'Failed to load stats');
 
-            const visitsCtx = document.getElementById('visits-chart').getContext('2d');
-            if (visitsChart) visitsChart.destroy();
-            visitsChart = new Chart(visitsCtx, {
-                type: 'bar',
-                data: {
-                    labels: stats.visitsOverTime.map(v => v.time),
-                    datasets: [{
-                        label: 'Visits',
-                        data: stats.visitsOverTime.map(v => v.count),
-                        backgroundColor: '#00B7D1'
-                    }]
-                },
-                options: { scales: { y: { beginAtZero: true } } }
-            });
+            const visitsCtx = document.getElementById('visits-chart')?.getContext('2d');
+            if (visitsCtx) {
+                if (visitsChart) visitsChart.destroy();
+                visitsChart = new Chart(visitsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: stats.visitsOverTime.map(v => v.time),
+                        datasets: [{
+                            label: 'Visits',
+                            data: stats.visitsOverTime.map(v => v.count),
+                            backgroundColor: '#00B7D1'
+                        }]
+                    },
+                    options: { scales: { y: { beginAtZero: true } } }
+                });
+            }
 
-            const proposalsCtx = document.getElementById('proposals-chart').getContext('2d');
-            if (proposalsChart) proposalsChart.destroy();
-            proposalsChart = new Chart(proposalsCtx, {
-                type: 'pie',
-                data: {
-                    labels: ['Approved', 'Denied', 'Pending'],
-                    datasets: [{
-                        data: [
-                            stats.proposalApprovedPercent,
-                            stats.proposalDeniedPercent,
-                            (100 - parseFloat(stats.proposalApprovedPercent) - parseFloat(stats.proposalDeniedPercent)).toFixed(2)
-                        ],
-                        backgroundColor: ['#00B7D1', '#FF0000', '#e0e0e0']
-                    }]
-                }
-            });
+            const proposalsCtx = document.getElementById('proposals-chart')?.getContext('2d');
+            if (proposalsCtx) {
+                if (proposalsChart) proposalsChart.destroy();
+                proposalsChart = new Chart(proposalsCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Approved', 'Denied', 'Pending'],
+                        datasets: [{
+                            data: [
+                                parseFloat(stats.proposalApprovedPercent) || 0,
+                                parseFloat(stats.proposalDeniedPercent) || 0,
+                                (100 - (parseFloat(stats.proposalApprovedPercent) || 0) - (parseFloat(stats.proposalDeniedPercent) || 0)).toFixed(2)
+                            ],
+                            backgroundColor: ['#00B7D1', '#FF0000', '#e0e0e0']
+                        }]
+                    }
+                });
+            }
 
-            const topTeachersCtx = document.getElementById('top-teachers-chart').getContext('2d');
-            if (topTeachersChart) topTeachersChart.destroy();
-            topTeachersChart = new Chart(topTeachersCtx, {
-                type: 'bar',
-                data: {
-                    labels: stats.topTeachers.map(t => t.name),
-                    datasets: [{
-                        label: 'Votes',
-                        data: stats.topTeachers.map(t => t.voteCount),
-                        backgroundColor: '#00B7D1'
-                    }]
-                },
-                options: { scales: { y: { beginAtZero: true } } }
-            });
+            const topTeachersCtx = document.getElementById('top-teachers-chart')?.getContext('2d');
+            if (topTeachersCtx) {
+                if (topTeachersChart) topTeachersChart.destroy();
+                topTeachersChart = new Chart(topTeachersCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: stats.topTeachers?.map(t => t.name) || [],
+                        datasets: [{
+                            label: 'Votes',
+                            data: stats.topTeachers?.map(t => t.voteCount) || [],
+                            backgroundColor: '#00B7D1'
+                        }]
+                    },
+                    options: { scales: { y: { beginAtZero: true } } }
+                });
+            }
 
             document.getElementById('stats-message').textContent = `Stats for ${timeFrame}: Total Teachers: ${stats.totalTeachers}, Votes: ${stats.totalVotes}, Visits: ${stats.totalVisits}, Unique: ${stats.uniqueVisits}, Avg Visits: ${stats.avgVisits}`;
         } catch (error) {
@@ -568,7 +757,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Global functions
     window.toggleProposalDetails = (proposalId) => {
         const detailsRow = document.getElementById(`details-${proposalId}`);
         detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
@@ -580,25 +768,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.updateTeacher = async (oldId) => {
-        let newId = document.getElementById(`edit-id-${oldId}`).textContent.trim();
+        const formData = new FormData();
+        let newId = document.getElementById(`edit-id-detail-${oldId}`).textContent.trim();
         const allTeachers = (await (await fetch('/api/teachers?perPage=100', { credentials: 'include' })).json()).teachers;
-        if (allTeachers.some(t => t.id === newId && t.id !== oldId)) newId += '1'; // Handle duplicate IDs
-        const teacherData = {
-            id: newId,
-            name: document.getElementById(`edit-name-${oldId}`).textContent.trim(),
-            description: document.getElementById(`edit-desc-${oldId}`).textContent.trim(),
-            bio: document.getElementById(`edit-bio-${oldId}`).textContent.trim(),
-            classes: document.getElementById(`edit-classes-${oldId}`).textContent.split(',').map(c => c.trim()).filter(c => c),
-            tags: document.getElementById(`edit-tags-${oldId}`).textContent.split(',').map(t => t.trim()).filter(t => t),
-            room_number: document.getElementById(`edit-room-${oldId}`).textContent.trim(),
-            schedule: [], // Schedule editing not implemented
-            image_link: document.getElementById(`edit-image-${oldId}`).textContent.trim()
-        };
+        if (allTeachers.some(t => t.id === newId && t.id !== oldId)) newId += '1';
+        formData.append('id', newId);
+        formData.append('name', document.getElementById(`edit-name-${oldId}`).textContent.trim());
+        formData.append('description', document.getElementById(`edit-desc-${oldId}`).textContent.trim());
+        formData.append('bio', document.getElementById(`edit-bio-${oldId}`).textContent.trim());
+        formData.append('classes', document.getElementById(`edit-classes-${oldId}`).textContent.trim());
+        formData.append('tags', document.getElementById(`edit-tags-${oldId}`).textContent.trim());
+        formData.append('room_number', document.getElementById(`edit-room-${oldId}`).textContent.trim());
+
+        // Collect updated schedule
+        const schedule = [];
+        for (let i = 0; i < 4; i++) {
+            const subject = document.getElementById(`edit-schedule-${oldId}-${i}-subject`).value.trim();
+            const grade = document.getElementById(`edit-schedule-${oldId}-${i}-grade`).value.trim();
+            if (subject || grade) {
+                schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
+            }
+        }
+        formData.append('schedule', JSON.stringify(schedule));
+
+        const imageInput = document.getElementById(`edit-image-${oldId}`);
+        if (imageInput.files.length > 0) {
+            formData.append('image', imageInput.files[0]);
+        }
+
         try {
             const response = await fetch(`/api/admin/teachers/${oldId}/rename`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(teacherData),
+                body: formData,
                 credentials: 'include'
             });
             const data = await response.json();
@@ -606,7 +807,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 teachersMessage.textContent = data.message;
                 showNotification(data.message);
                 loadTeachers();
-                loadVotes(); // Reflect ID change in votes
+                loadVotes();
             } else {
                 throw new Error(data.error || 'Failed to update teacher');
             }
@@ -668,9 +869,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Client - Error updating vote:', error.message);
-            votesMessage.textContent = 'Error updating vote.';
+            votesMessage.textContent = `Error updating vote for teacher ${teacherId}: ${error.message}`;
             votesMessage.className = 'error-message';
-            showNotification('Error updating vote.', true);
+            if (error.message === 'Vote not found') {
+                showNotification(`No vote found for teacher ${teacherId}. Please ensure a vote exists before updating.`, true);
+            } else {
+                showNotification(`Failed to update vote for teacher ${teacherId}. Check server logs for details.`, true);
+            }
         }
     };
 
@@ -756,12 +961,67 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
-    window.logout = () => {
-        document.cookie = 'adminToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        window.location.href = '/pages/admin/login.html';
+    window.implementCorrection = (correctionId) => {
+        showModal('Implement Correction', `Are you sure you want to implement correction ID ${correctionId}? This will update the teacher record.`, 'Implement', async () => {
+            try {
+                const response = await fetch(`/api/admin/corrections/${correctionId}/implement`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    correctionsMessage.textContent = data.message;
+                    correctionsMessage.className = 'info-message';
+                    showNotification(data.message);
+                    loadCorrections();
+                    loadTeachers();
+                } else {
+                    throw new Error(data.error || 'Failed to implement correction');
+                }
+            } catch (error) {
+                console.error('Client - Error implementing correction:', error.message);
+                correctionsMessage.textContent = 'Error implementing correction.';
+                correctionsMessage.className = 'error-message';
+                showNotification('Error implementing correction.', true);
+            }
+        });
     };
 
-    // Event listeners for filtering, sorting, and navigation
+    window.showDeleteCorrectionModal = (correctionId) => {
+        showModal('Confirm Deletion', `Are you sure you want to delete correction ID ${correctionId}?`, 'Delete', async () => {
+            try {
+                const response = await fetch(`/api/admin/corrections/${correctionId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    correctionsMessage.textContent = data.message;
+                    correctionsMessage.className = 'info-message';
+                    showNotification(data.message);
+                    loadCorrections();
+                } else {
+                    throw new Error(data.error || 'Failed to delete correction');
+                }
+            } catch (error) {
+                console.error('Client - Error deleting correction:', error.message);
+                correctionsMessage.textContent = 'Error deleting correction.';
+                correctionsMessage.className = 'error-message';
+                showNotification('Error deleting correction.', true);
+            }
+        });
+    };
+
+    window.logout = async () => {
+        try {
+            document.cookie = 'adminToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            window.location.href = '/pages/admin/login.html';
+        } catch (error) {
+            console.error('Logout failed:', error);
+            showNotification('Logout failed. Please try again.', true);
+        }
+    };
+
     teacherSearch.addEventListener('input', loadTeachers);
     teachersPerPageSelect.addEventListener('change', loadTeachers);
     teacherSort.addEventListener('change', loadTeachers);
@@ -771,17 +1031,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     voteSort.addEventListener('change', loadVotes);
     voteSortDirection.addEventListener('change', loadVotes);
     statsTimeframe.addEventListener('change', loadStatistics);
-    document.querySelector('.logo').addEventListener('click', () => window.location.href = '/');
-    document.querySelector('.submit-teacher-btn').addEventListener('click', () => window.location.href = '/pages/submit-teacher.html');
+    document.querySelector('.logo')?.addEventListener('click', () => window.location.href = '/');
+    document.querySelector('.submit-teacher-btn')?.addEventListener('click', () => window.location.href = '/pages/teacher/submit-teacher.html');
 
-    // Initialize dashboard if authenticated
     const isAuthenticated = await checkAdminStatus();
     if (isAuthenticated) {
         loadTeachers();
         loadVotes();
         loadTeacherProposals();
-        loadFooterSettings();
-        loadMessageSettings();
-        // Statistics loaded on tab click
+        loadCorrections();
+        loadSectionSettings();
     }
 });

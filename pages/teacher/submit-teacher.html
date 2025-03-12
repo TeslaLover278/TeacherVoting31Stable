@@ -3,79 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit a Teacher</title>
+    <title>Submit a Teacher - Rate Your Teachers</title>
     <link rel="stylesheet" href="/public/styles.css">
-    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
 </head>
 <body>
     <header class="site-header">
         <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo" onclick="window.location.href='/'">
+            <img src="/public/images/logo.png" alt="Logo" class="logo" onclick="window.location.href='/'">
             <h1 class="header-title">Submit a Teacher</h1>
-            <button class="admin-btn" onclick="window.location.href='/pages/admin/login.html'">Admin Login</button>
+            <div class="header-buttons">
+                <button class="admin-btn" onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
+            </div>
         </div>
     </header>
+
     <main class="centered-container">
-        <div class="login-card">
-            <h2>Propose a New Teacher</h2>
-            <p>Your submission will be reviewed by an admin before being published.</p>
-            <form id="teacher-submit-form" class="login-form">
+        <div class="content-container">
+            <h2>Submit a New Teacher Proposal</h2>
+            <p>Please fill out the form below to propose a new teacher. All fields are required unless marked optional.</p>
+            <form id="submit-teacher-form" class="edit-form" enctype="multipart/form-data">
                 <div class="form-group">
-                    <input type="text" id="teacher-name" name="name" placeholder="Name" required>
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required placeholder="e.g., John Doe">
+                    <span class="tooltip">Full name of the teacher</span>
                 </div>
                 <div class="form-group">
-                    <input type="email" id="teacher-email" name="email" placeholder="Your Email (This will be kept secret)" required>
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required placeholder="e.g., john.doe@example.com">
+                    <span class="tooltip">Contact email for the teacher</span>
                 </div>
                 <div class="form-group">
-                    <textarea id="teacher-bio" name="bio" placeholder="Bio" rows="3" required></textarea>
+                    <label for="bio">Bio:</label>
+                    <textarea id="bio" name="bio" required placeholder="Short biography"></textarea>
+                    <span class="tooltip">Brief background about the teacher</span>
                 </div>
                 <div class="form-group">
-                    <input type="text" id="teacher-description" name="description" placeholder="Description" required>
+                    <label for="description">Description:</label>
+                    <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher">
+                    <span class="tooltip">Brief description (e.g., role or subject)</span>
                 </div>
                 <div class="form-group">
-                    <input type="text" id="teacher-classes" name="classes" placeholder="Classes (comma-separated)" required>
+                    <label for="classes">Classes:</label>
+                    <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus">
+                    <span class="tooltip">Comma-separated list of classes</span>
                 </div>
                 <div class="form-group">
-                    <input type="text" id="teacher-tags" name="tags" placeholder="Tags (comma-separated)" required>
+                    <label for="tags">Tags:</label>
+                    <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem">
+                    <span class="tooltip">Comma-separated list of tags</span>
                 </div>
                 <div class="form-group">
-                    <input type="text" id="teacher-room" name="room_number" placeholder="Room Number" required>
+                    <label for="room_number">Room Number:</label>
+                    <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101">
+                    <span class="tooltip">Classroom identifier</span>
                 </div>
-                <div class="form-group">
-                    <input type="url" id="teacher-image-link" name="image_link" placeholder="Link to Teacher Image (Optional)">
-                </div>
-                <div class="schedule-inputs">
+                <div class="schedule-edit">
+                    <label>Schedule:</label>
                     <div class="schedule-block">
-                        <h5>Block 1</h5>
+                        <label>Block 1:</label>
                         <input type="text" name="schedule[0][subject]" placeholder="Subject">
                         <input type="text" name="schedule[0][grade]" placeholder="Grade">
                     </div>
                     <div class="schedule-block">
-                        <h5>Block 2</h5>
+                        <label>Block 2:</label>
                         <input type="text" name="schedule[1][subject]" placeholder="Subject">
                         <input type="text" name="schedule[1][grade]" placeholder="Grade">
                     </div>
                     <div class="schedule-block">
-                        <h5>Block 3</h5>
+                        <label>Block 3:</label>
                         <input type="text" name="schedule[2][subject]" placeholder="Subject">
                         <input type="text" name="schedule[2][grade]" placeholder="Grade">
                     </div>
                     <div class="schedule-block">
-                        <h5>Block 4</h5>
+                        <label>Block 4:</label>
                         <input type="text" name="schedule[3][subject]" placeholder="Subject">
                         <input type="text" name="schedule[3][grade]" placeholder="Grade">
                     </div>
+                    <span class="tooltip">Enter subject and grade for each block (optional)</span>
+                </div>
+                <div class="form-group">
+                    <label for="image">Teacher Image:</label>
+                    <input type="file" id="image" name="image" accept="image/jpeg, image/png">
+                    <span class="tooltip">Upload a JPEG or PNG image (optional)</span>
                 </div>
                 <button type="submit" class="submit-btn">Submit Proposal</button>
             </form>
-            <p class="info-message" id="submit-message"></p>
+            <p id="submit-message" class="info-message"></p>
         </div>
     </main>
+
     <footer class="site-footer">
-        <p>Rate Your Teacher © 2025 | <a href="/cdn-cgi/l/email-protection#87f4f2f7f7e8f5f3c7f5e6f3e2fee8f2f5f3e2e6e4efe2f5a9e4e8ea"><span class="__cf_email__" data-cfemail="1e6d6b6e6e716c6a5e6c7f6a7b67716b6c6a7b7f7d767b6c307d7173">[email&#160;protected]</span></a></p>
+        <p id="footer-email">Email: <a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-message">Welcome to Rate Your Teachers!</p>
     </footer>
-    <div id="notification" class="notification"></div>
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
-    <script src="/pages/teacher/submit-teacher.js" defer></script>
+
+    <div id="notification" class="notification" style="display: none;"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('submit-teacher-form');
+            const message = document.getElementById('submit-message');
+
+            // Notification function
+            function showNotification(messageText, isError = false) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${isError ? 'error' : 'success'}`;
+                notification.textContent = messageText;
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
+            }
+
+            // Form submission
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(form);
+                const schedule = [];
+                for (let i = 0; i < 4; i++) {
+                    const subject = formData.get(`schedule[${i}][subject]`)?.trim();
+                    const grade = formData.get(`schedule[${i}][grade]`)?.trim();
+                    if (subject || grade) {
+                        schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
+                    }
+                }
+                formData.set('schedule', JSON.stringify(schedule));
+
+                try {
+                    const response = await fetch('/api/teacher-proposals', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        message.textContent = 'Teacher proposal submitted successfully!';
+                        message.className = 'info-message';
+                        showNotification('Teacher proposal submitted successfully!');
+                        form.reset();
+                    } else {
+                        throw new Error(data.error || 'Failed to submit proposal');
+                    }
+                } catch (error) {
+                    console.error('Client - Error submitting teacher proposal:', error.message);
+                    message.textContent = 'Error submitting proposal: ' + error.message;
+                    message.className = 'error-message';
+                    showNotification('Error submitting proposal.', true);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

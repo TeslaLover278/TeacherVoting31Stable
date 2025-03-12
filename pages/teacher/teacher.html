@@ -34,6 +34,25 @@
             <button id="cancel-delete" class="modal-btn">No</button>
         </div>
     </div>
+    <div id="corrections-modal" class="modal">
+        <div class="modal-content">
+            <h2>Submit a Correction</h2>
+            <form id="corrections-form">
+                <div class="form-group">
+                    <label for="correction-suggestion">Suggestion:</label>
+                    <textarea id="correction-suggestion" name="suggestion" rows="4" placeholder="Describe the correction..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="correction-file">Upload File (optional):</label>
+                    <input type="file" id="correction-file" name="file" accept=".jpg,.jpeg,.png,.pdf,.txt">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="submit-btn">Submit</button>
+                    <button type="button" id="cancel-correction" class="cancel-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <script src="/pages/teacher/teacher.js"></script>
 </body>
 </html>

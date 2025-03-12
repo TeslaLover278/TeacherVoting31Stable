@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function fetchTeachers(page = 1, search = '', sort = 'default', direction = 'asc', perPage = 8) {
         fetch(`/api/teachers?page=${page}&perPage=${perPage}&search=${encodeURIComponent(search)}&sort=${sort}&direction=${direction}`)
             .then(response => {
-                if (!response.ok) throw new Error('Failed to fetch teachers');
+                if (!response.ok) throw new Error(`Failed to fetch teachers: ${response.statusText}`);
                 return response.json();
             })
             .then(data => {
@@ -41,7 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <img src="${teacher.image_link || '/public/images/default-teacher.jpg'}" alt="${teacher.name}">
                 <h3>${teacher.name}</h3>
                 <p>${teacher.description}</p>
-                <div class="star-rating">${teacher.avg_rating ? '★'.repeat(Math.round(teacher.avg_rating)) + '☆'.repeat(5 - Math.round(teacher.avg_rating)) : 'No ratings'}</div>
+                <div class="star-rating">
+                    ${teacher.avg_rating ? 
+                        '★'.repeat(Math.round(teacher.avg_rating)) + 
+                        '☆'.repeat(5 - Math.round(teacher.avg_rating)) + 
+                        ` (${teacher.vote_count})` : 
+                        'No ratings (0)'}
+                </div>
                 <a href="/pages/teacher/teacher.html?id=${teacher.id}" class="view-profile">View Profile</a>
             </div>
         `).join('');
@@ -72,10 +78,19 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         const prevPage = document.getElementById('prev-page');
         const nextPage = document.getElementById('next-page');
-        if (prevPage) prevPage.addEventListener('click', () => { currentPage--; fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); });
-        if (nextPage) nextPage.addEventListener('click', () => { currentPage++; fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); });
+        if (prevPage) prevPage.addEventListener('click', () => { 
+            currentPage--; 
+            fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); 
+        });
+        if (nextPage) nextPage.addEventListener('click', () => { 
+            currentPage++; 
+            fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); 
+        });
         document.querySelectorAll('.pagination-btn[data-page]').forEach(btn => {
-            btn.addEventListener('click', () => { currentPage = parseInt(btn.dataset.page); fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); });
+            btn.addEventListener('click', () => { 
+                currentPage = parseInt(btn.dataset.page); 
+                fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); 
+            });
         });
     }
 
@@ -126,20 +141,35 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => console.error('Client - Error fetching footer settings:', error.message));
 
     fetch('/api/message-settings')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch message settings');
+            return response.json();
+        })
         .then(data => {
             const messageDiv = document.getElementById('main-message');
             const messageText = document.getElementById('message-text');
             const closeButton = document.getElementById('close-message');
-            if (messageDiv && messageText && data.showMessage) {
+            if (messageDiv && messageText) {
                 messageText.textContent = data.message;
-                messageDiv.style.display = 'block';
+                if (data.showMessage) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.classList.add('active'); // Ensure visibility with CSS
+                } else {
+                    messageDiv.style.display = 'none';
+                    messageDiv.classList.remove('active');
+                }
                 if (closeButton) {
-                    closeButton.addEventListener('click', () => messageDiv.style.display = 'none');
+                    closeButton.addEventListener('click', () => {
+                        messageDiv.style.display = 'none';
+                        messageDiv.classList.remove('active');
+                    });
                 }
                 document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') messageDiv.style.display = 'none';
-                });
+                    if (e.key === 'Escape' && messageDiv.style.display === 'block') {
+                        messageDiv.style.display = 'none';
+                        messageDiv.classList.remove('active');
+                    }
+                }, { once: true });
             }
         })
         .catch(error => console.error('Client - Error fetching message settings:', error.message));

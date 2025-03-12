@@ -14,7 +14,8 @@
             <img src="/public/images/logo.png" alt="Logo" class="logo">
             <h1 class="header-title">Admin Dashboard</h1>
             <div class="header-buttons">
-                <button class="submit-teacher-btn">Submit Teacher</button>
+                <button class="admin-btn" onclick="logout()">Logout</button>
+                <button class="submit-teacher-btn">Submit a Teacher</button>
             </div>
         </div>
     </header>
@@ -25,6 +26,7 @@
                 <button class="tab-btn active" data-tab="teachers">Teachers</button>
                 <button class="tab-btn" data-tab="votes">Votes</button>
                 <button class="tab-btn" data-tab="proposals">Proposals</button>
+                <button class="tab-btn" data-tab="corrections">Corrections</button>
                 <button class="tab-btn" data-tab="settings">Settings</button>
                 <button class="tab-btn" data-tab="stats">Statistics</button>
             </div>
@@ -33,7 +35,7 @@
                 <div class="admin-section">
                     <h3 class="section-toggle">Add New Teacher</h3>
                     <div class="section-content" style="display: none;">
-                        <form id="teacher-form" class="edit-form">
+                        <form id="teacher-form" class="edit-form" enctype="multipart/form-data">
                             <div class="form-group">
                                 <label for="id">Teacher ID:</label>
                                 <input type="text" id="id" name="id" required placeholder="e.g., T001">
@@ -94,9 +96,9 @@
                                 <span class="tooltip">Enter subject and grade for each block</span>
                             </div>
                             <div class="form-group">
-                                <label for="image_link">Image Link (optional):</label>
-                                <input type="text" id="image_link" name="image_link" placeholder="e.g., /images/teacher.jpg">
-                                <span class="tooltip">URL to teacher’s profile image</span>
+                                <label for="image">Teacher Image:</label>
+                                <input type="file" id="image" name="image" accept="image/jpeg, image/png">
+                                <span class="tooltip">Upload a JPEG or PNG image (optional)</span>
                             </div>
                             <button type="submit" class="submit-btn">Add Teacher</button>
                         </form>
@@ -168,6 +170,16 @@
                 </div>
             </div>
 
+            <div id="corrections-tab" class="tab-content">
+                <div class="admin-section">
+                    <h3 class="section-toggle">Corrections</h3>
+                    <div class="section-content" style="display: none;">
+                        <div id="corrections-table"></div>
+                        <p id="corrections-message" class="info-message"></p>
+                    </div>
+                </div>
+            </div>
+
             <div id="settings-tab" class="tab-content">
                 <div class="admin-section">
                     <h3 class="section-toggle">Main Message Settings</h3>
@@ -214,7 +226,14 @@
                     </div>
                 </div>
                 <div class="admin-section">
-                    <button onclick="logout()" class="cancel-btn">Logout</button>
+                    <h3 class="section-toggle">Section Expansion Settings</h3>
+                    <div class="section-content" style="display: none;">
+                        <div id="section-settings-container"></div>
+                        <button id="save-section-settings" class="submit-btn">Save Section Settings</button>
+                    </div>
+                </div>
+                <div class="admin-section">
+                    <button onclick="logout()" class="btn cancel-btn">Logout</button>
                 </div>
             </div>
 
@@ -244,12 +263,13 @@
     </main>
 
     <footer class="site-footer">
-        <p id="footer-email">Email: <a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-email"><a href="/cdn-cgi/l/email-protection#3c4f494c4c534e487c4e5d48594553494e48595d5f54594e125f5351"><span class="__cf_email__" data-cfemail="291a1c1919061b1d291b081d0c10061c1b1d0c080a010c1b470a0604">[email&#160;protected]</span></a></p>
         <p id="footer-message">Welcome to Rate Your Teachers!</p>
     </footer>
 
     <div id="notification" class="notification" style="display: none;"></div>
 
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
     <script src="/pages/admin/dashboard.js"></script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ee2e0dd94042a9',t:'MTc0MTcyODkwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
