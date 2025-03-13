@@ -11,18 +11,21 @@
 <body>
     <header class="site-header">
         <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo">
+            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo" onclick="window.location.href='/'">
             <h1 class="header-title">Rate Your Teachers</h1>
-            <div class="header-buttons">
-                <button class="submit-teacher-btn">Submit a Teacher</button>
-                <button class="admin-btn">Admin Login</button>
-                <span id="admin-status" style="display: none; margin-left: 10px;"></span>
+            <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+            <div class="header-buttons desktop-only">
+                <button class="submit-teacher-btn" onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
+                <button class="admin-btn" onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
             </div>
+            <nav id="tab-nav" class="tab-nav">
+                <button class="tab-btn" data-tab="home" onclick="window.location.href='/'">Home</button>
+            </nav>
         </div>
     </header>
-    <div class="teacher-profile-container">
+    <main class="teacher-profile-container">
         <div class="teacher-profile" id="teacher-profile"></div>
-    </div>
+    </main>
     <footer class="site-footer">
         <p id="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
         <p id="footer-message">Welcome to Rate Your Teachers!</p>
@@ -39,7 +42,7 @@
     <div id="corrections-modal" class="modal">
         <div class="modal-content">
             <h2>Submit a Correction</h2>
-            <form id="corrections-form">
+            <form id="corrections-form" class="edit-form">
                 <input type="hidden" name="_csrf" id="csrf-token">
                 <div class="form-group">
                     <label for="correction-suggestion">Suggestion:</label>
@@ -57,5 +60,45 @@
         </div>
     </div>
     <script src="/pages/teacher/teacher.js"></script> <!-- Main script for teacher profile -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+            const tabNav = document.getElementById('tab-nav');
+            const tabButtons = document.querySelectorAll('.tab-btn');
+
+            // Mobile menu toggle
+            mobileMenuToggle.addEventListener('click', () => {
+                tabNav.classList.toggle('active');
+            });
+
+            // Tab navigation (closes menu on mobile after selection)
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) tabNav.classList.remove('active');
+                });
+            });
+
+            // Placeholder form submission handler for corrections
+            document.getElementById('corrections-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const notification = document.getElementById('notification');
+                notification.textContent = 'Correction submitted (placeholder)';
+                notification.className = 'notification success';
+                notification.style.display = 'block';
+                document.getElementById('corrections-modal').classList.remove('active');
+                setTimeout(() => notification.style.display = 'none', 3000);
+            });
+
+            // Placeholder cancel button for corrections modal
+            document.getElementById('cancel-correction')?.addEventListener('click', () => {
+                document.getElementById('corrections-modal').classList.remove('active');
+            });
+
+            // Placeholder modal cancel button
+            document.getElementById('cancel-delete')?.addEventListener('click', () => {
+                document.getElementById('modal').classList.remove('active');
+            });
+        });
+    </script>
 </body>
 </html>

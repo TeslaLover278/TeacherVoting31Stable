@@ -18,6 +18,7 @@ body {
     padding: 1rem 2rem;
     text-align: center;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: relative;
 }
 
 .header-content {
@@ -26,6 +27,7 @@ body {
     justify-content: space-between;
     max-width: 1200px;
     margin: 0 auto;
+    flex-wrap: wrap;
 }
 
 .logo {
@@ -55,11 +57,25 @@ body {
     cursor: pointer;
     font-size: 1rem;
     transition: background-color 0.3s, transform 0.2s ease;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .admin-btn:hover, .submit-teacher-btn:hover {
     background-color: #e0e0e0;
     transform: translateY(-2px);
+}
+
+.mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 /* Footer Styles */
@@ -186,6 +202,7 @@ body {
     font-size: 1rem;
     cursor: pointer;
     transition: border-color 0.3s;
+    min-width: 100px;
 }
 
 .sort-select:focus {
@@ -198,18 +215,6 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1.5rem;
     margin-top: 1rem;
-}
-
-@media (max-width: 800px) {
-    .teacher-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 500px) {
-    .teacher-grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 .teacher-card {
@@ -282,6 +287,8 @@ body {
     cursor: pointer;
     border-radius: 5px;
     transition: background-color 0.3s, color 0.3s;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .pagination-btn:hover {
@@ -515,6 +522,8 @@ body {
     border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.3s, transform 0.2s ease;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .submit-btn:hover {
@@ -573,6 +582,7 @@ body {
     border-radius: 5px;
     font-size: 0.8rem;
     white-space: nowrap;
+    z-index: 10;
 }
 
 .schedule-edit {
@@ -583,6 +593,7 @@ body {
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .schedule-block label {
@@ -591,6 +602,7 @@ body {
 
 .schedule-block input {
     flex: 1;
+    min-width: 120px;
 }
 
 .cancel-btn {
@@ -602,6 +614,8 @@ body {
     cursor: pointer;
     margin-left: 1rem;
     transition: background-color 0.3s, transform 0.2s ease;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .cancel-btn:hover {
@@ -664,6 +678,8 @@ body {
     cursor: pointer;
     font-size: 1rem;
     transition: background-color 0.3s ease, transform 0.2s ease;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .modal-btn:hover {
@@ -691,33 +707,32 @@ body {
 /* Main Message Popup */
 .main-message {
     position: fixed;
-    top: 15%; /* Slightly lower for better visibility */
+    top: 15%;
     left: 50%;
     transform: translateX(-50%);
-    background: #ffffff; /* Clean white background */
-    padding: 25px 35px; /* More spacious padding */
-    border: none; /* Remove border for a cleaner look */
-    border-radius: 12px; /* Rounded corners for modernity */
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); /* Deeper shadow for depth */
+    background: #ffffff;
+    padding: 25px 35px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     z-index: 1000;
-    max-width: 500px; /* Limit width for readability */
-    width: 90%; /* Responsive width */
-    opacity: 0; /* Start hidden for animation */
-    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; /* Smooth fade and slide */
-    display: block; /* Always block, controlled by opacity */
-    color: #333; /* Dark gray text for readability */
-    font-family: 'Arial', sans-serif; /* Consistent typography */
-    background-color: #ffffff; /* Light background for the message box */
-    text-align: center; /* Center the text */
+    max-width: 500px;
+    width: 90%;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    display: block;
+    color: #333;
+    font-family: 'Arial', sans-serif;
+    background-color: #ffffff;
+    text-align: center;
 }
 
 .main-message.active {
-    opacity: 1; /* Fade in */
-    transform: translateX(-50%) translateY(0); /* Reset any initial offset */
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 .main-message:not(.active) {
-    transform: translateX(-50%) translateY(-20px); /* Slide up slightly when hidden */
+    transform: translateX(-50%) translateY(-20px);
     opacity: 0;
 }
 
@@ -725,10 +740,10 @@ body {
     font-size: 1.25rem;
     color: #333;
     margin-bottom: 1rem;
-    background: #ffffff; /* Slightly transparent white for contrast */
+    background: #ffffff;
     padding: 10px;
     border-radius: 8px;
-    text-align: center; /* Center the text */
+    text-align: center;
 }
 
 .close-btn {
@@ -737,27 +752,27 @@ body {
     right: 15px;
     background: none;
     border: none;
-    font-size: 24px; /* Larger for better clickability */
+    font-size: 24px;
     font-weight: bold;
-    color: #666; /* Subtle gray */
+    color: #666;
     cursor: pointer;
-    transition: color 0.2s ease, transform 0.2s ease; /* Smooth hover effects */
+    transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .close-btn:hover {
-    color: #00B7D1; /* Primary color on hover */
-    transform: scale(1.1); /* Slight scale for feedback */
+    color: #00B7D1;
+    transform: scale(1.1);
 }
 
 #main-message p#message-text {
-    margin: 0 0 10px 0; /* Spacing below text */
-    font-size: 16px; /* Readable size */
-    line-height: 1.5; /* Improved readability */
-    color: #333; /* Darker text */
-    background: #ffffff; /* Background for better readability */
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333;
+    background: #ffffff;
     padding: 8px;
     border-radius: 6px;
-    text-align: center; /* Center the text */
+    text-align: center;
 }
 
 /* Error and Info Messages */
@@ -767,7 +782,7 @@ body {
     background: #FFDDDD;
     padding: 5px;
     border-radius: 5px;
-    text-align: center; /* Center the text */
+    text-align: center;
 }
 
 .main-message::before {
@@ -777,8 +792,8 @@ body {
     left: 0;
     width: 100%;
     height: 4px;
-    background: #00B7D1; /* Primary color accent */
-    border-radius: 12px 12px 0 0; /* Match container rounding */
+    background: #00B7D1;
+    border-radius: 12px 12px 0 0;
 }
 
 .info-message {
@@ -787,9 +802,8 @@ body {
     background: #DDFFFF;
     padding: 5px;
     border-radius: 5px;
-    text-align: center; /* Center the text */
+    text-align: center;
 }
-
 
 /* Login Styles */
 .login-card {
@@ -831,6 +845,11 @@ body {
     border-collapse: collapse;
 }
 
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .admin-table th, .admin-table td {
     padding: 8px;
     text-align: left;
@@ -841,10 +860,10 @@ body {
     position: sticky;
     top: 0;
     height: 40px;
-    background: #f5f5f5;
-    background-color: #00B7D1;
+    background: #00B7D1;
     color: white;
 }
+
 .admin-table td {
     height: auto;
 }
@@ -866,6 +885,8 @@ body {
     cursor: pointer;
     transition: background-color 0.3s;
     margin-left: 0.5rem;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .delete-btn:hover {
@@ -881,6 +902,8 @@ body {
     cursor: pointer;
     transition: background-color 0.3s;
     margin-right: 0.5rem;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .approve-btn:hover {
@@ -944,6 +967,8 @@ body {
     gap: 0.5rem;
     margin-bottom: 1rem;
     border-bottom: 2px solid #ddd;
+    flex-wrap: wrap;
+    transition: max-height 0.3s ease-in-out;
 }
 
 .tab-btn {
@@ -954,6 +979,8 @@ body {
     font-size: 1rem;
     color: #666;
     transition: color 0.3s, border-bottom 0.3s;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .tab-btn:hover {
@@ -967,6 +994,7 @@ body {
 
 .tab-content {
     padding: 20px;
+    display: none;
 }
 
 .tab-content.active {
@@ -1004,16 +1032,18 @@ body {
 }
 
 /* Statistics Charts */
-#stats-charts {
-    display: flex;
-    flex-wrap: wrap;
+.chart-grid {
+    display: grid;
     gap: 2rem;
-    justify-content: space-between;
 }
 
-#stats-charts canvas {
+.chart-container {
+    max-width: 600px;
+    margin: 20px auto;
+}
+
+.chart-container canvas {
     max-width: 100%;
-    flex: 1 1 300px;
     background-color: #fff;
     border-radius: 5px;
     padding: 1rem;
@@ -1068,19 +1098,167 @@ body {
     font-size: 0.9rem;
     color: #666;
 }
+
 #main-message {
     display: block;
     width: 100%;
     padding: 0.75rem;
     margin-top: 5px;
 }
-.section-content {
-    display: none;
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: center;
+        padding: 0.5rem;
+    }
+
+    .desktop-only {
+        display: none;
+    }
+
+    .header-buttons {
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .mobile-menu-toggle {
+        display: block;
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+    }
+
+    .tab-nav {
+        display: none;
+        flex-direction: column;
+        position: absolute;
+        top: 60px;
+        left: 0;
+        width: 100%;
+        background-color: #00B7D1;
+        z-index: 1000;
+        max-height: 0;
+        overflow: hidden;
+    }
+
+    .tab-nav.active {
+        display: flex;
+        max-height: 500px;
+    }
+
+    .tab-btn {
+        width: 100%;
+        text-align: left;
+        padding: 1rem;
+        color: white;
+        border-bottom: 1px solid #009bb5;
+    }
+
+    .tab-btn.active {
+        border-bottom: 2px solid white;
+    }
+
+    .content-container {
+        padding: 0.5rem;
+        width: 95%;
+    }
+
+    .controls {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .sort-options {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sort-select {
+        width: 100%;
+        padding: 0.75rem;
+    }
+
+    .teacher-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-table th, .admin-table td {
+        font-size: 0.85rem;
+        padding: 0.5rem;
+    }
+
+    .pagination {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .pagination-btn {
+        width: 100%;
+        padding: 0.75rem;
+    }
+
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .teacher-content {
+        flex-direction: column;
+    }
+
+    .teacher-left, .teacher-right {
+        min-width: 100%;
+    }
+
+    .schedule-block {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .schedule-block label {
+        flex: 0 0 auto;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 1rem;
+    }
 }
-.section-toggle.expanded + .section-content {
-    display: block;
+
+/* Desktop Preservation */
+@media (min-width: 769px) {
+    .tab-nav {
+        display: flex !important;
+    }
+
+    .chart-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
 }
-.chart-container {
-    max-width: 600px;
-    margin: 20px auto;
+
+/* Additional Responsive Adjustments */
+@media (max-width: 500px) {
+    .header-title {
+        font-size: 1.2rem;
+    }
+
+    .logo {
+        height: 30px;
+        margin-right: 1rem;
+    }
+
+    .teacher-card {
+        padding: 1rem;
+    }
+
+    .teacher-card img {
+        width: 80px;
+        height: 80px;
+    }
+
+    .teacher-name {
+        font-size: 1.5rem;
+    }
 }

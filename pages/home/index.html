@@ -13,6 +13,7 @@
         <div class="header-content">
             <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo">
             <h1 class="header-title">Rate Your Teachers</h1>
+            <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
             <div class="header-buttons">
                 <button class="submit-teacher-btn">Submit a Teacher</button>
                 <button id="admin-btn" class="admin-btn">Admin Login</button>
@@ -26,42 +27,114 @@
             <button id="close-message" class="close-btn">✕</button>
         </div>
         <div class="content-container">
-            <h2 class="directory-title">Teacher Directory</h2>
-            <div class="controls">
-                <input type="text" id="search-bar" placeholder="Search teachers or tags..." aria-label="Search teachers" class="search-input">
-                <div class="sort-options">
-                    <label for="sort-select">Sort by:</label>
-                    <select id="sort-select" aria-label="Sort teachers" class="sort-select">
-                        <option value="default">Default</option>
-                        <option value="alphabetical">Alphabetical</option>
-                        <option value="ratings">Average Rating</option>
-                        <option value="votes">Number of Votes</option>
-                    </select>
-                    <label for="sort-direction">Direction:</label>
-                    <select id="sort-direction" aria-label="Sort direction" class="sort-select">
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
-                    </select>
-                    <label for="cards-per-page">Teachers per page:</label>
-                    <select id="cards-per-page" aria-label="Teachers per page" class="sort-select">
-                        <option value="8">8</option>
-                        <option value="16">16</option>
-                        <option value="24">24</option>
-                    </select>
+            <nav id="tab-nav" class="tab-nav">
+                <button class="tab-btn active" data-tab="directory">Directory</button>
+                <button class="tab-btn" data-tab="submit">Submit Teacher</button>
+                <button class="tab-btn" data-tab="admin" id="admin-tab-btn">Admin</button>
+            </nav>
+            <div id="directory-tab" class="tab-content active">
+                <h2 class="directory-title">Teacher Directory</h2>
+                <div class="controls">
+                    <input type="text" id="search-bar" placeholder="Search teachers or tags..." aria-label="Search teachers" class="search-input">
+                    <div class="sort-options">
+                        <label for="sort-select">Sort by:</label>
+                        <select id="sort-select" aria-label="Sort teachers" class="sort-select">
+                            <option value="default">Default</option>
+                            <option value="alphabetical">Alphabetical</option>
+                            <option value="ratings">Average Rating</option>
+                            <option value="votes">Number of Votes</option>
+                        </select>
+                        <label for="sort-direction">Direction:</label>
+                        <select id="sort-direction" aria-label="Sort direction" class="sort-select">
+                            <option value="asc">Ascending</option>
+                            <option value="desc">Descending</option>
+                        </select>
+                        <label for="cards-per-page">Teachers per page:</label>
+                        <select id="cards-per-page" aria-label="Teachers per page" class="sort-select">
+                            <option value="8">8</option>
+                            <option value="16">16</option>
+                            <option value="24">24</option>
+                        </select>
+                    </div>
                 </div>
+                <div id="teacher-grid" class="teacher-grid"></div>
+                <div id="pagination" class="pagination"></div>
             </div>
-            <div id="teacher-grid" class="teacher-grid"></div>
-            <div id="pagination" class="pagination"></div>
+            <div id="submit-tab" class="tab-content" style="display: none;">
+                <h2 class="directory-title">Submit a Teacher</h2>
+                <form id="teacher-submission-form" class="edit-form">
+                    <div class="form-group">
+                        <label for="teacher-name">Name</label>
+                        <input type="text" id="teacher-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="teacher-email">Email</label>
+                        <input type="email" id="teacher-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="teacher-description">Description</label>
+                        <textarea id="teacher-description" name="description" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="submit-btn">Submit</button>
+                </form>
+            </div>
+            <div id="admin-tab" class="tab-content" style="display: none;">
+                <h2 class="directory-title">Admin Login</h2>
+                <form id="admin-login-form" class="login-form">
+                    <div class="form-group">
+                        <label for="admin-username">Username</label>
+                        <input type="text" id="admin-username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-password">Password</label>
+                        <input type="password" id="admin-password" name="password" required>
+                    </div>
+                    <button type="submit" class="submit-btn">Login</button>
+                </form>
+            </div>
         </div>
     </main>
     <footer class="site-footer">
-        <p id="footer-email"><a href="/cdn-cgi/l/email-protection#5a292f2a2a35282e1a283b2e3f23352f282e3f3b39323f2874393537"><span class="__cf_email__" data-cfemail="35464045455a474175475441504c5a4047415054565d50471b565a58">[email protected]</span></a></p>
+        <p id="footer-email"><a href="/cdn-cgi/l/email-protection#5a292f2a2a35282e1a283b2e3f23352f282e3f3b39323f2874393537"><span class="__cf_email__" data-cfemail="75464045455a474175475441504c5a4047415054565d50471b565a58">[email protected]</span></a></p>
         <p id="footer-message">Welcome to Rate Your Teachers!</p>
     </footer>
     <div id="notification" class="notification"></div>
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
     <script src="/pages/home/index.js"></script> <!-- Main script, loads first -->
     <script src="/message.js"></script> <!-- Message handling, depends on index.js -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+            const tabNav = document.getElementById('tab-nav');
+            const tabButtons = document.querySelectorAll('.tab-btn');
+
+            mobileMenuToggle.addEventListener('click', () => {
+                tabNav.classList.toggle('active');
+            });
+
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+                    btn.classList.add('active');
+                    const tabContent = document.getElementById(`${btn.dataset.tab}-tab`);
+                    if (tabContent) tabContent.style.display = 'block';
+                    if (window.innerWidth <= 768) tabNav.classList.remove('active');
+                });
+            });
+
+            // Handle form submissions (placeholder for actual logic)
+            document.getElementById('teacher-submission-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                alert('Teacher submission form submitted (placeholder)');
+            });
+
+            document.getElementById('admin-login-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                alert('Admin login form submitted (placeholder)');
+            });
+        });
+    </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ee2e0dfee7b432',t:'MTc0MTcyODkwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>

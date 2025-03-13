@@ -13,86 +13,92 @@
         <div class="header-content">
             <img src="/public/images/logo.png" alt="Logo" class="logo" onclick="window.location.href='/'">
             <h1 class="header-title">Submit a Teacher</h1>
-            <div class="header-buttons">
+            <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+            <div class="header-buttons desktop-only">
+                <button class="submit-teacher-btn active" onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
                 <button class="admin-btn" onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
-                <span id="admin-status" style="display: none; margin-left: 10px;"></span>
             </div>
+            <nav id="tab-nav" class="tab-nav">
+                <button class="tab-btn" data-tab="home" onclick="window.location.href='/'">Home</button>
+            </nav>
         </div>
     </header>
 
     <main class="centered-container">
         <div class="content-container">
-            <h2>Submit a New Teacher Proposal</h2>
-            <p>Please fill out the form below to propose a new teacher. All fields are required unless marked optional.</p>
-            <form id="teacher-submit-form" class="edit-form" enctype="multipart/form-data">
-                <input type="hidden" name="_csrf" id="csrf-token">
-                <div class="form-group">
-                    <label for="name">Name:</label>
-                    <input type="text" id="name" name="name" required placeholder="e.g., John Doe">
-                    <span class="tooltip">Full name of the teacher</span>
-                </div>
-                <div class="form-group">
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required placeholder="e.g., john.doe@example.com">
-                    <span class="tooltip">Contact email for the teacher</span>
-                </div>
-                <div class="form-group">
-                    <label for="bio">Bio:</label>
-                    <textarea id="bio" name="bio" required placeholder="Short biography"></textarea>
-                    <span class="tooltip">Brief background about the teacher</span>
-                </div>
-                <div class="form-group">
-                    <label for="description">Description:</label>
-                    <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher">
-                    <span class="tooltip">Brief description (e.g., role or subject)</span>
-                </div>
-                <div class="form-group">
-                    <label for="classes">Classes:</label>
-                    <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus">
-                    <span class="tooltip">Comma-separated list of classes</span>
-                </div>
-                <div class="form-group">
-                    <label for="tags">Tags:</label>
-                    <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem">
-                    <span class="tooltip">Comma-separated list of tags</span>
-                </div>
-                <div class="form-group">
-                    <label for="room_number">Room Number:</label>
-                    <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101">
-                    <span class="tooltip">Classroom identifier</span>
-                </div>
-                <div class="schedule-edit">
-                    <label>Schedule:</label>
-                    <div class="schedule-block">
-                        <label>Block 1:</label>
-                        <input type="text" name="schedule[0][subject]" placeholder="Subject">
-                        <input type="text" name="schedule[0][grade]" placeholder="Grade">
+            <div id="submit-tab" class="tab-content active">
+                <h2>Submit a New Teacher Proposal</h2>
+                <p>Please fill out the form below to propose a new teacher. All fields are required unless marked optional.</p>
+                <form id="teacher-submit-form" class="edit-form" enctype="multipart/form-data">
+                    <input type="hidden" name="_csrf" id="csrf-token">
+                    <div class="form-group">
+                        <label for="name">Name:</label>
+                        <input type="text" id="name" name="name" required placeholder="e.g., John Doe">
+                        <span class="tooltip">Full name of the teacher</span>
                     </div>
-                    <div class="schedule-block">
-                        <label>Block 2:</label>
-                        <input type="text" name="schedule[1][subject]" placeholder="Subject">
-                        <input type="text" name="schedule[1][grade]" placeholder="Grade">
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" required placeholder="e.g., john.doe@example.com">
+                        <span class="tooltip">Contact email for the teacher</span>
                     </div>
-                    <div class="schedule-block">
-                        <label>Block 3:</label>
-                        <input type="text" name="schedule[2][subject]" placeholder="Subject">
-                        <input type="text" name="schedule[2][grade]" placeholder="Grade">
+                    <div class="form-group">
+                        <label for="bio">Bio:</label>
+                        <textarea id="bio" name="bio" required placeholder="Short biography" rows="4"></textarea>
+                        <span class="tooltip">Brief background about the teacher</span>
                     </div>
-                    <div class="schedule-block">
-                        <label>Block 4:</label>
-                        <input type="text" name="schedule[3][subject]" placeholder="Subject">
-                        <input type="text" name="schedule[3][grade]" placeholder="Grade">
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher">
+                        <span class="tooltip">Brief description (e.g., role or subject)</span>
                     </div>
-                    <span class="tooltip">Enter subject and grade for each block (optional)</span>
-                </div>
-                <div class="form-group">
-                    <label for="image">Teacher Image:</label>
-                    <input type="file" id="image" name="image" accept="image/jpeg, image/png">
-                    <span class="tooltip">Upload a JPEG or PNG image (optional)</span>
-                </div>
-                <button type="submit" class="submit-btn">Submit Proposal</button>
-            </form>
-            <p id="submit-message" class="info-message"></p>
+                    <div class="form-group">
+                        <label for="classes">Classes:</label>
+                        <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus">
+                        <span class="tooltip">Comma-separated list of classes</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="tags">Tags:</label>
+                        <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem">
+                        <span class="tooltip">Comma-separated list of tags</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="room_number">Room Number:</label>
+                        <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101">
+                        <span class="tooltip">Classroom identifier</span>
+                    </div>
+                    <div class="schedule-edit">
+                        <label>Schedule:</label>
+                        <div class="schedule-block">
+                            <label>Block 1:</label>
+                            <input type="text" name="schedule[0][subject]" placeholder="Subject">
+                            <input type="text" name="schedule[0][grade]" placeholder="Grade">
+                        </div>
+                        <div class="schedule-block">
+                            <label>Block 2:</label>
+                            <input type="text" name="schedule[1][subject]" placeholder="Subject">
+                            <input type="text" name="schedule[1][grade]" placeholder="Grade">
+                        </div>
+                        <div class="schedule-block">
+                            <label>Block 3:</label>
+                            <input type="text" name="schedule[2][subject]" placeholder="Subject">
+                            <input type="text" name="schedule[2][grade]" placeholder="Grade">
+                        </div>
+                        <div class="schedule-block">
+                            <label>Block 4:</label>
+                            <input type="text" name="schedule[3][subject]" placeholder="Subject">
+                            <input type="text" name="schedule[3][grade]" placeholder="Grade">
+                        </div>
+                        <span class="tooltip">Enter subject and grade for each block (optional)</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="image">Teacher Image:</label>
+                        <input type="file" id="image" name="image" accept="image/jpeg, image/png">
+                        <span class="tooltip">Upload a JPEG or PNG image (optional)</span>
+                    </div>
+                    <button type="submit" class="submit-btn">Submit Proposal</button>
+                </form>
+                <p id="submit-message" class="info-message"></p>
+            </div>
         </div>
     </main>
 
@@ -104,5 +110,34 @@
     <div id="notification" class="notification" style="display: none;"></div>
 
     <script src="/pages/teacher/submit-teacher.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+            const tabNav = document.getElementById('tab-nav');
+            const tabButtons = document.querySelectorAll('.tab-btn');
+
+            // Mobile menu toggle
+            mobileMenuToggle.addEventListener('click', () => {
+                tabNav.classList.toggle('active');
+            });
+
+            // Tab navigation (closes menu on mobile after selection)
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) tabNav.classList.remove('active');
+                });
+            });
+
+            // Placeholder form submission handler
+            document.getElementById('teacher-submit-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const notification = document.getElementById('notification');
+                notification.textContent = 'Teacher proposal submitted (placeholder)';
+                notification.className = 'notification success';
+                notification.style.display = 'block';
+                setTimeout(() => notification.style.display = 'none', 3000);
+            });
+        });
+    </script>
 </body>
 </html>

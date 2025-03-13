@@ -11,29 +11,36 @@
 <body>
     <header class="site-header">
         <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo">
+            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo" onclick="window.location.href='/'">
             <h1 class="header-title">Rate Your Teachers</h1>
-            <div class="header-buttons">
-                <button class="submit-teacher-btn">Submit a Teacher</button>
-                <button class="admin-btn">Admin Login</button>
-                <span id="admin-status" style="display: none; margin-left: 10px;"></span>
+            <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+            <div class="header-buttons desktop-only">
+                <button class="submit-teacher-btn" onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
+                <button class="admin-btn active" onclick="window.location.href='/pages/admin/dashboard.html'">Admin Login</button>
             </div>
+            <nav id="tab-nav" class="tab-nav">
+                <button class="tab-btn" data-tab="home" onclick="window.location.href='/'">Home</button>
+            </nav>
         </div>
     </header>
     <main class="centered-container">
         <div class="content-container">
-            <h2>Login</h2>
-            <form id="login-form" class="login-form">
-                <input type="hidden" name="_csrf" id="csrf-token">
-                <div class="form-group">
-                    <input type="text" id="username" name="username" placeholder="Username" required>
-                </div>
-                <div class="form-group">
-                    <input type="password" id="password" name="password" placeholder="Password" required>
-                </div>
-                <button type="submit" class="submit-btn">Login</button>
-            </form>
-            <p id="login-message" class="info-message"></p>
+            <div id="admin-tab" class="tab-content active">
+                <h2>Admin Login</h2>
+                <form id="login-form" class="login-form">
+                    <input type="hidden" name="_csrf" id="csrf-token">
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" name="username" placeholder="Enter username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" name="password" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="submit-btn">Login</button>
+                </form>
+                <p id="login-message" class="info-message"></p>
+            </div>
         </div>
     </main>
     <footer class="site-footer">
@@ -42,5 +49,34 @@
     </footer>
     <div id="notification" class="notification"></div>
     <script src="/pages/admin/login.js" defer></script> <!-- Main script, includes all logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+            const tabNav = document.getElementById('tab-nav');
+            const tabButtons = document.querySelectorAll('.tab-btn');
+
+            // Mobile menu toggle
+            mobileMenuToggle.addEventListener('click', () => {
+                tabNav.classList.toggle('active');
+            });
+
+            // Tab navigation (closes menu on mobile after selection)
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) tabNav.classList.remove('active');
+                });
+            });
+
+            // Placeholder form submission handler
+            document.getElementById('login-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const notification = document.getElementById('notification');
+                notification.textContent = 'Login attempt successful (placeholder)';
+                notification.className = 'notification success';
+                notification.style.display = 'block';
+                setTimeout(() => notification.style.display = 'none', 3000);
+            });
+        });
+    </script>
 </body>
 </html>

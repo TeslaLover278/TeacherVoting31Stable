@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content=""> <!-- Store CSRF token here, populated by server or JS -->
+    <meta name="csrf-token" content="">
     <title>Admin Dashboard - Rate Your Teachers</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
@@ -12,30 +12,30 @@
 <body>
     <header class="site-header">
         <div class="header-content">
-            <img src="/public/images/logo.png" alt="Rate Your Teachers Logo" class="logo">
+            <img src="/public/images/logo.png" alt="Rate Your Teachers Logo" class="logo" onclick="window.location.href='/'">
             <h1 class="header-title">Admin Dashboard</h1>
-            <div class="header-buttons">
+            <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">☰</button>
+            <div class="header-buttons desktop-only">
+                <button class="submit-teacher-btn" onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
                 <button class="admin-btn" onclick="logout()">Logout</button>
                 <span id="admin-status" style="display: none; margin-left: 10px;"></span>
-                <button class="submit-teacher-btn">Submit a Teacher</button>
             </div>
-        </div>
-    </header>
-
-    <main class="centered-container admin-dashboard">
-        <div class="content-container">
-            <div class="tab-nav">
+            <nav id="tab-nav" class="tab-nav">
                 <button class="tab-btn active" data-tab="teachers">Teachers</button>
                 <button class="tab-btn" data-tab="votes">Votes</button>
                 <button class="tab-btn" data-tab="proposals">Proposals</button>
                 <button class="tab-btn" data-tab="corrections">Corrections</button>
                 <button class="tab-btn" data-tab="settings">Settings</button>
                 <button class="tab-btn" data-tab="stats">Statistics</button>
-            </div>
+            </nav>
+        </div>
+    </header>
 
+    <main class="centered-container admin-dashboard">
+        <div class="content-container">
             <div id="teachers-tab" class="tab-content active">
                 <div class="admin-section">
-                    <h2 class="section-toggle">Add New Teacher</h2>
+                    <h2 class="section-toggle" data-section="add-teacher">Add New Teacher</h2>
                     <div class="section-content" style="display: none;">
                         <form id="teacher-form" class="edit-form" enctype="multipart/form-data">
                             <input type="hidden" name="_csrf" id="teacher-csrf-token">
@@ -51,7 +51,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="bio">Bio:</label>
-                                <textarea id="bio" name="bio" required placeholder="Short biography" aria-describedby="bio-tooltip"></textarea>
+                                <textarea id="bio" name="bio" required placeholder="Short biography" aria-describedby="bio-tooltip" rows="4"></textarea>
                                 <span id="bio-tooltip" class="tooltip">Brief background about the teacher</span>
                             </div>
                             <div class="form-group">
@@ -109,7 +109,7 @@
                     </div>
                 </div>
                 <div class="admin-section">
-                    <h2 class="section-toggle">Manage Teachers</h2>
+                    <h2 class="section-toggle" data-section="manage-teachers">Manage Teachers</h2>
                     <div class="section-content" style="display: none;">
                         <div class="controls">
                             <input type="text" id="teacher-search" class="search-input" placeholder="Search by ID or Name" aria-label="Search teachers">
@@ -130,14 +130,16 @@
                                 </select>
                             </div>
                         </div>
-                        <div id="teachers-table"></div>
+                        <div class="table-wrapper">
+                            <div id="teachers-table"></div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div id="votes-tab" class="tab-content">
+            <div id="votes-tab" class="tab-content" style="display: none;">
                 <div class="admin-section">
-                    <h2 class="section-toggle">Manage Votes</h2>
+                    <h2 class="section-toggle" data-section="manage-votes">Manage Votes</h2>
                     <div class="section-content" style="display: none;">
                         <div class="controls">
                             <input type="text" id="vote-search" class="search-input" placeholder="Search by Teacher ID" aria-label="Search votes">
@@ -157,35 +159,41 @@
                                 </select>
                             </div>
                         </div>
-                        <div id="votes-table"></div>
+                        <div class="table-wrapper">
+                            <div id="votes-table"></div>
+                        </div>
                         <p id="votes-message" class="info-message"></p>
                     </div>
                 </div>
             </div>
 
-            <div id="proposals-tab" class="tab-content">
+            <div id="proposals-tab" class="tab-content" style="display: none;">
                 <div class="admin-section">
-                    <h2 class="section-toggle">Teacher Proposals</h2>
+                    <h2 class="section-toggle" data-section="teacher-proposals">Teacher Proposals</h2>
                     <div class="section-content" style="display: none;">
-                        <div id="proposals-table"></div>
+                        <div class="table-wrapper">
+                            <div id="proposals-table"></div>
+                        </div>
                         <p id="proposal-message" class="info-message"></p>
                     </div>
                 </div>
             </div>
 
-            <div id="corrections-tab" class="tab-content">
+            <div id="corrections-tab" class="tab-content" style="display: none;">
                 <div class="admin-section">
-                    <h2 class="section-toggle">Corrections</h2>
+                    <h2 class="section-toggle" data-section="corrections">Corrections</h2>
                     <div class="section-content" style="display: none;">
-                        <div id="corrections-table"></div>
+                        <div class="table-wrapper">
+                            <div id="corrections-table"></div>
+                        </div>
                         <p id="corrections-message" class="info-message"></p>
                     </div>
                 </div>
             </div>
 
-            <div id="settings-tab" class="tab-content">
+            <div id="settings-tab" class="tab-content" style="display: none;">
                 <div class="admin-section">
-                    <h2 class="section-toggle">Main Message Settings</h2>
+                    <h2 class="section-toggle" data-section="main-message">Main Message Settings</h2>
                     <div class="section-content" style="display: none;">
                         <form id="message-settings-form" class="edit-form">
                             <input type="hidden" name="_csrf" id="message-csrf-token">
@@ -193,12 +201,13 @@
                                 <label for="main-message">Main Message:</label>
                                 <input type="text" id="main-message" name="message" placeholder="Enter main message" aria-label="Main message">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group toggle-group">
                                 <label>Show Message:</label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="show-main-message" name="showMessage" aria-label="Toggle main message visibility">
                                     <span class="slider"></span>
                                 </label>
+                                <span class="toggle-status">Off</span>
                             </div>
                             <button type="submit" class="submit-btn">Save</button>
                         </form>
@@ -206,7 +215,7 @@
                     </div>
                 </div>
                 <div class="admin-section">
-                    <h2 class="section-toggle">Footer Settings</h2>
+                    <h2 class="section-toggle" data-section="footer-settings">Footer Settings</h2>
                     <div class="section-content" style="display: none;">
                         <form id="footer-settings-form" class="edit-form">
                             <input type="hidden" name="_csrf" id="footer-csrf-token">
@@ -218,12 +227,13 @@
                                 <label for="footer-message-input">Message:</label>
                                 <input type="text" id="footer-message-input" name="message" placeholder="Enter footer message" aria-label="Footer message">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group toggle-group">
                                 <label>Show Message:</label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="footer-show-message" name="showMessage" aria-label="Toggle footer message visibility">
                                     <span class="slider"></span>
                                 </label>
+                                <span class="toggle-status">Off</span>
                             </div>
                             <button type="submit" class="submit-btn">Save</button>
                         </form>
@@ -231,20 +241,17 @@
                     </div>
                 </div>
                 <div class="admin-section">
-                    <h2 class="section-toggle">Section Expansion Settings</h2>
+                    <h2 class="section-toggle" data-section="section-expansion">Section Expansion Settings</h2>
                     <div class="section-content" style="display: none;">
                         <div id="section-settings-container"></div>
                         <button id="save-section-settings" class="submit-btn">Save Section Settings</button>
                     </div>
                 </div>
-                <div class="admin-section">
-                    <button onclick="logout()" class="btn cancel-btn">Logout</button>
-                </div>
             </div>
 
-            <div id="stats-tab" class="tab-content">
+            <div id="stats-tab" class="tab-content" style="display: none;">
                 <div class="admin-section">
-                    <h2 class="section-toggle">Statistics</h2>
+                    <h2 class="section-toggle" data-section="statistics">Statistics</h2>
                     <div class="section-content" style="display: none;">
                         <div class="controls">
                             <select id="stats-timeframe" class="sort-select" aria-label="Select statistics timeframe">
@@ -255,7 +262,7 @@
                                 <option value="1month">Last 1 Month</option>
                             </select>
                         </div>
-                        <div id="stats-charts">
+                        <div id="stats-charts" class="chart-grid">
                             <div class="chart-container">
                                 <h3>Visits Over Time</h3>
                                 <canvas id="visits-chart" style="max-height: 300px;"></canvas>
@@ -287,6 +294,84 @@
 
     <div id="notification" class="notification" style="display: none;"></div>
 
-    <script src="/pages/admin/dashboard.js" defer></script> <!-- Main script for dashboard -->
+    <script src="/pages/admin/dashboard.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+            const tabNav = document.getElementById('tab-nav');
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const sectionToggles = document.querySelectorAll('.section-toggle');
+            const toggleSwitches = document.querySelectorAll('.toggle-switch input');
+
+            // Mobile menu toggle
+            mobileMenuToggle.addEventListener('click', () => {
+                tabNav.classList.toggle('active');
+            });
+
+            // Tab navigation
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+                    btn.classList.add('active');
+                    const tabContent = document.getElementById(`${btn.dataset.tab}-tab`);
+                    if (tabContent) tabContent.style.display = 'block';
+                    if (window.innerWidth <= 768) tabNav.classList.remove('active');
+                });
+            });
+
+            // Section toggles
+            sectionToggles.forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    const sectionContent = toggle.nextElementSibling;
+                    toggle.classList.toggle('expanded');
+                    sectionContent.style.display = sectionContent.style.display === 'block' ? 'none' : 'block';
+                });
+            });
+
+            // Toggle switch status update
+            toggleSwitches.forEach(switchInput => {
+                const status = switchInput.closest('.toggle-group').querySelector('.toggle-status');
+                switchInput.addEventListener('change', () => {
+                    status.textContent = switchInput.checked ? 'On' : 'Off';
+                });
+                // Set initial state
+                status.textContent = switchInput.checked ? 'On' : 'Off';
+            });
+
+            // Placeholder logout function
+            window.logout = () => {
+                const notification = document.getElementById('notification');
+                notification.textContent = 'Logged out (placeholder)';
+                notification.className = 'notification success';
+                notification.style.display = 'block';
+                setTimeout(() => notification.style.display = 'none', 3000);
+            };
+
+            // Placeholder form submission handlers
+            document.getElementById('teacher-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                showNotification('Teacher added (placeholder)', 'success');
+            });
+
+            document.getElementById('message-settings-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                showNotification('Main message settings saved (placeholder)', 'success');
+            });
+
+            document.getElementById('footer-settings-form')?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                showNotification('Footer settings saved (placeholder)', 'success');
+            });
+
+            function showNotification(message, type) {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.style.display = 'block';
+                setTimeout(() => notification.style.display = 'none', 3000);
+            }
+        });
+    </script>
 </body>
 </html>
