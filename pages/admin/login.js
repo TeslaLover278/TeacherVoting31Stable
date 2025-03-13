@@ -1,52 +1,93 @@
 document.addEventListener('DOMContentLoaded', () => {
-    function showNotification(message, isError = false) {
-        const notification = document.createElement('div');
-        notification.className = `notification ${isError ? 'error' : 'success'}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
-    }
+    checkAdminStatus();
+    loadFooterSettings();
 
-    fetch('/api/admin/votes', { credentials: 'include' })
-        .then(response => {
-            if (response.ok) window.location.href = '/pages/admin/dashboard.html';
-        });
+    const loginForm = document.getElementById('login-form');
+    const loginMessage = document.getElementById('login-message');
 
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const credentials = {
-            username: formData.get('username'),
-            password: formData.get('password')
-        };
-        try {
-            const response = await fetch('/api/admin/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(credentials),
-                credentials: 'include'
-            });
-            const data = await response.json();
-            if (response.ok) {
-                showNotification('Login successful!');
-                setTimeout(() => window.location.href = '/pages/admin/dashboard.html', 1000);
-            } else {
-                throw new Error(data.error || 'Login failed');
+    if (loginForm) {
+        fetchCsrfToken();
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const csrfToken = document.getElementById('csrf-token').value;
+
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ username, password }),
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    loginMessage.textContent = data.message;
+                    loginMessage.classList.remove('error-message');
+                    loginMessage.classList.add('info-message');
+                    setTimeout(() => window.location.href = '/pages/admin/dashboard.html', 1000);
+                } else {
+                    loginMessage.textContent = data.error || 'Login failed.';
+                    loginMessage.classList.remove('info-message');
+                    loginMessage.classList.add('error-message');
+                }
+            } catch (error) {
+                console.error('Client - Login error:', error.message);
+                loginMessage.textContent = 'An error occurred. Please try again.';
+                loginMessage.classList.add('error-message');
             }
-        } catch (error) {
-            showNotification(error.message, true);
-        }
-    });
-
-    document.querySelector('.logo').addEventListener('click', () => window.location.href = '/');
-    document.querySelector('.submit-teacher-btn').addEventListener('click', () => window.location.href = '/pages/submit-teacher.html');
-
-    fetch('/api/footer-settings')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('footer-email').innerHTML = `Email: <a href="mailto:${data.email}">${data.email}</a>`;
-            const footerMessage = document.getElementById('footer-message');
-            footerMessage.textContent = data.message;
-            if (data.showMessage) footerMessage.style.display = 'block';
         });
+    }
 });
+
+async function fetchCsrfToken() {
+    try {
+        const response = await fetch('/api/csrf-token', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch CSRF token');
+        const data = await response.json();
+        document.querySelector('meta[name="csrf-token"]').setAttribute('content', data.csrfToken);
+        document.getElementById('csrf-token').value = data.csrfToken;
+    } catch (error) {
+        console.error('Client - Error fetching CSRF token:', error.message);
+    }
+}
+
+async function checkAdminStatus() {
+    if (window.location.pathname.includes('/dashboard.html')) return;
+    try {
+        const response = await fetch('/api/admin/verify', { credentials: 'include' });
+        if (response.ok) {
+            window.location.href = '/pages/admin/dashboard.html';
+        } else {
+            document.getElementById('admin-status').textContent = 'Not logged in';
+            document.getElementById('admin-status').classList.add('error-message');
+            document.getElementById('admin-status').style.display = 'inline';
+        }
+    } catch (error) {
+        console.error('Client - Error verifying admin status:', error.message);
+    }
+}
+
+async function loadFooterSettings() {
+    try {
+        const response = await fetch('/api/footer-settings', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch footer settings');
+        const data = await response.json();
+        const footerEmail = document.querySelector('.footer-email');
+        const footerMessage = document.querySelector('.footer-message');
+        if (footerEmail) {
+            footerEmail.innerHTML = `Email: <a href="mailto:${data.email}">${data.email}</a>`;
+        }
+        if (footerMessage) {
+            footerMessage.textContent = data.showMessage ? data.message : '';
+            footerMessage.style.display = data.showMessage ? 'block' : 'none';
+        }
+    } catch (error) {
+        console.error('Client - Error loading footer settings:', error.message);
+    }
+}

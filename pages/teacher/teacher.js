@@ -2,28 +2,63 @@ let teacherId = new URLSearchParams(window.location.search).get('id');
 let teacherData = null;
 let isAdmin = false;
 let hasVoted = false;
+let csrfToken = null;
 const votedTeachers = document.cookie.split('; ')
     .find(row => row.startsWith('votedTeachers='))
     ?.split('=')[1]?.split(',')
     .filter(Boolean) || [];
 
-document.addEventListener('DOMContentLoaded', () => {
-    checkAdminStatus();
-    loadTeacherProfile();
+document.addEventListener('DOMContentLoaded', async () => {
+    await fetchCsrfToken();
+    await checkAdminStatus();
+    await loadTeacherProfile();
     setupEventListeners();
 });
 
 /**
- * Check if the user is an admin based on the adminToken cookie.
+ * Fetch CSRF token from the server
  */
-function checkAdminStatus() {
-    const adminToken = document.cookie.split('; ').find(row => row.startsWith('adminToken='));
-    isAdmin = !!adminToken && adminToken.split('=')[1] === 'admin-token';
-    document.querySelector('.admin-btn').textContent = isAdmin ? 'Admin Dashboard' : 'Admin Login';
+async function fetchCsrfToken() {
+    try {
+        const response = await fetch('/api/csrf-token', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch CSRF token');
+        const data = await response.json();
+        csrfToken = data.csrfToken;
+        document.querySelector('meta[name="csrf-token"]').content = csrfToken;
+        document.getElementById('csrf-token').value = csrfToken;
+        console.log('Client - CSRF token fetched:', csrfToken);
+    } catch (error) {
+        console.error('Client - Error fetching CSRF token:', error.message);
+        showNotification('Error initializing security token', true);
+    }
 }
 
 /**
- * Load the teacher profile data from the server.
+ * Check if the user is an admin using JWT verification
+ */
+async function checkAdminStatus() {
+    try {
+        const response = await fetch('/api/admin/verify', { credentials: 'include' });
+        isAdmin = response.ok;
+        const adminBtn = document.querySelector('.admin-btn');
+        const adminStatus = document.getElementById('admin-status');
+        adminBtn.textContent = isAdmin ? 'Admin Dashboard' : 'Admin Login';
+        if (isAdmin) {
+            adminStatus.style.display = 'none';
+        } else {
+            adminStatus.textContent = 'Not logged in';
+            adminStatus.classList.add('error');
+            adminStatus.style.display = 'inline';
+        }
+    } catch (error) {
+        console.error('Client - Error verifying admin status:', error.message);
+        isAdmin = false;
+        document.querySelector('.admin-btn').textContent = 'Admin Login';
+    }
+}
+
+/**
+ * Load the teacher profile data from the server
  */
 async function loadTeacherProfile() {
     if (!teacherId) {
@@ -35,12 +70,13 @@ async function loadTeacherProfile() {
     try {
         const response = await fetch(`/api/teachers/${teacherId}`, { credentials: 'include' });
         if (!response.ok) {
+            const errorData = await response.json();
             if (response.status === 404) {
                 showNotification('Teacher not found, redirecting to home...', true);
                 setTimeout(() => window.location.href = '/', 2000);
                 return;
             }
-            throw new Error(`Failed to load teacher: ${response.statusText}`);
+            throw new Error(errorData.error || `Failed to load teacher: ${response.statusText}`);
         }
         teacherData = await response.json();
         hasVoted = votedTeachers.includes(teacherId);
@@ -53,7 +89,7 @@ async function loadTeacherProfile() {
 }
 
 /**
- * Render the teacher profile UI.
+ * Render the teacher profile UI
  */
 function renderTeacherProfile() {
     const profileContainer = document.querySelector('.teacher-profile');
@@ -137,7 +173,7 @@ function renderTeacherProfile() {
 }
 
 /**
- * Set up event listeners for navigation buttons.
+ * Set up event listeners for navigation buttons
  */
 function setupEventListeners() {
     document.querySelector('.logo')?.addEventListener('click', () => window.location.href = '/');
@@ -148,7 +184,7 @@ function setupEventListeners() {
 }
 
 /**
- * Set up interactive star rating system.
+ * Set up interactive star rating system
  */
 function setupRatingStars() {
     const stars = document.querySelectorAll('#star-rating .star');
@@ -170,8 +206,8 @@ function setupRatingStars() {
 }
 
 /**
- * Highlight stars up to the selected rating.
- * @param {string|number} rating - The rating to highlight up to.
+ * Highlight stars up to the selected rating
+ * @param {string|number} rating - The rating to highlight up to
  */
 function highlightStars(rating) {
     const stars = document.querySelectorAll('#star-rating .star');
@@ -179,7 +215,7 @@ function highlightStars(rating) {
 }
 
 /**
- * Submit a rating to the server and update the UI.
+ * Submit a rating to the server and update the UI
  */
 async function submitRating() {
     const submitBtn = document.getElementById('submit-rating');
@@ -194,24 +230,25 @@ async function submitRating() {
     try {
         const response = await fetch('/api/ratings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
             credentials: 'include',
             body: JSON.stringify({ teacher_id: teacherId, rating, comment })
         });
         const data = await response.json();
 
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to submit rating');
-        }
+        if (!response.ok) throw new Error(data.error || 'Failed to submit rating');
 
         showNotification('Rating submitted successfully!');
         hasVoted = true;
         votedTeachers.push(teacherId);
-        document.cookie = `votedTeachers=${votedTeachers.join(',')}; Path=/; Max-Age=31536000`;
+        document.cookie = `votedTeachers=${votedTeachers.join(',')}; Path=/; Max-Age=31536000; SameSite=Strict`;
 
         teacherData.avg_rating = data.avg_rating;
         teacherData.rating_count = data.rating_count;
-        teacherData.ratings.push({ rating, comment });
+        teacherData.ratings.push({ rating, comment, is_explicit: data.is_explicit });
         renderTeacherProfile();
     } catch (error) {
         console.error('Client - Error submitting rating:', error.message);
@@ -220,7 +257,7 @@ async function submitRating() {
 }
 
 /**
- * Set up toggle for showing all reviews.
+ * Set up toggle for showing all reviews
  */
 function setupReviewToggle() {
     const toggleBtn = document.querySelector('.toggle-btn');
@@ -243,7 +280,7 @@ function setupReviewToggle() {
 }
 
 /**
- * Set up admin action buttons (edit/delete).
+ * Set up admin action buttons (edit/delete)
  */
 function setupAdminActions() {
     document.getElementById('edit-teacher-btn')?.addEventListener('click', showEditForm);
@@ -251,7 +288,7 @@ function setupAdminActions() {
 }
 
 /**
- * Set up the corrections button and modal.
+ * Set up the corrections button and modal
  */
 function setupCorrectionsButton() {
     const correctionsBtn = document.getElementById('corrections-btn');
@@ -264,10 +301,7 @@ function setupCorrectionsButton() {
         return;
     }
 
-    correctionsBtn.addEventListener('click', () => {
-        modal.classList.add('active');
-    });
-
+    correctionsBtn.addEventListener('click', () => modal.classList.add('active'));
     cancelBtn.addEventListener('click', () => {
         modal.classList.remove('active');
         form.reset();
@@ -286,6 +320,7 @@ function setupCorrectionsButton() {
         const formData = new FormData();
         formData.append('suggestion', suggestion);
         if (file) formData.append('file', file);
+        formData.append('_csrf', csrfToken);
 
         try {
             const response = await fetch(`/api/corrections/${teacherId}`, {
@@ -308,12 +343,13 @@ function setupCorrectionsButton() {
 }
 
 /**
- * Display the edit form for the teacher.
+ * Display the edit form for the teacher
  */
 function showEditForm() {
     const profileContainer = document.querySelector('.teacher-profile');
     profileContainer.innerHTML = `
         <form class="edit-form">
+            <input type="hidden" name="_csrf" value="${csrfToken}">
             <div class="form-group">
                 <label for="edit-name">Name:</label>
                 <input type="text" id="edit-name" value="${teacherData.name}" required>
@@ -385,17 +421,19 @@ function showEditForm() {
         try {
             const response = await fetch(`/api/admin/teachers/${teacherId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Cookie': document.cookie },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                credentials: 'include',
                 body: JSON.stringify(updatedData)
             });
             const data = await response.json();
-            if (response.ok) {
-                showNotification('Teacher updated successfully!');
-                teacherData = { ...teacherData, ...updatedData, ratings: teacherData.ratings, avg_rating: teacherData.avg_rating, rating_count: teacherData.rating_count };
-                loadTeacherProfile();
-            } else {
-                throw new Error(data.error || 'Failed to update teacher');
-            }
+            if (!response.ok) throw new Error(data.error || 'Failed to update teacher');
+
+            showNotification('Teacher updated successfully!');
+            teacherData = { ...teacherData, ...updatedData, ratings: teacherData.ratings, avg_rating: teacherData.avg_rating, rating_count: teacherData.rating_count };
+            await loadTeacherProfile();
         } catch (error) {
             console.error('Client - Error updating teacher:', error.message);
             showNotification(`Error updating teacher: ${error.message}`, true);
@@ -404,7 +442,7 @@ function showEditForm() {
 }
 
 /**
- * Display a confirmation modal for deleting the teacher.
+ * Display a confirmation modal for deleting the teacher
  */
 function showDeleteModal() {
     const modal = document.getElementById('modal');
@@ -414,16 +452,14 @@ function showDeleteModal() {
         try {
             const response = await fetch(`/api/admin/teachers/${teacherId}`, {
                 method: 'DELETE',
-                credentials: 'include',
-                headers: { 'Cookie': document.cookie }
+                headers: { 'X-CSRF-Token': csrfToken },
+                credentials: 'include'
             });
             const data = await response.json();
-            if (response.ok) {
-                showNotification('Teacher deleted successfully!');
-                setTimeout(() => window.location.href = '/', 1500);
-            } else {
-                throw new Error(data.error || 'Failed to delete teacher');
-            }
+            if (!response.ok) throw new Error(data.error || 'Failed to delete teacher');
+
+            showNotification('Teacher deleted successfully!');
+            setTimeout(() => window.location.href = '/', 1500);
         } catch (error) {
             console.error('Client - Error deleting teacher:', error.message);
             showNotification(`Error deleting teacher: ${error.message}`, true);
@@ -436,12 +472,20 @@ function showDeleteModal() {
 }
 
 /**
- * Show a notification message to the user.
- * @param {string} message - The message to display.
- * @param {boolean} isError - Whether the notification is an error.
+ * Show a notification message to the user
+ * @param {string} message - The message to display
+ * @param {boolean} isError - Whether the notification is an error
  */
+function showNotification(message, isError = false) {
+    const notification = document.getElementById('notification');
+    notification.className = `notification ${isError ? 'error' : 'success'}`;
+    notification.textContent = message;
+    notification.style.display = 'block';
+    setTimeout(() => notification.style.display = 'none', 3000);
+}
+
+// Main message handling (moved from second DOMContentLoaded)
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if on admin pages
     const currentPath = window.location.pathname;
     const isAdminPage = currentPath.includes('/pages/admin/login.html') || currentPath.includes('/pages/admin/dashboard.html');
     if (isAdminPage) {
@@ -458,21 +502,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Function to check if message should be shown
     function shouldShowMessage(newMessage) {
         const lastClosed = localStorage.getItem('mainMessageClosedTime');
         const lastMessage = localStorage.getItem('mainMessageContent');
         const now = Date.now();
         const fiveMinutes = 300000; // 5 minutes in milliseconds
-
-        // Show if: no last closed time, message updated, or 5 minutes have passed
         return !lastClosed || lastMessage !== newMessage || (now - parseInt(lastClosed) >= fiveMinutes);
     }
 
-    // Fetch and display message
     async function loadMainMessage() {
         try {
-            const response = await fetch('/api/message-settings');
+            const response = await fetch('/api/message-settings', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to fetch message settings');
             const data = await response.json();
 
@@ -481,13 +521,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (showMessage && shouldShowMessage(message)) {
                 messageDiv.classList.add('active');
-                messageDiv.style.display = 'block'; // Ensure visibility
+                messageDiv.style.display = 'block';
             } else {
                 messageDiv.classList.remove('active');
                 messageDiv.style.display = 'none';
             }
 
-            // Store current message content
             localStorage.setItem('mainMessageContent', message);
         } catch (error) {
             console.error('Error fetching main message:', error.message);
@@ -496,14 +535,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Close button handler
     closeButton.addEventListener('click', () => {
         messageDiv.classList.remove('active');
         messageDiv.style.display = 'none';
         localStorage.setItem('mainMessageClosedTime', Date.now().toString());
     });
 
-    // ESC key handler
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && messageDiv.classList.contains('active')) {
             messageDiv.classList.remove('active');
@@ -512,13 +549,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, { once: true });
 
-    // Load message on page load
     loadMainMessage();
 });
-function showNotification(message, isError = false) {
-    const notification = document.getElementById('notification');
-    notification.className = `notification ${isError ? 'error' : 'success'}`;
-    notification.textContent = message;
-    notification.style.display = 'block';
-    setTimeout(() => notification.style.display = 'none', 3000);
-}

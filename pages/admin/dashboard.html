@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content=""> <!-- Store CSRF token here, populated by server or JS -->
     <title>Admin Dashboard - Rate Your Teachers</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
@@ -11,10 +12,11 @@
 <body>
     <header class="site-header">
         <div class="header-content">
-            <img src="/public/images/logo.png" alt="Logo" class="logo">
+            <img src="/public/images/logo.png" alt="Rate Your Teachers Logo" class="logo">
             <h1 class="header-title">Admin Dashboard</h1>
             <div class="header-buttons">
                 <button class="admin-btn" onclick="logout()">Logout</button>
+                <span id="admin-status" style="display: none; margin-left: 10px;"></span>
                 <button class="submit-teacher-btn">Submit a Teacher</button>
             </div>
         </div>
@@ -33,72 +35,73 @@
 
             <div id="teachers-tab" class="tab-content active">
                 <div class="admin-section">
-                    <h3 class="section-toggle">Add New Teacher</h3>
+                    <h2 class="section-toggle">Add New Teacher</h2>
                     <div class="section-content" style="display: none;">
                         <form id="teacher-form" class="edit-form" enctype="multipart/form-data">
+                            <input type="hidden" name="_csrf" id="teacher-csrf-token">
                             <div class="form-group">
                                 <label for="id">Teacher ID:</label>
-                                <input type="text" id="id" name="id" required placeholder="e.g., T001">
-                                <span class="tooltip">Unique teacher identifier</span>
+                                <input type="text" id="id" name="id" required placeholder="e.g., T001" aria-describedby="id-tooltip">
+                                <span id="id-tooltip" class="tooltip">Unique teacher identifier</span>
                             </div>
                             <div class="form-group">
                                 <label for="name">Name:</label>
-                                <input type="text" id="name" name="name" required placeholder="e.g., John Doe">
-                                <span class="tooltip">Full name of the teacher</span>
+                                <input type="text" id="name" name="name" required placeholder="e.g., John Doe" aria-describedby="name-tooltip">
+                                <span id="name-tooltip" class="tooltip">Full name of the teacher</span>
                             </div>
                             <div class="form-group">
                                 <label for="bio">Bio:</label>
-                                <textarea id="bio" name="bio" required placeholder="Short biography"></textarea>
-                                <span class="tooltip">Brief background about the teacher</span>
+                                <textarea id="bio" name="bio" required placeholder="Short biography" aria-describedby="bio-tooltip"></textarea>
+                                <span id="bio-tooltip" class="tooltip">Brief background about the teacher</span>
                             </div>
                             <div class="form-group">
                                 <label for="description">Description:</label>
-                                <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher">
-                                <span class="tooltip">Brief description (e.g., role or subject)</span>
+                                <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher" aria-describedby="desc-tooltip">
+                                <span id="desc-tooltip" class="tooltip">Brief description (e.g., role or subject)</span>
                             </div>
                             <div class="form-group">
                                 <label for="classes">Classes:</label>
-                                <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus">
-                                <span class="tooltip">Comma-separated list of classes</span>
+                                <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus" aria-describedby="classes-tooltip">
+                                <span id="classes-tooltip" class="tooltip">Comma-separated list of classes</span>
                             </div>
                             <div class="form-group">
                                 <label for="tags">Tags:</label>
-                                <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem">
-                                <span class="tooltip">Comma-separated list of tags</span>
+                                <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem" aria-describedby="tags-tooltip">
+                                <span id="tags-tooltip" class="tooltip">Comma-separated list of tags</span>
                             </div>
                             <div class="form-group">
                                 <label for="room_number">Room Number:</label>
-                                <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101">
-                                <span class="tooltip">Classroom identifier</span>
+                                <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101" aria-describedby="room-tooltip">
+                                <span id="room-tooltip" class="tooltip">Classroom identifier</span>
                             </div>
                             <div class="schedule-edit">
                                 <label>Schedule:</label>
                                 <div class="schedule-block">
                                     <label>Block 1:</label>
-                                    <input type="text" name="schedule[0][subject]" placeholder="Subject">
-                                    <input type="text" name="schedule[0][grade]" placeholder="Grade">
+                                    <input type="text" name="schedule[0][subject]" placeholder="Subject" aria-label="Block 1 Subject">
+                                    <input type="text" name="schedule[0][grade]" placeholder="Grade" aria-label="Block 1 Grade">
                                 </div>
                                 <div class="schedule-block">
                                     <label>Block 2:</label>
-                                    <input type="text" name="schedule[1][subject]" placeholder="Subject">
-                                    <input type="text" name="schedule[1][grade]" placeholder="Grade">
+                                    <input type="text" name="schedule[1][subject]" placeholder="Subject" aria-label="Block 2 Subject">
+                                    <input type="text" name="schedule[1][grade]" placeholder="Grade" aria-label="Block 2 Grade">
                                 </div>
                                 <div class="schedule-block">
                                     <label>Block 3:</label>
-                                    <input type="text" name="schedule[2][subject]" placeholder="Subject">
-                                    <input type="text" name="schedule[2][grade]" placeholder="Grade">
+                                    <input type="text" name="schedule[2][subject]" placeholder="Subject" aria-label="Block 3 Subject">
+                                    <input type="text" name="schedule[2][grade]" placeholder="Grade" aria-label="Block 3 Grade">
                                 </div>
                                 <div class="schedule-block">
                                     <label>Block 4:</label>
-                                    <input type="text" name="schedule[3][subject]" placeholder="Subject">
-                                    <input type="text" name="schedule[3][grade]" placeholder="Grade">
+                                    <input type="text" name="schedule[3][subject]" placeholder="Subject" aria-label="Block 4 Subject">
+                                    <input type="text" name="schedule[3][grade]" placeholder="Grade" aria-label="Block 4 Grade">
                                 </div>
                                 <span class="tooltip">Enter subject and grade for each block</span>
                             </div>
                             <div class="form-group">
                                 <label for="image">Teacher Image:</label>
-                                <input type="file" id="image" name="image" accept="image/jpeg, image/png">
-                                <span class="tooltip">Upload a JPEG or PNG image (optional)</span>
+                                <input type="file" id="image" name="image" accept="image/jpeg, image/png" aria-describedby="image-tooltip">
+                                <span id="image-tooltip" class="tooltip">Upload a JPEG or PNG image (optional)</span>
                             </div>
                             <button type="submit" class="submit-btn">Add Teacher</button>
                         </form>
@@ -106,22 +109,22 @@
                     </div>
                 </div>
                 <div class="admin-section">
-                    <h3 class="section-toggle">Manage Teachers</h3>
+                    <h2 class="section-toggle">Manage Teachers</h2>
                     <div class="section-content" style="display: none;">
                         <div class="controls">
-                            <input type="text" id="teacher-search" class="search-input" placeholder="Search by ID or Name">
+                            <input type="text" id="teacher-search" class="search-input" placeholder="Search by ID or Name" aria-label="Search teachers">
                             <div class="sort-options">
-                                <select id="teachers-per-page" class="sort-select">
+                                <select id="teachers-per-page" class="sort-select" aria-label="Teachers per page">
                                     <option value="5">5 per page</option>
                                     <option value="10" selected>10 per page</option>
                                     <option value="20">20 per page</option>
                                 </select>
-                                <select id="teacher-sort" class="sort-select">
+                                <select id="teacher-sort" class="sort-select" aria-label="Sort teachers by">
                                     <option value="id">Sort by ID</option>
                                     <option value="name">Sort by Name</option>
                                     <option value="description">Sort by Description</option>
                                 </select>
-                                <select id="teacher-sort-direction" class="sort-select">
+                                <select id="teacher-sort-direction" class="sort-select" aria-label="Sort direction">
                                     <option value="asc">Ascending</option>
                                     <option value="desc">Descending</option>
                                 </select>
@@ -134,21 +137,21 @@
 
             <div id="votes-tab" class="tab-content">
                 <div class="admin-section">
-                    <h3 class="section-toggle">Manage Votes</h3>
+                    <h2 class="section-toggle">Manage Votes</h2>
                     <div class="section-content" style="display: none;">
                         <div class="controls">
-                            <input type="text" id="vote-search" class="search-input" placeholder="Search by Teacher ID">
+                            <input type="text" id="vote-search" class="search-input" placeholder="Search by Teacher ID" aria-label="Search votes">
                             <div class="sort-options">
-                                <select id="votes-per-page" class="sort-select">
+                                <select id="votes-per-page" class="sort-select" aria-label="Votes per page">
                                     <option value="5">5 per page</option>
                                     <option value="10" selected>10 per page</option>
                                     <option value="20">20 per page</option>
                                 </select>
-                                <select id="vote-sort" class="sort-select">
+                                <select id="vote-sort" class="sort-select" aria-label="Sort votes by">
                                     <option value="teacher_id">Sort by Teacher ID</option>
                                     <option value="rating">Sort by Rating</option>
                                 </select>
-                                <select id="vote-sort-direction" class="sort-select">
+                                <select id="vote-sort-direction" class="sort-select" aria-label="Sort direction">
                                     <option value="asc">Ascending</option>
                                     <option value="desc">Descending</option>
                                 </select>
@@ -162,7 +165,7 @@
 
             <div id="proposals-tab" class="tab-content">
                 <div class="admin-section">
-                    <h3 class="section-toggle">Teacher Proposals</h3>
+                    <h2 class="section-toggle">Teacher Proposals</h2>
                     <div class="section-content" style="display: none;">
                         <div id="proposals-table"></div>
                         <p id="proposal-message" class="info-message"></p>
@@ -172,7 +175,7 @@
 
             <div id="corrections-tab" class="tab-content">
                 <div class="admin-section">
-                    <h3 class="section-toggle">Corrections</h3>
+                    <h2 class="section-toggle">Corrections</h2>
                     <div class="section-content" style="display: none;">
                         <div id="corrections-table"></div>
                         <p id="corrections-message" class="info-message"></p>
@@ -182,17 +185,18 @@
 
             <div id="settings-tab" class="tab-content">
                 <div class="admin-section">
-                    <h3 class="section-toggle">Main Message Settings</h3>
+                    <h2 class="section-toggle">Main Message Settings</h2>
                     <div class="section-content" style="display: none;">
                         <form id="message-settings-form" class="edit-form">
+                            <input type="hidden" name="_csrf" id="message-csrf-token">
                             <div class="form-group">
                                 <label for="main-message">Main Message:</label>
-                                <input type="text" id="main-message" name="message" placeholder="Enter main message">
+                                <input type="text" id="main-message" name="message" placeholder="Enter main message" aria-label="Main message">
                             </div>
                             <div class="form-group">
                                 <label>Show Message:</label>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="show-main-message" name="showMessage">
+                                    <input type="checkbox" id="show-main-message" name="showMessage" aria-label="Toggle main message visibility">
                                     <span class="slider"></span>
                                 </label>
                             </div>
@@ -202,21 +206,22 @@
                     </div>
                 </div>
                 <div class="admin-section">
-                    <h3 class="section-toggle">Footer Settings</h3>
+                    <h2 class="section-toggle">Footer Settings</h2>
                     <div class="section-content" style="display: none;">
                         <form id="footer-settings-form" class="edit-form">
+                            <input type="hidden" name="_csrf" id="footer-csrf-token">
                             <div class="form-group">
                                 <label for="footer-email-input">Email:</label>
-                                <input type="email" id="footer-email-input" name="email" placeholder="Enter email">
+                                <input type="email" id="footer-email-input" name="email" placeholder="Enter email" aria-label="Footer email">
                             </div>
                             <div class="form-group">
                                 <label for="footer-message-input">Message:</label>
-                                <input type="text" id="footer-message-input" name="message" placeholder="Enter footer message">
+                                <input type="text" id="footer-message-input" name="message" placeholder="Enter footer message" aria-label="Footer message">
                             </div>
                             <div class="form-group">
                                 <label>Show Message:</label>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="footer-show-message" name="showMessage">
+                                    <input type="checkbox" id="footer-show-message" name="showMessage" aria-label="Toggle footer message visibility">
                                     <span class="slider"></span>
                                 </label>
                             </div>
@@ -226,7 +231,7 @@
                     </div>
                 </div>
                 <div class="admin-section">
-                    <h3 class="section-toggle">Section Expansion Settings</h3>
+                    <h2 class="section-toggle">Section Expansion Settings</h2>
                     <div class="section-content" style="display: none;">
                         <div id="section-settings-container"></div>
                         <button id="save-section-settings" class="submit-btn">Save Section Settings</button>
@@ -239,10 +244,10 @@
 
             <div id="stats-tab" class="tab-content">
                 <div class="admin-section">
-                    <h3 class="section-toggle">Statistics</h3>
+                    <h2 class="section-toggle">Statistics</h2>
                     <div class="section-content" style="display: none;">
                         <div class="controls">
-                            <select id="stats-timeframe" class="sort-select">
+                            <select id="stats-timeframe" class="sort-select" aria-label="Select statistics timeframe">
                                 <option value="1hour">Last 1 Hour</option>
                                 <option value="6hours">Last 6 Hours</option>
                                 <option value="1day" selected>Last 1 Day</option>
@@ -251,9 +256,22 @@
                             </select>
                         </div>
                         <div id="stats-charts">
-                            <canvas id="visits-chart" height="100"></canvas>
-                            <canvas id="proposals-chart" height="100"></canvas>
-                            <canvas id="top-teachers-chart" height="100"></canvas>
+                            <div class="chart-container">
+                                <h3>Visits Over Time</h3>
+                                <canvas id="visits-chart" style="max-height: 300px;"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>Vote Distribution</h3>
+                                <canvas id="votes-chart" style="max-height: 300px;"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>Proposal Status</h3>
+                                <canvas id="proposals-chart" style="max-height: 300px;"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>Top Teachers by Votes</h3>
+                                <canvas id="top-teachers-chart" style="max-height: 300px;"></canvas>
+                            </div>
                         </div>
                         <p id="stats-message" class="info-message"></p>
                     </div>
@@ -263,13 +281,12 @@
     </main>
 
     <footer class="site-footer">
-        <p id="footer-email"><a href="/cdn-cgi/l/email-protection#3c4f494c4c534e487c4e5d48594553494e48595d5f54594e125f5351"><span class="__cf_email__" data-cfemail="291a1c1919061b1d291b081d0c10061c1b1d0c080a010c1b470a0604">[email&#160;protected]</span></a></p>
+        <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
         <p id="footer-message">Welcome to Rate Your Teachers!</p>
     </footer>
 
     <div id="notification" class="notification" style="display: none;"></div>
 
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
-    <script src="/pages/admin/dashboard.js"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ee2e0dd94042a9',t:'MTc0MTcyODkwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+    <script src="/pages/admin/dashboard.js" defer></script> <!-- Main script for dashboard -->
+</body>
 </html>

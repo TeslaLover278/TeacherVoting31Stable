@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content=""> <!-- Store CSRF token here -->
     <title>Submit a Teacher - Rate Your Teachers</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
@@ -14,6 +15,7 @@
             <h1 class="header-title">Submit a Teacher</h1>
             <div class="header-buttons">
                 <button class="admin-btn" onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
+                <span id="admin-status" style="display: none; margin-left: 10px;"></span>
             </div>
         </div>
     </header>
@@ -22,7 +24,8 @@
         <div class="content-container">
             <h2>Submit a New Teacher Proposal</h2>
             <p>Please fill out the form below to propose a new teacher. All fields are required unless marked optional.</p>
-            <form id="submit-teacher-form" class="edit-form" enctype="multipart/form-data">
+            <form id="teacher-submit-form" class="edit-form" enctype="multipart/form-data">
+                <input type="hidden" name="_csrf" id="csrf-token">
                 <div class="form-group">
                     <label for="name">Name:</label>
                     <input type="text" id="name" name="name" required placeholder="e.g., John Doe">
@@ -100,56 +103,6 @@
 
     <div id="notification" class="notification" style="display: none;"></div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById('submit-teacher-form');
-            const message = document.getElementById('submit-message');
-
-            // Notification function
-            function showNotification(messageText, isError = false) {
-                const notification = document.createElement('div');
-                notification.className = `notification ${isError ? 'error' : 'success'}`;
-                notification.textContent = messageText;
-                document.body.appendChild(notification);
-                setTimeout(() => notification.remove(), 3000);
-            }
-
-            // Form submission
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(form);
-                const schedule = [];
-                for (let i = 0; i < 4; i++) {
-                    const subject = formData.get(`schedule[${i}][subject]`)?.trim();
-                    const grade = formData.get(`schedule[${i}][grade]`)?.trim();
-                    if (subject || grade) {
-                        schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
-                    }
-                }
-                formData.set('schedule', JSON.stringify(schedule));
-
-                try {
-                    const response = await fetch('/api/teacher-proposals', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await response.json();
-                    if (response.ok) {
-                        message.textContent = 'Teacher proposal submitted successfully!';
-                        message.className = 'info-message';
-                        showNotification('Teacher proposal submitted successfully!');
-                        form.reset();
-                    } else {
-                        throw new Error(data.error || 'Failed to submit proposal');
-                    }
-                } catch (error) {
-                    console.error('Client - Error submitting teacher proposal:', error.message);
-                    message.textContent = 'Error submitting proposal: ' + error.message;
-                    message.className = 'error-message';
-                    showNotification('Error submitting proposal.', true);
-                }
-            });
-        });
-    </script>
+    <script src="/pages/teacher/submit-teacher.js" defer></script>
 </body>
 </html>

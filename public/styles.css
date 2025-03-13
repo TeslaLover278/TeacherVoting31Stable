@@ -829,18 +829,24 @@ body {
 .admin-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 1rem;
 }
 
 .admin-table th, .admin-table td {
-    padding: 0.75rem;
+    padding: 8px;
     text-align: left;
     border: 1px solid #ddd;
 }
 
 .admin-table th {
+    position: sticky;
+    top: 0;
+    height: 40px;
+    background: #f5f5f5;
     background-color: #00B7D1;
     color: white;
+}
+.admin-table td {
+    height: auto;
 }
 
 .admin-table tr:nth-child(even) {
@@ -960,7 +966,7 @@ body {
 }
 
 .tab-content {
-    display: none;
+    padding: 20px;
 }
 
 .tab-content.active {
@@ -1061,4 +1067,20 @@ body {
 .toggle-status {
     font-size: 0.9rem;
     color: #666;
+}
+#main-message {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 5px;
+}
+.section-content {
+    display: none;
+}
+.section-toggle.expanded + .section-content {
+    display: block;
+}
+.chart-container {
+    max-width: 600px;
+    margin: 20px auto;
 }

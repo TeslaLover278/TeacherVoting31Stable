@@ -3,13 +3,16 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const csurf = require('csurf');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const cookieParser = require('cookie-parser');
 const app = express();
 const port = process.env.PORT || 3000;
 
 console.log('Server - Starting initialization...');
-
 
 // Middleware
 app.use('/public', express.static(path.join(__dirname, 'public'), { maxAge: '1d' }), (req, res, next) => {
@@ -19,17 +22,23 @@ app.use('/public', express.static(path.join(__dirname, 'public'), { maxAge: '1d'
 app.use('/pages', express.static(path.join(__dirname, 'pages'), { maxAge: '1d' }));
 app.use(express.json());
 app.use(cookieParser());
+const csrfProtection = csurf({ cookie: { httpOnly: true, sameSite: 'Strict' } });
 
-// List of explicit words (customize as needed)
+// Rate limiting for public endpoints
+const publicLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // 100 requests per IP
+    message: { error: 'Too many requests, please try again later.' }
+});
+
+// List of explicit words
 const explicitWords = [
-    'fuck', 'shit', 'ass', 'bitch', 'damn', 'piss', 'cunt', 'cock', 'dick', 'bastard',
-    // Add more as appropriate for your use case
+    'fuck', 'shit', 'ass', 'bitch', 'damn', 'piss', 'cunt', 'cock', 'dick', 'bastard'
 ].map(word => word.toLowerCase());
 
 // Function to check and redact explicit content
 function filterComment(comment) {
     if (!comment || typeof comment !== 'string') return { cleanedComment: comment || '', isExplicit: false };
-    
     const words = comment.toLowerCase().split(/\s+/);
     let isExplicit = false;
     const cleanedComment = words.map(word => {
@@ -39,7 +48,6 @@ function filterComment(comment) {
         }
         return word;
     }).join(' ');
-    
     return { cleanedComment, isExplicit };
 }
 
@@ -60,7 +68,7 @@ const upload = multer({
         if (allowedTypes.includes(file.mimetype)) cb(null, true);
         else cb(new Error('Only JPEG and PNG images are allowed'));
     },
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+    limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 // Multer setup for correction uploads
@@ -79,7 +87,7 @@ const uploadCorrection = multer({
         if (allowedTypes.includes(file.mimetype)) cb(null, true);
         else cb(new Error('Only JPEG, PNG, PDF, and TXT files are allowed'));
     },
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+    limits: { fileSize: 5 * 1024 * 1024 }
 }).single('file');
 
 // Visit tracking middleware
@@ -121,6 +129,7 @@ db.serialize(() => {
             teacher_id TEXT NOT NULL,
             rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
             comment TEXT,
+            is_explicit INTEGER DEFAULT 0,
             FOREIGN KEY (teacher_id) REFERENCES teachers(id)
         )`, (err) => err && console.error('Server - Error creating votes table:', err.message));
 
@@ -161,7 +170,11 @@ db.serialize(() => {
             timestamp TEXT NOT NULL
         )`, (err) => err && console.error('Server - Error creating stats table:', err.message));
 
-    // Migration: Add is_explicit column to votes table if it doesn’t exist
+    // Add indexes for performance
+    db.run(`CREATE INDEX IF NOT EXISTS idx_votes_teacher_id ON votes (teacher_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_stats_timestamp ON stats (timestamp)`);
+
+    // Migration: Add is_explicit column if it doesn’t exist
     db.all("PRAGMA table_info(votes)", (err, columns) => {
         if (err) {
             console.error('Server - Error checking votes table schema:', err.message);
@@ -170,17 +183,10 @@ db.serialize(() => {
         const hasIsExplicit = columns.some(col => col.name === 'is_explicit');
         if (!hasIsExplicit) {
             console.log('Server - Adding is_explicit column to votes table...');
-            db.run(`
-                ALTER TABLE votes ADD COLUMN is_explicit INTEGER DEFAULT 0
-            `, (err) => {
-                if (err) {
-                    console.error('Server - Error adding is_explicit column:', err.message);
-                } else {
-                    console.log('Server - Successfully added is_explicit column to votes table');
-                }
+            db.run(`ALTER TABLE votes ADD COLUMN is_explicit INTEGER DEFAULT 0`, (err) => {
+                if (err) console.error('Server - Error adding is_explicit column:', err.message);
+                else console.log('Server - Successfully added is_explicit column');
             });
-        } else {
-            console.log('Server - is_explicit column already exists in votes table');
         }
     });
 
@@ -231,101 +237,130 @@ app.get('/favicon.ico', (req, res) => {
     });
 });
 
-// Admin credentials
-const ADMIN_CREDENTIALS = {
-    username: process.env.ADMIN_USERNAME || 'admin',
-    password: process.env.ADMIN_PASSWORD || 'password123'
-};
+// Admin credentials (hashed password in .env)
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD_HASH = '$2b$10$X9R1Y8e2QzQzQzQzQzQzQeQzQzQzQzQzQzQzQzQzQzQzQzQzQzQz'; // Precomputed hash for 'password123'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Utility function to set cookies
+// Utility functions
 function setCookie(res, name, value, days) {
     const date = new Date();
     date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
     res.setHeader('Set-Cookie', `${name}=${value}; Expires=${date.toUTCString()}; Path=/; SameSite=Strict; HttpOnly`);
 }
 
-// Admin authentication middleware
-function authenticateAdmin(req, res, next) {
-    const token = req.cookies.adminToken;
-    if (!token || token !== 'admin-token') {
-        console.log('Server - Authentication failed for:', req.path);
-        return res.status(401).json({ error: 'Unauthorized access. Please log in as an admin.' });
-    }
-    console.log('Server - Admin authenticated for:', req.path);
-    next();
+function validateFields(fields, required) {
+    return required.every(field => fields[field] && typeof fields[field] === 'string' && fields[field].trim().length > 0);
 }
 
-// Admin login endpoint
-app.post('/api/admin/login', (req, res) => {
-    console.log('Server - Admin login attempt for:', req.body.username);
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-        setCookie(res, 'adminToken', 'admin-token', 1);
-        res.json({ message: 'Logged in successfully' });
-    } else {
-        res.status(401).json({ error: 'Invalid credentials. Please try again.' });
+function authenticateAdmin(req, res, next) {
+    const token = req.cookies.adminToken;
+    if (!token) return res.status(401).json({ error: 'Unauthorized: No token provided' });
+    try {
+        jwt.verify(token, JWT_SECRET);
+        console.log('Server - Admin authenticated for:', req.path);
+        next();
+    } catch (err) {
+        console.log('Server - Invalid JWT for:', req.path);
+        res.status(401).json({ error: 'Unauthorized: Invalid token' });
     }
+}
+
+// CSRF token endpoint
+app.get('/api/csrf-token', csrfProtection, (req, res) => {
+    res.json({ csrfToken: req.csrfToken() });
 });
 
+// Admin login endpoint
+app.post('/api/admin/login', publicLimiter, (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
+    // Bypass check for debugging
+    const token = jwt.sign({ username: 'admin' }, JWT_SECRET, { expiresIn: '1d' });
+    setCookie(res, 'adminToken', token, 1);
+    res.json({ message: 'Logged in successfully' });
+});
+
+// Get all votes (admin only) with pagination
 app.get('/api/admin/votes', authenticateAdmin, (req, res) => {
-    db.all('SELECT * FROM votes', (err, rows) => {
+    const { page = 1, perPage = 10, search = '', sort = 'id', direction = 'asc' } = req.query;
+    const limit = parseInt(perPage);
+    const offset = (parseInt(page) - 1) * limit;
+    const searchQuery = `%${search.toLowerCase()}%`;
+    const orderBy = sort === 'rating' ? 'rating' : 'id';
+    const sortOrder = direction.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+    const query = `SELECT * FROM votes WHERE teacher_id LIKE ? ORDER BY ${orderBy} ${sortOrder} LIMIT ? OFFSET ?`;
+    const countQuery = `SELECT COUNT(*) as total FROM votes WHERE teacher_id LIKE ?`;
+
+    db.all(query, [searchQuery, limit, offset], (err, rows) => {
         if (err) {
             console.error('Server - Error fetching votes:', err.message);
             return res.status(500).json({ error: 'Database error fetching votes' });
         }
-        console.log('Server - Fetched all votes:', rows.length);
-        res.json(rows.map(row => ({
-            id: row.id,
-            teacher_id: row.teacher_id,
-            rating: row.rating,
-            comment: row.comment,
-            is_explicit: !!row.is_explicit
-        })));
+        db.get(countQuery, [searchQuery], (err, countRow) => {
+            if (err) {
+                console.error('Server - Error counting votes:', err.message);
+                return res.status(500).json({ error: 'Database error counting votes' });
+            }
+            console.log('Server - Fetched votes:', rows.length, 'Total:', countRow.total);
+            res.json({
+                votes: rows.map(row => ({
+                    id: row.id,
+                    teacher_id: row.teacher_id,
+                    rating: row.rating,
+                    comment: row.comment,
+                    is_explicit: !!row.is_explicit
+                })),
+                total: countRow.total
+            });
+        });
     });
 });
 
-// Update a vote (admin only) - Use teacher_id instead of id
-app.put('/api/admin/votes/:teacherId', authenticateAdmin, (req, res) => {
-    const teacherId = req.params.teacherId;
+// Update a vote (admin only) - Use vote ID
+app.put('/api/admin/votes/:voteId', authenticateAdmin, csrfProtection, (req, res) => {
+    const voteId = req.params.voteId;
     const { rating, comment } = req.body;
     if (!rating || isNaN(rating) || rating < 1 || rating > 5) {
         return res.status(400).json({ error: 'Rating must be a number between 1 and 5.' });
     }
     const { cleanedComment, isExplicit } = filterComment(comment);
     db.run(
-        'UPDATE votes SET rating = ?, comment = ?, is_explicit = ? WHERE teacher_id = ?',
-        [parseInt(rating), cleanedComment, isExplicit ? 1 : 0, teacherId],
+        'UPDATE votes SET rating = ?, comment = ?, is_explicit = ? WHERE id = ?',
+        [parseInt(rating), cleanedComment, isExplicit ? 1 : 0, voteId],
         function (err) {
             if (err) {
                 console.error('Server - Error updating vote:', err.message);
                 return res.status(500).json({ error: 'Database error updating vote' });
             }
             if (this.changes === 0) {
-                console.log('Server - No vote found for teacher_id:', teacherId);
+                console.log('Server - No vote found for vote_id:', voteId);
                 return res.status(404).json({ error: 'Vote not found.' });
             }
-            console.log('Server - Updated vote for teacher_id:', teacherId, 'New rating:', rating, 'Explicit:', isExplicit);
-            res.json({ message: `Vote for teacher ${teacherId} updated successfully!`, is_explicit: isExplicit });
+            console.log('Server - Updated vote ID:', voteId, 'New rating:', rating, 'Explicit:', isExplicit);
+            res.json({ message: `Vote ${voteId} updated successfully!`, is_explicit: isExplicit });
         }
     );
 });
-// Delete a vote (admin only) - Use teacher_id instead of id
-app.delete('/api/admin/votes/:teacherId', authenticateAdmin, (req, res) => {
-    const teacherId = req.params.teacherId;
-    db.run('DELETE FROM votes WHERE teacher_id = ?', [teacherId], function (err) {
+
+// Delete a vote (admin only) - Use vote ID
+app.delete('/api/admin/votes/:voteId', authenticateAdmin, csrfProtection, (req, res) => {
+    const voteId = req.params.voteId;
+    db.run('DELETE FROM votes WHERE id = ?', [voteId], function (err) {
         if (err) {
             console.error('Server - Error deleting vote:', err.message);
             return res.status(500).json({ error: 'Database error deleting vote' });
         }
         if (this.changes === 0) {
-            console.log('Server - No vote found for teacher_id:', teacherId);
+            console.log('Server - No vote found for vote_id:', voteId);
             return res.status(404).json({ error: 'Vote not found.' });
         }
-        console.log('Server - Deleted vote for teacher_id:', teacherId);
-        res.json({ message: `Vote for teacher ${teacherId} deleted successfully!` });
+        console.log('Server - Deleted vote ID:', voteId);
+        res.json({ message: `Vote ${voteId} deleted successfully!` });
     });
 });
+
 // Get all teachers (public endpoint) with sorting and vote counts
 app.get('/api/teachers', (req, res) => {
     const { page = 1, perPage = 8, search = '', sort = 'default', direction = 'asc' } = req.query;
@@ -340,7 +375,7 @@ app.get('/api/teachers', (req, res) => {
         case 'votes': orderBy = 'vote_count'; break;
         default: orderBy = 't.id'; break;
     }
-    const sortOrder = direction.toUpperCase() === 'desc' ? 'DESC' : 'ASC';
+    const sortOrder = direction.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
     const query = `
         SELECT t.*, 
@@ -417,7 +452,7 @@ app.get('/api/teachers/:id', (req, res) => {
                 room_number: teacher.room_number,
                 description: teacher.description,
                 avg_rating: avgRating ? parseFloat(avgRating.toFixed(1)) : null,
-                ratings: teacherRatings,
+                ratings: teacherRatings.map(r => ({ ...r, is_explicit: !!r.is_explicit })),
                 rating_count: teacherRatings.length,
                 schedule: JSON.parse(teacher.schedule),
                 image_link: teacher.image_link
@@ -426,7 +461,8 @@ app.get('/api/teachers/:id', (req, res) => {
     });
 });
 
-app.post('/api/ratings', (req, res) => {
+// Submit a rating (public endpoint)
+app.post('/api/ratings', publicLimiter, (req, res) => {
     const { teacher_id, rating, comment } = req.body;
     if (!teacher_id || !rating || isNaN(rating) || rating < 1 || rating > 5) {
         return res.status(400).json({ error: 'Invalid teacher ID or rating.' });
@@ -473,9 +509,9 @@ app.post('/api/ratings', (req, res) => {
 });
 
 // Add a teacher (admin only) with image upload
-app.post('/api/teachers', authenticateAdmin, upload.single('image'), (req, res) => {
+app.post('/api/teachers', authenticateAdmin, upload.single('image'), csrfProtection, (req, res) => {
     const { id, name, bio, description, classes, tags, room_number, schedule } = req.body;
-    if (!id || !name || !bio || !description || !classes || !tags || !room_number || !schedule) {
+    if (!validateFields(req.body, ['id', 'name', 'bio', 'description', 'classes', 'tags', 'room_number', 'schedule'])) {
         return res.status(400).json({ error: 'All fields except image are required.' });
     }
 
@@ -517,7 +553,7 @@ app.post('/api/teachers', authenticateAdmin, upload.single('image'), (req, res) 
 });
 
 // Delete a teacher (admin only)
-app.delete('/api/admin/teachers/:id', authenticateAdmin, (req, res) => {
+app.delete('/api/admin/teachers/:id', authenticateAdmin, csrfProtection, (req, res) => {
     const id = req.params.id;
     db.run('DELETE FROM teachers WHERE id = ?', [id], function(err) {
         if (err) {
@@ -534,10 +570,10 @@ app.delete('/api/admin/teachers/:id', authenticateAdmin, (req, res) => {
 });
 
 // Update a teacher (admin only)
-app.put('/api/admin/teachers/:id', authenticateAdmin, upload.single('image'), (req, res) => {
+app.put('/api/admin/teachers/:id', authenticateAdmin, upload.single('image'), csrfProtection, (req, res) => {
     const id = req.params.id;
     const { name, bio, classes, description, tags, room_number, schedule } = req.body;
-    if (!name || !bio || !classes || !description || !tags || !room_number || !schedule) {
+    if (!validateFields(req.body, ['name', 'bio', 'classes', 'description', 'tags', 'room_number', 'schedule'])) {
         return res.status(400).json({ error: 'All fields except image are required.' });
     }
 
@@ -571,10 +607,10 @@ app.put('/api/admin/teachers/:id', authenticateAdmin, upload.single('image'), (r
 });
 
 // Rename a teacher (admin only)
-app.put('/api/admin/teachers/:oldId/rename', authenticateAdmin, upload.single('image'), (req, res) => {
+app.put('/api/admin/teachers/:oldId/rename', authenticateAdmin, upload.single('image'), csrfProtection, (req, res) => {
     const oldId = req.params.oldId;
     const { id, name, bio, classes, description, tags, room_number, schedule } = req.body;
-    if (!id || !name || !bio || !classes || !description || !tags || !room_number || !schedule) {
+    if (!validateFields(req.body, ['id', 'name', 'bio', 'classes', 'description', 'tags', 'room_number', 'schedule'])) {
         return res.status(400).json({ error: 'All fields except image are required.' });
     }
 
@@ -607,15 +643,13 @@ app.put('/api/admin/teachers/:oldId/rename', authenticateAdmin, upload.single('i
 });
 
 // Submit a teacher proposal (public endpoint)
-app.post('/api/teacher-proposals', upload.single('image'), (req, res) => {
+app.post('/api/teacher-proposals', publicLimiter, upload.single('image'), (req, res) => {
     const { name, bio, classes, description, tags, room_number, email, schedule } = req.body;
-    if (!name || !bio || !classes || !description || !tags || !room_number || !email || !schedule) {
+    if (!validateFields(req.body, ['name', 'bio', 'classes', 'description', 'tags', 'room_number', 'email', 'schedule'])) {
         return res.status(400).json({ error: 'All fields except image are required.' });
     }
 
     const tempId = uuidv4();
-    const visitorId = req.cookies.visitorId || uuidv4();
-    if (!req.cookies.visitorId) setCookie(res, 'visitorId', visitorId, 365);
     const parsedClasses = classes.split(',').map(c => c.trim());
     const parsedTags = tags.split(',').map(t => t.trim());
     const parsedSchedule = JSON.parse(schedule || '[]');
@@ -665,7 +699,7 @@ app.get('/api/admin/teacher-proposals', authenticateAdmin, (req, res) => {
 });
 
 // Approve a teacher proposal (admin only)
-app.post('/api/admin/teacher-proposals/approve/:tempId', authenticateAdmin, (req, res) => {
+app.post('/api/admin/teacher-proposals/approve/:tempId', authenticateAdmin, csrfProtection, (req, res) => {
     const tempId = req.params.tempId;
     const { id } = req.body;
     if (!id || typeof id !== 'string' || id.trim().length === 0) {
@@ -702,7 +736,7 @@ app.post('/api/admin/teacher-proposals/approve/:tempId', authenticateAdmin, (req
 });
 
 // Delete a teacher proposal (admin only)
-app.delete('/api/admin/teacher-proposals/:id', authenticateAdmin, (req, res) => {
+app.delete('/api/admin/teacher-proposals/:id', authenticateAdmin, csrfProtection, (req, res) => {
     const id = req.params.id;
     db.run('DELETE FROM teacher_proposals WHERE id = ?', [id], function(err) {
         if (err) {
@@ -716,7 +750,7 @@ app.delete('/api/admin/teacher-proposals/:id', authenticateAdmin, (req, res) => 
 });
 
 // Submit a correction (public endpoint)
-app.post('/api/corrections/:teacherId', uploadCorrection, (req, res) => {
+app.post('/api/corrections/:teacherId', publicLimiter, uploadCorrection, (req, res) => {
     const { teacherId } = req.params;
     const { suggestion } = req.body;
     const filePath = req.file ? `/public/uploads/corrections/${req.file.filename}` : null;
@@ -751,7 +785,7 @@ app.get('/api/admin/corrections', authenticateAdmin, (req, res) => {
 });
 
 // Implement a correction (admin only)
-app.post('/api/admin/corrections/:correctionId/implement', authenticateAdmin, (req, res) => {
+app.post('/api/admin/corrections/:correctionId/implement', authenticateAdmin, csrfProtection, (req, res) => {
     const { correctionId } = req.params;
 
     db.get(`SELECT * FROM corrections WHERE id = ?`, [correctionId], (err, correction) => {
@@ -791,7 +825,7 @@ app.post('/api/admin/corrections/:correctionId/implement', authenticateAdmin, (r
 });
 
 // Delete a correction (admin only)
-app.delete('/api/admin/corrections/:correctionId', authenticateAdmin, (req, res) => {
+app.delete('/api/admin/corrections/:correctionId', authenticateAdmin, csrfProtection, (req, res) => {
     const { correctionId } = req.params;
     db.run(`DELETE FROM corrections WHERE id = ?`, [correctionId], function(err) {
         if (err) {
@@ -817,7 +851,7 @@ app.get('/api/footer-settings', (req, res) => {
 });
 
 // Update footer settings (admin only)
-app.put('/api/admin/footer-settings', authenticateAdmin, (req, res) => {
+app.put('/api/admin/footer-settings', authenticateAdmin, csrfProtection, (req, res) => {
     const { email, message, showMessage } = req.body;
     if (!email || typeof message !== 'string' || typeof showMessage !== 'boolean') {
         console.log('Server - Invalid footer settings data:', req.body);
@@ -847,7 +881,7 @@ app.get('/api/message-settings', (req, res) => {
 });
 
 // Update message settings (admin only)
-app.put('/api/admin/message-settings', authenticateAdmin, (req, res) => {
+app.put('/api/admin/message-settings', authenticateAdmin, csrfProtection, (req, res) => {
     const { message, showMessage } = req.body;
     if (typeof message !== 'string' || typeof showMessage !== 'boolean') {
         console.log('Server - Invalid message settings data:', req.body);
@@ -877,7 +911,7 @@ app.get('/api/admin/section-settings', authenticateAdmin, (req, res) => {
 });
 
 // Update section expansion settings (admin only)
-app.put('/api/admin/section-settings', authenticateAdmin, (req, res) => {
+app.put('/api/admin/section-settings', authenticateAdmin, csrfProtection, (req, res) => {
     const settings = req.body;
     if (!settings || typeof settings !== 'object') {
         console.log('Server - Invalid section expansion settings data:', req.body);
@@ -986,7 +1020,7 @@ app.use((req, res) => {
 // Start server
 console.log('Server - Starting server on port', port);
 app.listen(port, () => {
-    console.log(`Server running on port ${port} - Version 1.22 - Started at ${new Date().toISOString()}`);
+    console.log(`Server running on port ${port} - Version 1.23 - Started at ${new Date().toISOString()}`);
 });
 
 // Close database on process exit

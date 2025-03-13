@@ -3,7 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let teachersData = [];
     let currentPage = 1;
+    let csrfToken = null;
 
+    // Helper to show notifications
     function showNotification(message, isError = false) {
         const notification = document.createElement('div');
         notification.className = `notification ${isError ? 'error' : 'success'}`;
@@ -12,23 +14,56 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => notification.remove(), 3000);
     }
 
-    function fetchTeachers(page = 1, search = '', sort = 'default', direction = 'asc', perPage = 8) {
-        fetch(`/api/teachers?page=${page}&perPage=${perPage}&search=${encodeURIComponent(search)}&sort=${sort}&direction=${direction}`)
-            .then(response => {
-                if (!response.ok) throw new Error(`Failed to fetch teachers: ${response.statusText}`);
-                return response.json();
-            })
-            .then(data => {
-                teachersData = data.teachers;
-                renderTeachers();
-                updatePagination(data.total);
-            })
-            .catch(error => {
-                console.error('Client - Error fetching teachers:', error.message);
-                showNotification('Error loading teachers', true);
-            });
+    // Fetch CSRF token
+    async function fetchCsrfToken() {
+        try {
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            if (!response.ok) throw new Error('Failed to fetch CSRF token');
+            const data = await response.json();
+            csrfToken = data.csrfToken;
+            console.log('Client - CSRF token fetched:', csrfToken);
+        } catch (error) {
+            console.error('Client - Error fetching CSRF token:', error.message);
+            showNotification('Error initializing security token', true);
+        }
     }
 
+    // Helper to get fetch parameters
+    function getFetchParams() {
+        const searchBar = document.getElementById('search-bar');
+        const sortSelect = document.getElementById('sort-select');
+        const sortDirection = document.getElementById('sort-direction');
+        const cardsPerPage = document.getElementById('cards-per-page');
+        return {
+            search: searchBar?.value || '',
+            sort: sortSelect?.value || 'default',
+            direction: sortDirection?.value || 'asc',
+            perPage: parseInt(cardsPerPage?.value) || 8
+        };
+    }
+
+    // Fetch teachers with pagination, search, and sorting
+    async function fetchTeachers(page = 1) {
+        const { search, sort, direction, perPage } = getFetchParams();
+        try {
+            const response = await fetch(`/api/teachers?page=${page}&perPage=${perPage}&search=${encodeURIComponent(search)}&sort=${sort}&direction=${direction}`, {
+                credentials: 'include' // Include cookies
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Failed to fetch teachers: ${response.statusText}`);
+            }
+            const data = await response.json();
+            teachersData = data.teachers;
+            renderTeachers();
+            updatePagination(data.total);
+        } catch (error) {
+            console.error('Client - Error fetching teachers:', error.message);
+            showNotification(`Error loading teachers: ${error.message}`, true);
+        }
+    }
+
+    // Render teacher cards
     function renderTeachers() {
         const grid = document.getElementById('teacher-grid');
         if (!grid) {
@@ -60,8 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Update pagination controls
     function updatePagination(total) {
-        const perPage = parseInt(document.getElementById('cards-per-page')?.value) || 8;
+        const { perPage } = getFetchParams();
         const pagination = document.getElementById('pagination');
         if (!pagination) {
             console.error('Client - Pagination element not found');
@@ -78,22 +114,35 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         const prevPage = document.getElementById('prev-page');
         const nextPage = document.getElementById('next-page');
-        if (prevPage) prevPage.addEventListener('click', () => { 
-            currentPage--; 
-            fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); 
-        });
-        if (nextPage) nextPage.addEventListener('click', () => { 
-            currentPage++; 
-            fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); 
-        });
+        if (prevPage) prevPage.addEventListener('click', () => { currentPage--; fetchTeachers(currentPage); });
+        if (nextPage) nextPage.addEventListener('click', () => { currentPage++; fetchTeachers(currentPage); });
         document.querySelectorAll('.pagination-btn[data-page]').forEach(btn => {
             btn.addEventListener('click', () => { 
                 currentPage = parseInt(btn.dataset.page); 
-                fetchTeachers(currentPage, document.getElementById('search-bar')?.value || '', document.getElementById('sort-select')?.value || 'default', document.getElementById('sort-direction')?.value || 'asc', perPage); 
+                fetchTeachers(currentPage); 
             });
         });
     }
 
+    // Verify admin status with JWT
+    async function checkAdminStatus() {
+        try {
+            const response = await fetch('/api/admin/verify', { credentials: 'include' });
+            if (response.ok) {
+                adminBtn.textContent = 'Admin Dashboard';
+                adminBtn.onclick = () => window.location.href = '/pages/admin/dashboard.html';
+            } else {
+                adminBtn.textContent = 'Admin Login';
+                adminBtn.onclick = () => window.location.href = '/pages/admin/login.html';
+            }
+        } catch (error) {
+            console.error('Client - Error verifying admin status:', error.message);
+            adminBtn.textContent = 'Admin Login';
+            adminBtn.onclick = () => window.location.href = '/pages/admin/login.html';
+        }
+    }
+
+    // DOM elements
     const searchBar = document.getElementById('search-bar');
     const sortSelect = document.getElementById('sort-select');
     const sortDirection = document.getElementById('sort-direction');
@@ -102,32 +151,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminBtn = document.getElementById('admin-btn');
     const submitTeacherBtn = document.querySelector('.submit-teacher-btn');
 
-    if (searchBar) searchBar.addEventListener('input', (e) => fetchTeachers(1, e.target.value, sortSelect?.value || 'default', sortDirection?.value || 'asc', cardsPerPage?.value || 8));
+    // Event listeners
+    if (searchBar) searchBar.addEventListener('input', () => fetchTeachers(1));
     else console.warn('Client - Search bar not found');
 
-    if (sortSelect) sortSelect.addEventListener('change', (e) => fetchTeachers(1, searchBar?.value || '', e.target.value, sortDirection?.value || 'asc', cardsPerPage?.value || 8));
+    if (sortSelect) sortSelect.addEventListener('change', () => fetchTeachers(1));
     else console.warn('Client - Sort select not found');
 
-    if (sortDirection) sortDirection.addEventListener('change', (e) => fetchTeachers(1, searchBar?.value || '', sortSelect?.value || 'default', e.target.value, cardsPerPage?.value || 8));
+    if (sortDirection) sortDirection.addEventListener('change', () => fetchTeachers(1));
     else console.warn('Client - Sort direction not found');
 
-    if (cardsPerPage) cardsPerPage.addEventListener('change', (e) => fetchTeachers(1, searchBar?.value || '', sortSelect?.value || 'default', sortDirection?.value || 'asc', e.target.value));
+    if (cardsPerPage) cardsPerPage.addEventListener('change', () => fetchTeachers(1));
     else console.warn('Client - Cards per page not found');
 
     if (logo) logo.addEventListener('click', () => window.location.href = '/');
     else console.warn('Client - Logo not found');
 
-    if (adminBtn) {
-        const cookies = document.cookie.split(';').map(cookie => cookie.trim().split('='));
-        const adminToken = cookies.find(cookie => cookie[0] === 'adminToken')?.[1];
-        adminBtn.textContent = adminToken === 'admin-token' ? 'Admin Dashboard' : 'Admin Login';
-        adminBtn.addEventListener('click', () => window.location.href = adminToken === 'admin-token' ? '/pages/admin/dashboard.html' : '/pages/admin/login.html');
-    } else console.warn('Client - Admin button not found');
+    if (adminBtn) checkAdminStatus();
+    else console.warn('Client - Admin button not found');
 
     if (submitTeacherBtn) submitTeacherBtn.addEventListener('click', () => window.location.href = '/pages/teacher/submit-teacher.html');
     else console.warn('Client - Submit teacher button not found');
 
-    fetch('/api/footer-settings')
+    // Fetch footer settings
+    fetch('/api/footer-settings', { credentials: 'include' })
         .then(response => response.json())
         .then(data => {
             const footerEmail = document.getElementById('footer-email');
@@ -140,7 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => console.error('Client - Error fetching footer settings:', error.message));
 
-    fetch('/api/message-settings')
+    // Fetch message settings
+    fetch('/api/message-settings', { credentials: 'include' })
         .then(response => {
             if (!response.ok) throw new Error('Failed to fetch message settings');
             return response.json();
@@ -153,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 messageText.textContent = data.message;
                 if (data.showMessage) {
                     messageDiv.style.display = 'block';
-                    messageDiv.classList.add('active'); // Ensure visibility with CSS
+                    messageDiv.classList.add('active');
                 } else {
                     messageDiv.style.display = 'none';
                     messageDiv.classList.remove('active');
@@ -174,5 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => console.error('Client - Error fetching message settings:', error.message));
 
-    fetchTeachers(1, '', 'default', 'asc', cardsPerPage?.value || 8);
+    // Initial fetch
+    fetchCsrfToken().then(() => fetchTeachers(1));
 });

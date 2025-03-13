@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content=""> <!-- Store CSRF token here -->
     <title>Rate Your Teacher</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
@@ -15,6 +16,7 @@
             <div class="header-buttons">
                 <button class="submit-teacher-btn">Submit a Teacher</button>
                 <button id="admin-btn" class="admin-btn">Admin Login</button>
+                <span id="admin-status" style="display: none; margin-left: 10px;"></span>
             </div>
         </div>
     </header>
@@ -53,12 +55,13 @@
         </div>
     </main>
     <footer class="site-footer">
-        <p id="footer-email"><a href="/cdn-cgi/l/email-protection#5a292f2a2a35282e1a283b2e3f23352f282e3f3b39323f2874393537"><span class="__cf_email__" data-cfemail="75464045455a474175475441504c5a4047415054565d50471b565a58">[email&#160;protected]</span></a></p>
+        <p id="footer-email"><a href="/cdn-cgi/l/email-protection#5a292f2a2a35282e1a283b2e3f23352f282e3f3b39323f2874393537"><span class="__cf_email__" data-cfemail="35464045455a474175475441504c5a4047415054565d50471b565a58">[email protected]</span></a></p>
         <p id="footer-message">Welcome to Rate Your Teachers!</p>
     </footer>
     <div id="notification" class="notification"></div>
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
-    <script src="/pages/home/index.js"></script>
-    <script src="/message.js"></script> <!-- Added for main message handling -->
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ee2e0dfee7b432',t:'MTc0MTcyODkwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+    <script src="/pages/home/index.js"></script> <!-- Main script, loads first -->
+    <script src="/message.js"></script> <!-- Message handling, depends on index.js -->
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ee2e0dfee7b432',t:'MTc0MTcyODkwOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+</body>
 </html>
