@@ -4,374 +4,696 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="">
-    <title>Admin Dashboard - Rate Your Teachers</title>
+    <title>Admin Dashboard - Teacher Tally</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Header and Navigation */
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: #2c3e50;
+        }
+        .mobile-menu-toggle {
+            font-size: 24px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: none;
+        }
+        .header-buttons.desktop-only {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .tab-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px 20px;
+            background-color: #333;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .tab-btn:hover { background: #555; }
+        .tab-btn.active { background: #007bff; }
+        @media (max-width: 768px) {
+            .mobile-menu-toggle { display: block; }
+            .header-buttons.desktop-only { display: none; }
+            .tab-nav {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 60px;
+                left: 0;
+                width: 100%;
+                background-color: #333;
+                z-index: 1000;
+            }
+            .tab-nav.active { display: flex; }
+            .tab-btn { width: 100%; text-align: left; }
+        }
+
+        /* Main Content */
+        .centered-container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .tab-content {
+            padding: 15px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: none;
+        }
+        .tab-content.active { display: block; }
+        .admin-section { margin-bottom: 20px; }
+        .section-toggle {
+            cursor: pointer;
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 0;
+            font-size: 16px;
+        }
+        .section-toggle:hover { background: #e0e0e0; }
+        .section-content { padding: 15px; display: none; }
+        .section-toggle.expanded + .section-content { display: block; }
+
+        /* Uniform Tables */
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .admin-table th, .admin-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .admin-table th {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: bold;
+        }
+        .admin-table tr:hover { background-color: #f5f5f5; }
+        .table-wrapper { overflow-x: auto; }
+
+        /* Teacher Details */
+        .teacher-details { display: none; }
+        .teacher-details-content {
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .teacher-details-content label {
+            display: block;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .edit-status { margin-left: 10px; font-size: 0.9em; }
+        .success-message { color: green; }
+        .error-message { color: red; }
+        .info-message { color: blue; margin-top: 10px; }
+
+        /* Uniform Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .search-input {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .sort-options { display: flex; gap: 10px; }
+        .sort-select {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* Pagination */
+        .pagination {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Uniform Forms */
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+
+        /* Uniform Buttons */
+        .submit-btn, .delete-btn, .approve-btn, .edit-btn, .pagination-btn, .modal-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            margin: 0 5px;
+            transition: background-color 0.3s ease;
+        }
+        .submit-btn { background-color: #007bff; }
+        .submit-btn:hover { background-color: #0056b3; }
+        .delete-btn { background-color: #dc3545; }
+        .delete-btn:hover { background-color: #c82333; }
+        .approve-btn { background-color: #28a745; }
+        .approve-btn:hover { background-color: #218838; }
+        .edit-btn { background-color: #ffc107; color: #212529; }
+        .edit-btn:hover { background-color: #e0a800; }
+        .pagination-btn { background-color: #6c757d; }
+        .pagination-btn:hover:not(:disabled) { background-color: #5a6268; }
+        .pagination-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        .modal-btn { background-color: #007bff; }
+        .modal-btn:hover { background-color: #0056b3; }
+
+        /* Toggle Switch */
+        .toggle-group { display: flex; align-items: center; gap: 10px; }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #007bff; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        /* Charts */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        /* Footer */
+        .site-footer {
+            background: #2c3e50;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+        .site-footer a { color: #3498db; }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            z-index: 1002;
+            display: none;
+            transition: opacity 0.3s ease;
+        }
+        .notification.success { background: #28a745; }
+        .notification.error { background: #dc3545; }
+    </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="header-content">
-            <img src="/public/images/logo.png" alt="Rate Your Teachers Logo" class="logo" onclick="window.location.href='/'">
-            <h1 class="header-title">Admin Dashboard</h1>
-            <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">☰</button>
-            <div class="header-buttons desktop-only">
-                <button class="submit-teacher-btn" onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
-                <button class="admin-btn" onclick="logout()">Logout</button>
-                <span id="admin-status" style="display: none; margin-left: 10px;"></span>
-            </div>
-            <nav id="tab-nav" class="tab-nav">
-                <button class="tab-btn active" data-tab="teachers">Teachers</button>
-                <button class="tab-btn" data-tab="votes">Votes</button>
-                <button class="tab-btn" data-tab="proposals">Proposals</button>
-                <button class="tab-btn" data-tab="corrections">Corrections</button>
-                <button class="tab-btn" data-tab="settings">Settings</button>
-                <button class="tab-btn" data-tab="stats">Statistics</button>
-            </nav>
+<header class="site-header">
+    <div class="header-content">
+        <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" onclick="window.location.href='/'">
+        <h1 class="header-title"><a href="/" style="color: white; text-decoration: none;">Admin Dashboard</a></h1>
+        <button class="mobile-menu-toggle" aria-label="Toggle navigation menu">☰</button>
+        <div class="header-buttons desktop-only">
+            <button class="submit-btn" onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
+            <button class="submit-btn" onclick="window.logout()">Logout</button>
+            <span id="admin-status" style="display: none; margin-left: 10px;"></span>
         </div>
-    </header>
+    </div>
+    <nav id="tab-nav" class="tab-nav">
+        <button class="tab-btn active" data-tab="teachers">Teachers</button>
+        <button class="tab-btn" data-tab="add-teacher">Add New Teacher</button>
+        <button class="tab-btn" data-tab="votes">Votes</button>
+        <button class="tab-btn" data-tab="proposals">Proposals</button>
+        <button class="tab-btn" data-tab="corrections">Corrections</button>
+        <button class="tab-btn" data-tab="suggestions">Suggestions</button>
+        <button class="tab-btn" data-tab="admin-requests">Admin Requests</button>
+        <button class="tab-btn" data-tab="stats">Statistics</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
+    </nav>
+</header>
 
-    <main class="centered-container admin-dashboard">
-        <div class="content-container">
-            <div id="teachers-tab" class="tab-content active">
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="add-teacher">Add New Teacher</h2>
-                    <div class="section-content" style="display: none;">
-                        <form id="teacher-form" class="edit-form" enctype="multipart/form-data">
-                            <input type="hidden" name="_csrf" id="teacher-csrf-token">
-                            <div class="form-group">
-                                <label for="id">Teacher ID:</label>
-                                <input type="text" id="id" name="id" required placeholder="e.g., T001" aria-describedby="id-tooltip">
-                                <span id="id-tooltip" class="tooltip">Unique teacher identifier</span>
-                            </div>
-                            <div class="form-group">
-                                <label for="name">Name:</label>
-                                <input type="text" id="name" name="name" required placeholder="e.g., John Doe" aria-describedby="name-tooltip">
-                                <span id="name-tooltip" class="tooltip">Full name of the teacher</span>
-                            </div>
-                            <div class="form-group">
-                                <label for="bio">Bio:</label>
-                                <textarea id="bio" name="bio" required placeholder="Short biography" aria-describedby="bio-tooltip" rows="4"></textarea>
-                                <span id="bio-tooltip" class="tooltip">Brief background about the teacher</span>
-                            </div>
-                            <div class="form-group">
-                                <label for="description">Description:</label>
-                                <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher" aria-describedby="desc-tooltip">
-                                <span id="desc-tooltip" class="tooltip">Brief description (e.g., role or subject)</span>
-                            </div>
-                            <div class="form-group">
-                                <label for="classes">Classes:</label>
-                                <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus" aria-describedby="classes-tooltip">
-                                <span id="classes-tooltip" class="tooltip">Comma-separated list of classes</span>
-                            </div>
-                            <div class="form-group">
-                                <label for="tags">Tags:</label>
-                                <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem" aria-describedby="tags-tooltip">
-                                <span id="tags-tooltip" class="tooltip">Comma-separated list of tags</span>
-                            </div>
-                            <div class="form-group">
-                                <label for="room_number">Room Number:</label>
-                                <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101" aria-describedby="room-tooltip">
-                                <span id="room-tooltip" class="tooltip">Classroom identifier</span>
-                            </div>
-                            <div class="schedule-edit">
-                                <label>Schedule:</label>
-                                <div class="schedule-block">
-                                    <label>Block 1:</label>
-                                    <input type="text" name="schedule[0][subject]" placeholder="Subject" aria-label="Block 1 Subject">
-                                    <input type="text" name="schedule[0][grade]" placeholder="Grade" aria-label="Block 1 Grade">
-                                </div>
-                                <div class="schedule-block">
-                                    <label>Block 2:</label>
-                                    <input type="text" name="schedule[1][subject]" placeholder="Subject" aria-label="Block 2 Subject">
-                                    <input type="text" name="schedule[1][grade]" placeholder="Grade" aria-label="Block 2 Grade">
-                                </div>
-                                <div class="schedule-block">
-                                    <label>Block 3:</label>
-                                    <input type="text" name="schedule[2][subject]" placeholder="Subject" aria-label="Block 3 Subject">
-                                    <input type="text" name="schedule[2][grade]" placeholder="Grade" aria-label="Block 3 Grade">
-                                </div>
-                                <div class="schedule-block">
-                                    <label>Block 4:</label>
-                                    <input type="text" name="schedule[3][subject]" placeholder="Subject" aria-label="Block 4 Subject">
-                                    <input type="text" name="schedule[3][grade]" placeholder="Grade" aria-label="Block 4 Grade">
-                                </div>
-                                <span class="tooltip">Enter subject and grade for each block</span>
-                            </div>
-                            <div class="form-group">
-                                <label for="image">Teacher Image:</label>
-                                <input type="file" id="image" name="image" accept="image/jpeg, image/png" aria-describedby="image-tooltip">
-                                <span id="image-tooltip" class="tooltip">Upload a JPEG or PNG image (optional)</span>
-                            </div>
-                            <button type="submit" class="submit-btn">Add Teacher</button>
-                        </form>
-                        <p id="teachers-message" class="info-message"></p>
-                    </div>
-                </div>
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="manage-teachers">Manage Teachers</h2>
-                    <div class="section-content" style="display: none;">
-                        <div class="controls">
-                            <input type="text" id="teacher-search" class="search-input" placeholder="Search by ID or Name" aria-label="Search teachers">
-                            <div class="sort-options">
-                                <select id="teachers-per-page" class="sort-select" aria-label="Teachers per page">
-                                    <option value="5">5 per page</option>
-                                    <option value="10" selected>10 per page</option>
-                                    <option value="20">20 per page</option>
-                                </select>
-                                <select id="teacher-sort" class="sort-select" aria-label="Sort teachers by">
-                                    <option value="id">Sort by ID</option>
-                                    <option value="name">Sort by Name</option>
-                                    <option value="description">Sort by Description</option>
-                                </select>
-                                <select id="teacher-sort-direction" class="sort-select" aria-label="Sort direction">
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="table-wrapper">
-                            <div id="teachers-table"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="votes-tab" class="tab-content" style="display: none;">
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="manage-votes">Manage Votes</h2>
-                    <div class="section-content" style="display: none;">
-                        <div class="controls">
-                            <input type="text" id="vote-search" class="search-input" placeholder="Search by Teacher ID" aria-label="Search votes">
-                            <div class="sort-options">
-                                <select id="votes-per-page" class="sort-select" aria-label="Votes per page">
-                                    <option value="5">5 per page</option>
-                                    <option value="10" selected>10 per page</option>
-                                    <option value="20">20 per page</option>
-                                </select>
-                                <select id="vote-sort" class="sort-select" aria-label="Sort votes by">
-                                    <option value="teacher_id">Sort by Teacher ID</option>
-                                    <option value="rating">Sort by Rating</option>
-                                </select>
-                                <select id="vote-sort-direction" class="sort-select" aria-label="Sort direction">
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="table-wrapper">
-                            <div id="votes-table"></div>
-                        </div>
-                        <p id="votes-message" class="info-message"></p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="proposals-tab" class="tab-content" style="display: none;">
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="teacher-proposals">Teacher Proposals</h2>
-                    <div class="section-content" style="display: none;">
-                        <div class="table-wrapper">
-                            <div id="proposals-table"></div>
-                        </div>
-                        <p id="proposal-message" class="info-message"></p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="corrections-tab" class="tab-content" style="display: none;">
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="corrections">Corrections</h2>
-                    <div class="section-content" style="display: none;">
-                        <div class="table-wrapper">
-                            <div id="corrections-table"></div>
-                        </div>
-                        <p id="corrections-message" class="info-message"></p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="settings-tab" class="tab-content" style="display: none;">
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="main-message">Main Message Settings</h2>
-                    <div class="section-content" style="display: none;">
-                        <form id="message-settings-form" class="edit-form">
-                            <input type="hidden" name="_csrf" id="message-csrf-token">
-                            <div class="form-group">
-                                <label for="main-message">Main Message:</label>
-                                <input type="text" id="main-message" name="message" placeholder="Enter main message" aria-label="Main message">
-                            </div>
-                            <div class="form-group toggle-group">
-                                <label>Show Message:</label>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="show-main-message" name="showMessage" aria-label="Toggle main message visibility">
-                                    <span class="slider"></span>
-                                </label>
-                                <span class="toggle-status">Off</span>
-                            </div>
-                            <button type="submit" class="submit-btn">Save</button>
-                        </form>
-                        <p id="message-status" class="info-message"></p>
-                    </div>
-                </div>
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="footer-settings">Footer Settings</h2>
-                    <div class="section-content" style="display: none;">
-                        <form id="footer-settings-form" class="edit-form">
-                            <input type="hidden" name="_csrf" id="footer-csrf-token">
-                            <div class="form-group">
-                                <label for="footer-email-input">Email:</label>
-                                <input type="email" id="footer-email-input" name="email" placeholder="Enter email" aria-label="Footer email">
-                            </div>
-                            <div class="form-group">
-                                <label for="footer-message-input">Message:</label>
-                                <input type="text" id="footer-message-input" name="message" placeholder="Enter footer message" aria-label="Footer message">
-                            </div>
-                            <div class="form-group toggle-group">
-                                <label>Show Message:</label>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="footer-show-message" name="showMessage" aria-label="Toggle footer message visibility">
-                                    <span class="slider"></span>
-                                </label>
-                                <span class="toggle-status">Off</span>
-                            </div>
-                            <button type="submit" class="submit-btn">Save</button>
-                        </form>
-                        <p id="footer-message-status" class="info-message"></p>
-                    </div>
-                </div>
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="section-expansion">Section Expansion Settings</h2>
-                    <div class="section-content" style="display: none;">
-                        <div id="section-settings-container"></div>
-                        <button id="save-section-settings" class="submit-btn">Save Section Settings</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="stats-tab" class="tab-content" style="display: none;">
-                <div class="admin-section">
-                    <h2 class="section-toggle" data-section="statistics">Statistics</h2>
-                    <div class="section-content" style="display: none;">
-                        <div class="controls">
-                            <select id="stats-timeframe" class="sort-select" aria-label="Select statistics timeframe">
-                                <option value="1hour">Last 1 Hour</option>
-                                <option value="6hours">Last 6 Hours</option>
-                                <option value="1day" selected>Last 1 Day</option>
-                                <option value="7days">Last 7 Days</option>
-                                <option value="1month">Last 1 Month</option>
+<main class="centered-container admin-dashboard">
+    <div class="content-container">
+        <!-- Teachers Tab (Manage Teachers) -->
+        <div id="teachers" class="tab-content active">
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Manage Teachers">Manage Teachers</h2>
+                <div class="section-content">
+                    <div class="controls">
+                        <input type="text" id="teacher-search" class="search-input" placeholder="Search by ID or Name" aria-label="Search teachers">
+                        <div class="sort-options">
+                            <select id="teachers-per-page" class="sort-select" aria-label="Teachers per page">
+                                <option value="5">5 per page</option>
+                                <option value="10" selected>10 per page</option>
+                                <option value="20">20 per page</option>
+                            </select>
+                            <select id="teacher-sort" class="sort-select" aria-label="Sort teachers by">
+                                <option value="id">Sort by ID</option>
+                                <option value="name">Sort by Name</option>
+                                <option value="tags">Sort by Tags</option>
+                                <option value="email">Sort by Email</option>
+                            </select>
+                            <select id="teacher-sort-direction" class="sort-select" aria-label="Sort direction">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
                             </select>
                         </div>
-                        <div id="stats-charts" class="chart-grid">
-                            <div class="chart-container">
-                                <h3>Visits Over Time</h3>
-                                <canvas id="visits-chart" style="max-height: 300px;"></canvas>
-                            </div>
-                            <div class="chart-container">
-                                <h3>Vote Distribution</h3>
-                                <canvas id="votes-chart" style="max-height: 300px;"></canvas>
-                            </div>
-                            <div class="chart-container">
-                                <h3>Proposal Status</h3>
-                                <canvas id="proposals-chart" style="max-height: 300px;"></canvas>
-                            </div>
-                            <div class="chart-container">
-                                <h3>Top Teachers by Votes</h3>
-                                <canvas id="top-teachers-chart" style="max-height: 300px;"></canvas>
-                            </div>
-                        </div>
-                        <p id="stats-message" class="info-message"></p>
                     </div>
+                    <div class="table-wrapper">
+                        <div id="teachers-table">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Description</th>
+                                        <th>Schedule</th>
+                                        <th>Bio</th>
+                                        <th>Tags</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="9">Loading teachers...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p id="teachers-message" class="info-message"></p>
                 </div>
             </div>
         </div>
-    </main>
 
-    <footer class="site-footer">
-        <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
-        <p id="footer-message">Welcome to Rate Your Teachers!</p>
-    </footer>
+        <!-- Add New Teacher Tab -->
+<!-- Add New Teacher Tab -->
+<div id="add-teacher" class="tab-content">
+    <div class="content-container">
+        <h2>Submit a New Teacher Proposal</h2>
+        <p>Please fill out the form below to propose a new teacher. All fields are required unless marked optional.</p>
+        <form id="teacher-submit-form" class="edit-form" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf" id="csrf-token">
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required placeholder="e.g., John Doe" aria-describedby="name-tooltip">
+                <span id="name-tooltip" class="tooltip">Full name of the teacher</span>
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required placeholder="e.g., john.doe@example.com" aria-describedby="email-tooltip">
+                <span id="email-tooltip" class="tooltip">Contact email for the teacher</span>
+            </div>
+            <div class="form-group">
+                <label for="bio">Bio:</label>
+                <textarea id="bio" name="bio" required placeholder="Short biography" aria-describedby="bio-tooltip" rows="4"></textarea>
+                <span id="bio-tooltip" class="tooltip">Brief background about the teacher</span>
+            </div>
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher" aria-describedby="desc-tooltip">
+                <span id="desc-tooltip" class="tooltip">Brief description (e.g., role or subject)</span>
+            </div>
+            <div class="form-group">
+                <label for="classes">Classes:</label>
+                <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus" aria-describedby="classes-tooltip">
+                <span id="classes-tooltip" class="tooltip">Comma-separated list of classes</span>
+            </div>
+            <div class="form-group">
+                <label for="tags">Tags:</label>
+                <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem" aria-describedby="tags-tooltip">
+                <span id="tags-tooltip" class="tooltip">Comma-separated list of tags</span>
+            </div>
+            <div class="form-group">
+                <label for="room_number">Room Number:</label>
+                <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101" aria-describedby="room-tooltip">
+                <span id="room-tooltip" class="tooltip">Classroom identifier</span>
+            </div>
+            <div class="form-group">
+                <label for="image">Teacher Image (Optional):</label>
+                <input type="file" id="image" name="image" accept="image/*" aria-describedby="image-tooltip">
+                <span id="image-tooltip" class="tooltip">Upload a profile image (e.g., JPG, PNG)</span>
+            </div>
+            <div class="schedule-edit">
+                <label>Schedule:</label>
+                <div class="schedule-block" style="margin-bottom: 10px;">
+                    <label>Block 1:</label>
+                    <input type="text" name="schedule[0][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 1 Subject">
+                    <input type="text" name="schedule[0][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 1 Grade">
+                </div>
+                <div class="schedule-block" style="margin-bottom: 10px;">
+                    <label>Block 2:</label>
+                    <input type="text" name="schedule[1][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 2 Subject">
+                    <input type="text" name="schedule[1][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 2 Grade">
+                </div>
+                <div class="schedule-block" style="margin-bottom: 10px;">
+                    <label>Block 3:</label>
+                    <input type="text" name="schedule[2][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 3 Subject">
+                    <input type="text" name="schedule[2][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 3 Grade">
+                </div>
+                <div class="schedule-block" style="margin-bottom: 10px;">
+                    <label>Block 4:</label>
+                    <input type="text" name="schedule[3][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 4 Subject">
+                    <input type="text" name="schedule[3][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 4 Grade">
+                </div>
+            </div>
+            <button type="submit" class="submit-btn">Add Teacher</button>
+        </form>
+        <p id="add-teacher-message" class="info-message"></p>
+    </div>
+</div>
 
-    <div id="notification" class="notification" style="display: none;"></div>
+        <!-- Votes Tab -->
+        <div id="votes" class="tab-content">
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Manage Votes">Manage Votes</h2>
+                <div class="section-content">
+                    <div class="controls">
+                        <input type="text" id="vote-search" class="search-input" placeholder="Search by Teacher ID" aria-label="Search votes">
+                        <div class="sort-options">
+                            <select id="votes-per-page" class="sort-select" aria-label="Votes per page">
+                                <option value="5">5 per page</option>
+                                <option value="10" selected>10 per page</option>
+                                <option value="20">20 per page</option>
+                            </select>
+                            <select id="vote-sort" class="sort-select" aria-label="Sort votes by">
+                                <option value="id">Sort by Vote ID</option>
+                                <option value="teacher_id">Sort by Teacher ID</option>
+                                <option value="rating">Sort by Rating</option>
+                            </select>
+                            <select id="vote-sort-direction" class="sort-select" aria-label="Sort direction">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <div id="votes-table">
+                            <table class="admin-table">
+                                <thead><tr><th>Vote ID</th><th>Teacher ID</th><th>Rating</th><th>Comment</th><th>Explicit</th><th>Actions</th></tr></thead>
+                                <tbody><tr><td colspan="6">Loading votes...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p id="votes-message" class="info-message"></p>
+                </div>
+            </div>
+        </div>
 
-    <script src="/pages/admin/dashboard.js" defer></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
-            const tabNav = document.getElementById('tab-nav');
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            const sectionToggles = document.querySelectorAll('.section-toggle');
-            const toggleSwitches = document.querySelectorAll('.toggle-switch input');
+        <!-- Proposals Tab -->
+        <div id="proposals" class="tab-content">
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Teacher Proposals">Teacher Proposals</h2>
+                <div class="section-content">
+                    <div class="table-wrapper">
+                        <div id="proposals-table">
+                            <table class="admin-table">
+                                <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Description</th><th>Actions</th></tr></thead>
+                                <tbody><tr><td colspan="5">Loading proposals...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p id="proposal-message" class="info-message"></p>
+                </div>
+            </div>
+        </div>
 
-            // Mobile menu toggle
-            mobileMenuToggle.addEventListener('click', () => {
-                tabNav.classList.toggle('active');
-            });
+        <!-- Corrections Tab -->
+        <div id="corrections" class="tab-content">
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Corrections">Corrections</h2>
+                <div class="section-content">
+                    <div class="table-wrapper">
+                        <div id="corrections-table">
+                            <table class="admin-table">
+                                <thead><tr><th>ID</th><th>Teacher</th><th>Suggestion</th><th>Submitted</th><th>Actions</th></tr></thead>
+                                <tbody><tr><td colspan="5">Loading corrections...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p id="corrections-message" class="info-message"></p>
+                </div>
+            </div>
+        </div>
 
-            // Tab navigation
-            tabButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    tabButtons.forEach(b => b.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
-                    btn.classList.add('active');
-                    const tabContent = document.getElementById(`${btn.dataset.tab}-tab`);
-                    if (tabContent) tabContent.style.display = 'block';
-                    if (window.innerWidth <= 768) tabNav.classList.remove('active');
-                });
-            });
+        <!-- Suggestions Tab -->
+        <div id="suggestions" class="tab-content">
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Suggestions">Suggestions</h2>
+                <div class="section-content">
+                    <div class="controls">
+                        <input type="text" id="suggestion-search" class="search-input" placeholder="Search by Email or Suggestion" aria-label="Search suggestions">
+                        <div class="sort-options">
+                            <select id="suggestions-per-page" class="sort-select" aria-label="Suggestions per page">
+                                <option value="5">5 per page</option>
+                                <option value="10" selected>10 per page</option>
+                                <option value="20">20 per page</option>
+                            </select>
+                            <select id="suggestion-sort" class="sort-select" aria-label="Sort suggestions by">
+                                <option value="id">Sort by ID</option>
+                                <option value="email">Sort by Email</option>
+                            </select>
+                            <select id="suggestion-sort-direction" class="sort-select" aria-label="Sort direction">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <div id="suggestions-table">
+                            <table class="admin-table">
+                                <thead><tr><th>Email</th><th>Suggestion</th><th>Timestamp</th><th>Actions</th></tr></thead>
+                                <tbody><tr><td colspan="4">Loading suggestions...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p id="suggestions-message" class="info-message"></p>
+                </div>
+            </div>
+        </div>
 
-            // Section toggles
-            sectionToggles.forEach(toggle => {
-                toggle.addEventListener('click', () => {
-                    const sectionContent = toggle.nextElementSibling;
-                    toggle.classList.toggle('expanded');
-                    sectionContent.style.display = sectionContent.style.display === 'block' ? 'none' : 'block';
-                });
-            });
+        <!-- Admin Requests Tab -->
+        <div id="admin-requests" class="tab-content">
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Admin Access Requests">Admin Access Requests</h2>
+                <div class="section-content">
+                    <div class="controls">
+                        <input type="text" id="request-search" class="search-input" placeholder="Search by Name or Email" aria-label="Search admin requests">
+                        <div class="sort-options">
+                            <select id="requests-per-page" class="sort-select" aria-label="Requests per page">
+                                <option value="5">5 per page</option>
+                                <option value="10" selected>10 per page</option>
+                                <option value="20">20 per page</option>
+                            </select>
+                            <select id="request-sort" class="sort-select" aria-label="Sort requests by">
+                                <option value="id">Sort by ID</option>
+                                <option value="email">Sort by Email</option>
+                            </select>
+                            <select id="request-sort-direction" class="sort-select" aria-label="Sort direction">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <div id="admin-requests-table">
+                            <table class="admin-table">
+                                <thead><tr><th>Name</th><th>Email</th><th>Reason</th><th>Timestamp</th><th>Actions</th></tr></thead>
+                                <tbody><tr><td colspan="5">Loading admin requests...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p id="admin-requests-message" class="info-message"></p>
+                </div>
+            </div>
+        </div>
 
-            // Toggle switch status update
-            toggleSwitches.forEach(switchInput => {
-                const status = switchInput.closest('.toggle-group').querySelector('.toggle-status');
-                switchInput.addEventListener('change', () => {
-                    status.textContent = switchInput.checked ? 'On' : 'Off';
-                });
-                // Set initial state
-                status.textContent = switchInput.checked ? 'On' : 'Off';
-            });
+        <!-- Statistics Tab -->
+        <div id="stats" class="tab-content">
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Statistics">Statistics</h2>
+                <div class="section-content">
+                    <div class="controls">
+                        <select id="stats-timeframe" class="sort-select" aria-label="Select statistics timeframe">
+                            <option value="1hour">Last 1 Hour</option>
+                            <option value="6hours">Last 6 Hours</option>
+                            <option value="1day" selected>Last 1 Day</option>
+                            <option value="7days">Last 7 Days</option>
+                            <option value="1month">Last 1 Month</option>
+                        </select>
+                    </div>
+                    <div id="stats-charts" class="chart-grid"></div>
+                    <p id="stats-message" class="info-message"></p>
+                </div>
+            </div>
+        </div>
 
-            // Placeholder logout function
-            window.logout = () => {
-                const notification = document.getElementById('notification');
-                notification.textContent = 'Logged out (placeholder)';
-                notification.className = 'notification success';
-                notification.style.display = 'block';
-                setTimeout(() => notification.style.display = 'none', 3000);
-            };
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Main Message Settings">Main Message Settings</h2>
+                <div class="section-content">
+                    <form id="message-settings-form" class="edit-form">
+                        <input type="hidden" name="_csrf" id="message-csrf-token">
+                        <div class="form-group">
+                            <label for="main-message">Main Message:</label>
+                            <input type="text" id="main-message" name="message" placeholder="Enter main message" aria-label="Main message">
+                        </div>
+                        <div class="form-group toggle-group">
+                            <label>Show Message:</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="show-main-message" name="showMessage" aria-label="Toggle main message visibility">
+                                <span class="slider"></span>
+                            </label>
+                            <span class="toggle-status">Off</span>
+                        </div>
+                        <button type="submit" class="submit-btn">Save</button>
+                    </form>
+                    <p id="message-status" class="info-message"></p>
+                </div>
+            </div>
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Footer Settings">Footer Settings</h2>
+                <div class="section-content">
+                    <form id="footer-settings-form" class="edit-form">
+                        <input type="hidden" name="_csrf" id="footer-csrf-token">
+                        <div class="form-group">
+                            <label for="footer-email-input">Email:</label>
+                            <input type="email" id="footer-email-input" name="email" placeholder="Enter email" aria-label="Footer email">
+                        </div>
+                        <div class="form-group">
+                            <label for="footer-message-input">Message:</label>
+                            <input type="text" id="footer-message-input" name="message" placeholder="Enter footer message" aria-label="Footer message">
+                        </div>
+                        <div class="form-group toggle-group">
+                            <label>Show Message:</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="footer-show-message" name="showMessage" aria-label="Toggle footer message visibility">
+                                <span class="slider"></span>
+                            </label>
+                            <span class="toggle-status">Off</span>
+                        </div>
+                        <button type="submit" class="submit-btn">Save</button>
+                    </form>
+                    <p id="footer-message-status" class="info-message"></p>
+                </div>
+            </div>
+            <div class="admin-section">
+                <h2 class="section-toggle" data-section="Section Expansion Settings">Section Expansion Settings</h2>
+                <div class="section-content">
+                    <div id="section-settings-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
 
-            // Placeholder form submission handlers
-            document.getElementById('teacher-form')?.addEventListener('submit', (e) => {
-                e.preventDefault();
-                showNotification('Teacher added (placeholder)', 'success');
-            });
+<footer class="site-footer">
+    <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
+    <p id="footer-message">Welcome to Teacher Tally!</p>
+</footer>
 
-            document.getElementById('message-settings-form')?.addEventListener('submit', (e) => {
-                e.preventDefault();
-                showNotification('Main message settings saved (placeholder)', 'success');
-            });
+<div id="notification" class="notification" style="display: none;"></div>
 
-            document.getElementById('footer-settings-form')?.addEventListener('submit', (e) => {
-                e.preventDefault();
-                showNotification('Footer settings saved (placeholder)', 'success');
-            });
-
-            function showNotification(message, type) {
-                const notification = document.getElementById('notification');
-                notification.textContent = message;
-                notification.className = `notification ${type}`;
-                notification.style.display = 'block';
-                setTimeout(() => notification.style.display = 'none', 3000);
+<script src="/pages/admin/dashboard.js" defer></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+        const tabNav = document.getElementById('tab-nav');
+        mobileMenuToggle.addEventListener('click', () => tabNav.classList.toggle('active'));
+        document.addEventListener('click', (e) => {
+            if (!mobileMenuToggle.contains(e.target) && !tabNav.contains(e.target)) {
+                tabNav.classList.remove('active');
             }
         });
-    </script>
+    });
+</script>
 </body>
 </html>

@@ -6,17 +6,17 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csurf": "^1.11.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "express-rate-limit": "^7.1.5",
+    "express-rate-limit": "^7.5.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "sqlite3": "^5.1.7",
-    "uuid": "^9.0.1",
-    "bcrypt": "^5.1.0",
-    "csurf": "^1.11.0"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

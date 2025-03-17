@@ -1,81 +1,67 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Client - Dashboard script loaded, initializing...');
 
-    // Element references
-    const teacherForm = document.getElementById('teacher-form');
-    const teachersTable = document.getElementById('teachers-table');
-    const votesTable = document.getElementById('votes-table');
-    const proposalsTable = document.getElementById('proposals-table');
-    const correctionsTable = document.getElementById('corrections-table');
-    const teachersMessage = document.getElementById('teachers-message');
-    const votesMessage = document.getElementById('votes-message');
-    const proposalMessage = document.getElementById('proposal-message');
-    const correctionsMessage = document.getElementById('corrections-message');
-    const voteSearch = document.getElementById('vote-search');
-    const votesPerPageSelect = document.getElementById('votes-per-page');
-    const voteSort = document.getElementById('vote-sort');
-    const voteSortDirection = document.getElementById('vote-sort-direction');
-    const teacherSearch = document.getElementById('teacher-search');
-    const teachersPerPageSelect = document.getElementById('teachers-per-page');
-    const teacherSort = document.getElementById('teacher-sort');
-    const teacherSortDirection = document.getElementById('teacher-sort-direction');
-    const footerSettingsForm = document.getElementById('footer-settings-form');
-    const footerMessageStatus = document.getElementById('footer-message-status');
-    const messageSettingsForm = document.getElementById('message-settings-form');
-    const messageStatus = document.getElementById('message-status');
-    const statsTimeframe = document.getElementById('stats-timeframe');
-    const sectionSettingsContainer = document.getElementById('section-settings-container');
-    const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
-    const tabNav = document.getElementById('tab-nav');
+    // Centralized state management
+    const state = {
+        csrfToken: '',
+        token: localStorage.getItem('adminToken') || getCookie('adminToken'),
+        data: {
+            teachers: [],
+            votes: [],
+            suggestions: [],
+            requests: [],
+            proposals: [],
+            corrections: [],
+            settings: {},
+        },
+        pages: {
+            teachers: 1,
+            votes: 1,
+            suggestions: 1,
+            requests: 1,
+        },
+        activeTab: 'teachers',
+    };
+    const BASE_URL = 'http://localhost:3000'; // Adjust if server port differs (e.g., 'http://localhost:3001')
 
-    // Check for missing elements
-    const requiredElements = [
-        { el: teacherForm, id: 'teacher-form' },
-        { el: teachersTable, id: 'teachers-table' },
-        { el: votesTable, id: 'votes-table' },
-        { el: proposalsTable, id: 'proposals-table' },
-        { el: correctionsTable, id: 'corrections-table' },
-        { el: teachersMessage, id: 'teachers-message' },
-        { el: votesMessage, id: 'votes-message' },
-        { el: proposalMessage, id: 'proposal-message' },
-        { el: correctionsMessage, id: 'corrections-message' },
-        { el: voteSearch, id: 'vote-search' },
-        { el: votesPerPageSelect, id: 'votes-per-page' },
-        { el: voteSort, id: 'vote-sort' },
-        { el: voteSortDirection, id: 'vote-sort-direction' },
-        { el: teacherSearch, id: 'teacher-search' },
-        { el: teachersPerPageSelect, id: 'teachers-per-page' },
-        { el: teacherSort, id: 'teacher-sort' },
-        { el: teacherSortDirection, id: 'teacher-sort-direction' },
-        { el: footerSettingsForm, id: 'footer-settings-form' },
-        { el: footerMessageStatus, id: 'footer-message-status' },
-        { el: messageSettingsForm, id: 'message-settings-form' },
-        { el: messageStatus, id: 'message-status' },
-        { el: statsTimeframe, id: 'stats-timeframe' },
-        { el: sectionSettingsContainer, id: 'section-settings-container' },
-        { el: mobileMenuToggle, id: 'mobile-menu-toggle' },
-        { el: tabNav, id: 'tab-nav' }
-    ];
+    // Element references with lazy loading via Proxy
+    const elements = new Proxy({}, {
+        get: (target, prop) => target[prop] || (target[prop] = document.getElementById(prop)),
+    });
 
-    const missingElements = requiredElements.filter(item => !item.el).map(item => item.id);
-    if (missingElements.length > 0) {
-        console.error('Client - Required elements not found:', missingElements);
-        showNotification('Dashboard initialization failed due to missing elements.', true);
-        return;
+    // Utility: Get cookie
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        return parts.length === 2 ? parts.pop().split(';').shift() : null;
     }
-    console.log('Client - All required elements found');
 
-    let csrfToken = '';
-    let allTeachers = [];
-    let currentTeacherPage = 1;
-    let currentVotePage = 1;
-    let allSettings = {};
+    // Validate critical elements
+    const requiredIds = [
+        'teacher-submit-form', 'teachers-table', 'votes-table', 'proposals-table', 'corrections-table',
+        'suggestions-table', 'admin-requests-table', 'teachers-message', 'votes-message',
+        'proposal-message', 'corrections-message', 'suggestions-message', 'admin-requests-message',
+        'teacher-search', 'teachers-per-page', 'teacher-sort', 'teacher-sort-direction',
+        'vote-search', 'votes-per-page', 'vote-sort', 'vote-sort-direction', 'suggestion-search',
+        'suggestions-per-page', 'suggestion-sort', 'suggestion-sort-direction', 'request-search',
+        'requests-per-page', 'request-sort', 'request-sort-direction', 'footer-settings-form',
+        'footer-message-status', 'message-settings-form', 'message-status', 'stats-timeframe',
+        'section-settings-container', 'tab-nav', 'add-teacher-message'
+    ];
+    const missingElements = requiredIds.filter(id => !elements[id]);
+    if (missingElements.length > 0) {
+        console.warn('Client - Some required elements not found:', missingElements);
+        showNotification('Some features may not work due to missing elements.', true);
+    }
 
     // Fetch CSRF token
     try {
-        const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+        const csrfResponse = await fetch(`${BASE_URL}/api/csrf-token`, { credentials: 'include' });
         if (!csrfResponse.ok) throw new Error(`HTTP ${csrfResponse.status}`);
-        csrfToken = (await csrfResponse.json()).csrfToken;
+        state.csrfToken = (await csrfResponse.json()).csrfToken;
+        console.log('Client - CSRF token fetched:', state.csrfToken);
+        document.querySelector('meta[name="csrf-token"]').setAttribute('content', state.csrfToken);
+        document.querySelectorAll('input[name="_csrf"]').forEach(input => input.value = state.csrfToken);
     } catch (error) {
         console.error('Client - Failed to fetch CSRF token:', error.message);
         showNotification('Security initialization failed.', true);
@@ -84,19 +70,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Utility: Show notification
     function showNotification(messageText, isError = false) {
-        let notification = document.getElementById('notification');
-        if (!notification) {
-            notification = document.createElement('div');
-            notification.id = 'notification';
-            document.body.appendChild(notification);
-        }
+        let notification = elements['notification'];
         notification.className = `notification ${isError ? 'error' : 'success'}`;
         notification.textContent = messageText;
-        notification.style.display = 'block';
-        setTimeout(() => notification.style.display = 'none', 3000);
+        notification.style.opacity = '0';
+        requestAnimationFrame(() => {
+            notification.style.display = 'block';
+            notification.style.opacity = '1';
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.addEventListener('transitionend', () => notification.style.display = 'none', { once: true });
+            }, 3000);
+        });
     }
 
-    // Utility: Show modal with touch support
+    // Utility: Show modal
     function showModal(title, message, confirmText, onConfirm, extraContent = '') {
         const modalHtml = `
             <div class="modal active">
@@ -111,32 +99,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         const modal = document.querySelector('.modal');
-        if (!modal) return;
-
         const confirmBtn = document.getElementById('confirm-action');
         const cancelBtn = document.getElementById('cancel-action');
-
         confirmBtn.addEventListener('click', async () => { await onConfirm(); modal.remove(); });
         cancelBtn.addEventListener('click', () => modal.remove());
-        confirmBtn.addEventListener('touchstart', async (e) => { e.preventDefault(); await onConfirm(); modal.remove(); });
-        cancelBtn.addEventListener('touchstart', (e) => { e.preventDefault(); modal.remove(); });
     }
 
     // Utility: Sanitize input
     function sanitizeInput(input) {
-        if (!input) return '';
-        const div = document.createElement('div');
-        div.textContent = input;
-        return div.innerHTML.replace(/[<>&"']/g, match => ({
-            '<': '&lt;',
-            '>': '&gt;',
-            '&': '&amp;',
-            '"': '&quot;',
-            "'": '&#39;'
-        })[match]);
+        return window.DOMPurify ? DOMPurify.sanitize(input || '') : input || '';
     }
 
-    // Utility: Debounce function for search inputs
+    // Utility: Debounce
     function debounce(func, wait) {
         let timeout;
         return (...args) => {
@@ -148,8 +122,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check admin status
     async function checkAdminStatus() {
         try {
-            const response = await fetch('/api/admin/votes', { credentials: 'include', headers: { 'X-CSRF-Token': csrfToken } });
+            const response = await fetch(`${BASE_URL}/api/admin/verify`, {
+                headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                credentials: 'include',
+            });
             if (!response.ok) throw new Error(`Not authenticated: ${response.status}`);
+            console.log('Client - Admin authenticated');
             return true;
         } catch (error) {
             console.error('Client - Admin check failed:', error);
@@ -160,202 +138,344 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Update dropdown visibility
     function updateDropdownVisibility(activeTab) {
-        [voteSearch, votesPerPageSelect, voteSort, voteSortDirection,
-         teacherSearch, teachersPerPageSelect, teacherSort, teacherSortDirection,
-         statsTimeframe].forEach(el => el.parentElement.style.display = 'none');
-
+        const dropdowns = ['teacher-search', 'teachers-per-page', 'teacher-sort', 'teacher-sort-direction',
+            'vote-search', 'votes-per-page', 'vote-sort', 'vote-sort-direction',
+            'suggestion-search', 'suggestions-per-page', 'suggestion-sort', 'suggestion-sort-direction',
+            'request-search', 'requests-per-page', 'request-sort', 'request-sort-direction', 'stats-timeframe'
+        ].map(id => elements[id]);
+        dropdowns.forEach(el => el?.parentElement && (el.parentElement.style.display = 'none'));
+        const showDropdowns = (ids) => ids.forEach(id => elements[id]?.parentElement && (elements[id].parentElement.style.display = 'block'));
         switch (activeTab) {
-            case 'teachers':
-                teacherSearch.parentElement.style.display = 'block';
-                teachersPerPageSelect.parentElement.style.display = 'block';
-                teacherSort.parentElement.style.display = 'block';
-                teacherSortDirection.parentElement.style.display = 'block';
-                break;
-            case 'votes':
-                voteSearch.parentElement.style.display = 'block';
-                votesPerPageSelect.parentElement.style.display = 'block';
-                voteSort.parentElement.style.display = 'block';
-                voteSortDirection.parentElement.style.display = 'block';
-                break;
-            case 'stats':
-                statsTimeframe.parentElement.style.display = 'block';
-                break;
+            case 'teachers': showDropdowns(['teacher-search', 'teachers-per-page', 'teacher-sort', 'teacher-sort-direction']); break;
+            case 'votes': showDropdowns(['vote-search', 'votes-per-page', 'vote-sort', 'vote-sort-direction']); break;
+            case 'suggestions': showDropdowns(['suggestion-search', 'suggestions-per-page', 'suggestion-sort', 'suggestion-sort-direction']); break;
+            case 'admin-requests': showDropdowns(['request-search', 'requests-per-page', 'request-sort', 'request-sort-direction']); break;
+            case 'stats': elements['stats-timeframe']?.parentElement && (elements['stats-timeframe'].parentElement.style.display = 'block'); break;
         }
     }
 
-    // Load votes
-    async function loadVotes(page = currentVotePage) {
-        try {
-            const searchQuery = voteSearch.value.toLowerCase();
-            const sortField = voteSort.value;
-            const sortDirection = voteSortDirection.value;
-            const perPage = parseInt(votesPerPageSelect.value) || 10;
-            currentVotePage = page;
+    async function fetchData(endpoint, params = {}, options = {}, retries = 2) {
+        const url = new URL(endpoint, BASE_URL);
+        Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+        console.log(`Client - Fetching: ${url.toString()}`);
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken, ...options.headers },
+                    credentials: 'include',
+                    ...options,
+                });
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`HTTP ${res.status}: ${errorText}`);
+                }
+                const data = await res.json();
+                console.log(`Client - Fetched ${endpoint}:`, data);
+                return data;
+            } catch (error) {
+                console.error(`Client - Fetch attempt ${attempt + 1} failed for ${endpoint}:`, error.message);
+                if (attempt === retries) throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+            }
+        }
+    }
 
-            const response = await fetch(`/api/admin/votes?page=${page}&perPage=${perPage}&search=${encodeURIComponent(searchQuery)}&sort=${sortField}&direction=${sortDirection}`, {
-                credentials: 'include',
-                headers: { 'X-CSRF-Token': csrfToken }
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const { votes, total } = await response.json();
-            const totalPages = Math.ceil(total / perPage);
-
-            votesTable.innerHTML = `
-                <table class="admin-table">
-                    <thead><tr><th>Vote ID</th><th>Teacher ID</th><th>Rating</th><th>Comment</th><th>Explicit</th><th>Actions</th></tr></thead>
-                    <tbody>
-                        ${votes.map(vote => `
-                            <tr>
-                                <td>${vote.id}</td>
-                                <td>${vote.teacher_id}</td>
-                                <td contenteditable="true" id="edit-rating-${vote.id}">${vote.rating}</td>
-                                <td contenteditable="true" id="edit-comment-${vote.id}">${sanitizeInput(vote.comment || '')}</td>
-                                <td>${vote.is_explicit ? 'Yes' : 'No'}</td>
-                                <td>
-                                    <button class="submit-btn" data-action="update-vote" data-id="${vote.id}">Update</button>
-                                    <button class="delete-btn" data-action="delete-vote" data-id="${vote.id}">Delete</button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                <div class="pagination">
-                    <button class="pagination-btn" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>Previous</button>
-                    <span>Page ${page} of ${totalPages}</span>
-                    <button class="pagination-btn" data-page="${page + 1}" ${page >= totalPages ? 'disabled' : ''}>Next</button>
-                </div>
-            `;
-            votesMessage.textContent = `Loaded ${votes.length} of ${total} votes.`;
-            votesMessage.className = 'info-message';
-            addTouchListeners();
-        } catch (error) {
-            console.error('Client - Error loading votes:', error);
-            votesTable.innerHTML = '<p class="error-message">Error loading votes.</p>';
-            votesMessage.textContent = `Error: ${error.message}`;
-            votesMessage.className = 'error-message';
+    // Render table with pagination
+    function renderTable(container, data, headers, rowTemplate, page, perPage, total, messageEl, messageText) {
+        const start = (page - 1) * perPage;
+        const paginated = data.slice(start, start + perPage);
+        const totalPages = Math.ceil(total / perPage);
+        container.innerHTML = `
+            <table class="admin-table">
+                <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                <tbody>${paginated.map(rowTemplate).join('')}</tbody>
+            </table>
+            <div class="pagination">
+                <button class="pagination-btn" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>Previous</button>
+                <span>Page ${page} of ${totalPages}</span>
+                <button class="pagination-btn" data-page="${page + 1}" ${page >= totalPages ? 'disabled' : ''}>Next</button>
+            </div>
+        `;
+        if (messageEl) {
+            messageEl.textContent = messageText(paginated.length, total);
+            messageEl.className = 'info-message';
         }
     }
 
     // Load teachers
-    async function loadTeachers(page = currentTeacherPage) {
+    async function loadTeachers(page = state.pages.teachers) {
+        const table = elements['teachers-table'];
+        const message = elements['teachers-message'];
+        if (!table || !message) return;
         try {
-            if (!allTeachers.length) {
-                const response = await fetch('/api/teachers?perPage=100', { credentials: 'include', headers: { 'X-CSRF-Token': csrfToken } });
-                if (!response.ok) throw new Error('Failed to load teachers');
-                allTeachers = (await response.json()).teachers || [];
+            if (!state.data.teachers.length) {
+                const data = await fetchData('/api/admin/teachers', { perPage: 100 });
+                state.data.teachers = Array.isArray(data) ? data : data.teachers || [];
             }
-            const searchQuery = teacherSearch.value.toLowerCase();
-            const sortField = teacherSort.value;
-            const sortDirection = teacherSortDirection.value;
-            const perPage = parseInt(teachersPerPageSelect.value) || 10;
-            currentTeacherPage = page;
+            const searchQuery = elements['teacher-search']?.value.toLowerCase() || '';
+            const sortField = elements['teacher-sort']?.value || 'id';
+            const sortDirection = elements['teacher-sort-direction']?.value || 'asc';
+            const perPage = parseInt(elements['teachers-per-page']?.value) || 10;
+            state.pages.teachers = page;
 
-            let teachers = allTeachers.filter(t =>
-                (t.id || '').toLowerCase().includes(searchQuery) ||
-                (t.name || '').toLowerCase().includes(searchQuery)
+            const teachers = state.data.teachers
+                .filter(t => `${t.id} ${t.name} ${t.email || ''}`.toLowerCase().includes(searchQuery))
+                .sort((a, b) => {
+                    const valueA = String(a[sortField] || '').toLowerCase();
+                    const valueB = String(b[sortField] || '').toLowerCase();
+                    return sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+                });
+
+            renderTable(
+                table,
+                teachers,
+                ['ID', 'Name', 'Description', 'Schedule', 'Bio', 'Tags', 'Email', 'Phone', 'Actions'],
+                t => `
+                    <tr class="teacher-row" data-id="${t.id}">
+                        <td>${sanitizeInput(t.id)}</td>
+                        <td>${sanitizeInput(t.name)}</td>
+                        <td>${sanitizeInput(t.description)}</td>
+                        <td>${sanitizeInput(t.schedule || '')}</td>
+                        <td>${sanitizeInput(t.bio || '')}</td>
+                        <td>${sanitizeInput(t.tags || '')}</td>
+                        <td>${sanitizeInput(t.email || '')}</td>
+                        <td>${sanitizeInput(t.phone || '')}</td>
+                        <td>
+                            <button class="edit-btn" data-action="edit-teacher" data-id="${t.id}">Edit</button>
+                            <button class="delete-btn" data-action="delete-teacher" data-id="${t.id}" data-name="${sanitizeInput(t.name)}">Delete</button>
+                        </td>
+                    </tr>
+                    <tr id="teacher-details-${t.id}" class="teacher-details">
+                        <td colspan="9">
+                            <div class="teacher-details-content">
+                                <label>ID: <input type="text" id="edit-id-${t.id}" value="${sanitizeInput(t.id)}" data-original="${sanitizeInput(t.id)}"></label><br>
+                                <label>Name: <input type="text" id="edit-name-${t.id}" value="${sanitizeInput(t.name)}" data-original="${sanitizeInput(t.name)}"></label><br>
+                                <label>Description: <input type="text" id="edit-desc-${t.id}" value="${sanitizeInput(t.description)}" data-original="${sanitizeInput(t.description)}"></label><br>
+                                <label>Schedule: <textarea id="edit-schedule-${t.id}" data-original="${sanitizeInput(t.schedule || '')}">${sanitizeInput(t.schedule || '')}</textarea></label><br>
+                                <label>Bio: <textarea id="edit-bio-${t.id}" data-original="${sanitizeInput(t.bio || '')}">${sanitizeInput(t.bio || '')}</textarea></label><br>
+                                <label>Tags: <input type="text" id="edit-tags-${t.id}" value="${sanitizeInput(t.tags || '')}" data-original="${sanitizeInput(t.tags || '')}"></label><br>
+                                <label>Email: <input type="email" id="edit-email-${t.id}" value="${sanitizeInput(t.email || '')}" data-original="${sanitizeInput(t.email || '')}"></label><br>
+                                <label>Phone: <input type="tel" id="edit-phone-${t.id}" value="${sanitizeInput(t.phone || '')}" data-original="${sanitizeInput(t.phone || '')}"></label><br>
+                                <button class="submit-btn" data-action="update-teacher" data-id="${t.id}">Update</button>
+                                <span class="edit-status" id="edit-status-${t.id}"></span>
+                            </div>
+                        </td>
+                    </tr>
+                `,
+                page,
+                perPage,
+                teachers.length,
+                message,
+                (shown, total) => `Loaded ${shown} of ${total} teachers.`
             );
-            teachers.sort((a, b) => {
-                const valueA = (a[sortField] || '').toString().toLowerCase();
-                const valueB = (b[sortField] || '').toString().toLowerCase();
-                return sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
-            });
-
-            const totalPages = Math.ceil(teachers.length / perPage);
-            const start = (page - 1) * perPage;
-            const paginatedTeachers = teachers.slice(start, start + perPage);
-
-            teachersTable.innerHTML = `
-                <table class="admin-table">
-                    <thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead>
-                    <tbody>
-                        ${paginatedTeachers.map(teacher => `
-                            <tr class="teacher-row" data-id="${teacher.id}">
-                                <td contenteditable="true" id="edit-id-${teacher.id}">${sanitizeInput(teacher.id)}</td>
-                                <td>${sanitizeInput(teacher.name)}</td>
-                                <td>${sanitizeInput(teacher.description)}</td>
-                                <td>
-                                    <button class="delete-btn" data-action="delete-teacher" data-id="${teacher.id}" data-name="${sanitizeInput(teacher.name)}">Delete</button>
-                                </td>
-                            </tr>
-                            <tr id="teacher-details-${teacher.id}" class="teacher-details" style="display: none;">
-                                <td colspan="4">
-                                    <div class="teacher-details-content">
-                                        <p><strong>ID:</strong> <span contenteditable="true" id="edit-id-detail-${teacher.id}">${sanitizeInput(teacher.id)}</span></p>
-                                        <p><strong>Name:</strong> <span contenteditable="true" id="edit-name-${teacher.id}">${sanitizeInput(teacher.name)}</span></p>
-                                        <p><strong>Description:</strong> <span contenteditable="true" id="edit-desc-${teacher.id}">${sanitizeInput(teacher.description)}</span></p>
-                                        <button class="submit-btn" data-action="update-teacher" data-id="${teacher.id}">Update</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                <div class="pagination">
-                    <button class="pagination-btn" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>Previous</button>
-                    <span>Page ${page} of ${totalPages}</span>
-                    <button class="pagination-btn" data-page="${page + 1}" ${page >= totalPages ? 'disabled' : ''}>Next</button>
-                </div>
-            `;
-            teachersMessage.textContent = `Loaded ${paginatedTeachers.length} of ${teachers.length} teachers.`;
-            teachersMessage.className = 'info-message';
-            addTouchListeners();
+            addButtonListeners();
         } catch (error) {
             console.error('Client - Error loading teachers:', error);
-            teachersTable.innerHTML = '<p class="error-message">Error loading teachers.</p>';
-            teachersMessage.textContent = `Error: ${error.message}`;
-            teachersMessage.className = 'error-message';
+            table.innerHTML = '<p class="error-message">Error loading teachers.</p>';
+            message.textContent = `Error: ${error.message}`;
+            message.className = 'error-message';
+        }
+    }
+
+    // Load votes
+    async function loadVotes(page = state.pages.votes) {
+        const table = elements['votes-table'];
+        const message = elements['votes-message'];
+        if (!table || !message) return;
+        try {
+            const params = {
+                page,
+                perPage: parseInt(elements['votes-per-page']?.value) || 10,
+                search: encodeURIComponent(elements['vote-search']?.value.toLowerCase() || ''),
+                sort: elements['vote-sort']?.value || 'id',
+                direction: elements['vote-sort-direction']?.value || 'asc',
+            };
+            const data = await fetchData('/api/admin/votes', params);
+            const { votes, total } = data;
+            state.pages.votes = page;
+
+            renderTable(
+                table,
+                votes,
+                ['Vote ID', 'Teacher ID', 'Rating', 'Comment', 'Explicit', 'Actions'],
+                v => `
+                    <tr>
+                        <td>${sanitizeInput(v.id)}</td>
+                        <td>${sanitizeInput(v.teacher_id)}</td>
+                        <td contenteditable="true" id="edit-rating-${v.id}">${sanitizeInput(v.rating)}</td>
+                        <td contenteditable="true" id="edit-comment-${v.id}">${sanitizeInput(v.comment || '')}</td>
+                        <td>${v.is_explicit ? 'Yes' : 'No'}</td>
+                        <td>
+                            <button class="submit-btn" data-action="update-vote" data-id="${v.id}">Update</button>
+                            <button class="delete-btn" data-action="delete-vote" data-id="${v.id}">Delete</button>
+                        </td>
+                    </tr>
+                `,
+                page,
+                params.perPage,
+                total,
+                message,
+                (shown, total) => `Loaded ${shown} of ${total} votes.`
+            );
+            addButtonListeners();
+        } catch (error) {
+            console.error('Client - Error loading votes:', error);
+            table.innerHTML = '<p class="error-message">Error loading votes.</p>';
+            message.textContent = `Error: ${error.message}`;
+            message.className = 'error-message';
+        }
+    }
+
+    // Load suggestions
+    async function loadSuggestions(page = state.pages.suggestions) {
+        const table = elements['suggestions-table'];
+        const message = elements['suggestions-message'];
+        if (!table || !message) return;
+        try {
+            const params = {
+                page,
+                perPage: parseInt(elements['suggestions-per-page']?.value) || 10,
+                search: encodeURIComponent(elements['suggestion-search']?.value.toLowerCase() || ''),
+                sort: elements['suggestion-sort']?.value || 'id',
+                direction: elements['suggestion-sort-direction']?.value || 'desc',
+            };
+            const data = await fetchData('/api/suggestions', params);
+            state.data.suggestions = (data.suggestions || []).filter(s => !state.data.suggestions.some(existing => existing.id === s.id));
+            state.pages.suggestions = page;
+
+            renderTable(
+                table,
+                state.data.suggestions,
+                ['Email', 'Suggestion', 'Timestamp', 'Actions'],
+                s => `
+                    <tr>
+                        <td>${sanitizeInput(s.email)}</td>
+                        <td>${sanitizeInput(s.suggestion)}</td>
+                        <td>${new Date(s.timestamp).toLocaleString()}</td>
+                        <td>
+                            <button class="delete-btn" data-action="delete-suggestion" data-id="${s.id}" data-email="${sanitizeInput(s.email)}">Delete</button>
+                        </td>
+                    </tr>
+                `,
+                page,
+                params.perPage,
+                data.total,
+                message,
+                (shown, total) => `Loaded ${shown} of ${total} suggestions.`
+            );
+            addButtonListeners();
+        } catch (error) {
+            console.error('Client - Error loading suggestions:', error);
+            table.innerHTML = '<p class="error-message">Error loading suggestions.</p>';
+            message.textContent = `Error: ${error.message}`;
+            message.className = 'error-message';
+        }
+    }
+
+    // Load admin requests
+    async function loadAdminRequests(page = state.pages.requests) {
+        const table = elements['admin-requests-table'];
+        const message = elements['admin-requests-message'];
+        if (!table || !message) return;
+        try {
+            const params = {
+                page,
+                perPage: parseInt(elements['requests-per-page']?.value) || 10,
+                search: encodeURIComponent(elements['request-search']?.value.toLowerCase() || ''),
+                sort: elements['request-sort']?.value || 'id',
+                direction: elements['request-sort-direction']?.value || 'desc',
+            };
+            const data = await fetchData('/api/admin-request', params);
+            state.data.requests = (data.requests || []).filter(r => !state.data.requests.some(existing => existing.id === r.id));
+            state.pages.requests = page;
+
+            renderTable(
+                table,
+                state.data.requests,
+                ['Name', 'Email', 'Reason', 'Timestamp', 'Actions'],
+                r => `
+                    <tr>
+                        <td>${sanitizeInput(r.name)}</td>
+                        <td>${sanitizeInput(r.email)}</td>
+                        <td>${sanitizeInput(r.reason)}</td>
+                        <td>${new Date(r.timestamp).toLocaleString()}</td>
+                        <td>
+                            <button class="approve-btn" data-action="approve-admin-request" data-id="${r.id}">Approve</button>
+                            <button class="delete-btn" data-action="delete-admin-request" data-id="${r.id}" data-name="${sanitizeInput(r.name)}">Delete</button>
+                            <button class="delete-btn" data-action="deny-admin-request" data-id="${r.id}" data-name="${sanitizeInput(r.name)}">Deny</button>
+                        </td>
+                    </tr>
+                `,
+                page,
+                params.perPage,
+                data.total,
+                message,
+                (shown, total) => `Loaded ${shown} of ${total} requests.`
+            );
+            addButtonListeners();
+        } catch (error) {
+            console.error('Client - Error loading admin requests:', error);
+            table.innerHTML = '<p class="error-message">Error loading admin requests.</p>';
+            message.textContent = `Error: ${error.message}`;
+            message.className = 'error-message';
         }
     }
 
     // Load teacher proposals
     async function loadTeacherProposals() {
+        const table = elements['proposals-table'];
+        const message = elements['proposal-message'];
+        if (!table || !message) return;
         try {
-            const response = await fetch('/api/admin/teacher-proposals', { credentials: 'include', headers: { 'X-CSRF-Token': csrfToken } });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const proposals = await response.json();
-            proposalsTable.innerHTML = `
+            const proposals = await fetchData('/api/admin/teacher-proposals');
+            state.data.proposals = proposals;
+
+            table.innerHTML = `
                 <table class="admin-table">
                     <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Description</th><th>Actions</th></tr></thead>
                     <tbody>
-                        ${proposals.map(proposal => `
+                        ${proposals.map(p => `
                             <tr>
-                                <td>${proposal.id}</td>
-                                <td>${sanitizeInput(proposal.name)}</td>
-                                <td>${sanitizeInput(proposal.email)}</td>
-                                <td>${sanitizeInput(proposal.description)}</td>
+                                <td>${sanitizeInput(p.id)}</td>
+                                <td>${sanitizeInput(p.name)}</td>
+                                <td>${sanitizeInput(p.email)}</td>
+                                <td>${sanitizeInput(p.description)}</td>
                                 <td>
-                                    <button class="approve-btn" data-action="approve-proposal" data-id="${proposal.id}">Approve</button>
-                                    <button class="delete-btn" data-action="delete-proposal" data-id="${proposal.id}" data-name="${sanitizeInput(proposal.name)}">Delete</button>
+                                    <button class="approve-btn" data-action="approve-proposal" data-id="${p.id}">Approve</button>
+                                    <button class="delete-btn" data-action="delete-proposal" data-id="${p.id}" data-name="${sanitizeInput(p.name)}">Delete</button>
                                 </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             `;
-            proposalMessage.textContent = `Loaded ${proposals.length} proposals.`;
-            proposalMessage.className = 'info-message';
-            addTouchListeners();
+            message.textContent = `Loaded ${proposals.length} proposals.`;
+            message.className = 'info-message';
+            addButtonListeners();
         } catch (error) {
             console.error('Client - Error loading proposals:', error);
-            proposalsTable.innerHTML = '<p class="error-message">Error loading proposals.</p>';
-            proposalMessage.textContent = `Error: ${error.message}`;
-            proposalMessage.className = 'error-message';
+            table.innerHTML = '<p class="error-message">Error loading proposals.</p>';
+            message.textContent = `Error: ${error.message}`;
+            message.className = 'error-message';
         }
     }
 
     // Load corrections
     async function loadCorrections() {
+        const table = elements['corrections-table'];
+        const message = elements['corrections-message'];
+        if (!table || !message) return;
         try {
-            const response = await fetch('/api/admin/corrections', { credentials: 'include', headers: { 'X-CSRF-Token': csrfToken } });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const corrections = await response.json();
-            correctionsTable.innerHTML = `
+            const corrections = await fetchData('/api/admin/corrections');
+            state.data.corrections = corrections;
+
+            table.innerHTML = `
                 <table class="admin-table">
                     <thead><tr><th>ID</th><th>Teacher</th><th>Suggestion</th><th>Submitted</th><th>Actions</th></tr></thead>
                     <tbody>
                         ${corrections.map(c => `
                             <tr>
-                                <td>${c.id}</td>
+                                <td>${sanitizeInput(c.id)}</td>
                                 <td>${sanitizeInput(c.teacher_name || c.teacher_id)}</td>
                                 <td>${sanitizeInput(c.suggestion)}</td>
                                 <td>${new Date(c.submitted_at).toLocaleString()}</td>
@@ -368,49 +488,49 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </tbody>
                 </table>
             `;
-            correctionsMessage.textContent = `Loaded ${corrections.length} corrections.`;
-            correctionsMessage.className = 'info-message';
-            addTouchListeners();
+            message.textContent = `Loaded ${corrections.length} corrections.`;
+            message.className = 'info-message';
+            addButtonListeners();
         } catch (error) {
             console.error('Client - Error loading corrections:', error);
-            correctionsTable.innerHTML = '<p class="error-message">Error loading corrections.</p>';
-            correctionsMessage.textContent = `Error: ${error.message}`;
-            correctionsMessage.className = 'error-message';
+            table.innerHTML = '<p class="error-message">Error loading corrections.</p>';
+            message.textContent = `Error: ${error.message}`;
+            message.className = 'error-message';
         }
     }
 
     // Load and apply section settings
     async function loadSectionSettings() {
-        if (!sectionSettingsContainer) return;
+        const container = elements['section-settings-container'];
+        if (!container) return;
         const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab || 'teachers';
         const sectionMap = {
             'teachers': ['Add New Teacher', 'Manage Teachers'],
             'votes': ['Manage Votes'],
             'proposals': ['Teacher Proposals'],
             'corrections': ['Corrections'],
+            'suggestions': ['Suggestions'],
+            'admin-requests': ['Admin Access Requests'],
             'settings': ['Main Message Settings', 'Footer Settings', 'Section Expansion Settings'],
-            'stats': ['Statistics']
+            'stats': ['Statistics'],
+            'add-teacher': ['Add New Teacher']
         };
         const allSections = Object.values(sectionMap).flat();
 
         try {
-            const response = await fetch('/api/admin/section-settings', { credentials: 'include', headers: { 'X-CSRF-Token': csrfToken } });
-            allSettings = response.ok ? await response.json() : {
-                "Add New Teacher": false, "Manage Teachers": false, "Manage Votes": false,
-                "Teacher Proposals": false, "Corrections": true, "Main Message Settings": true,
-                "Footer Settings": true, "Statistics": false
+            state.data.settings = await fetchData('/api/admin/section-settings') || {
+                "Add New Teacher": false, "Manage Teachers": true, "Manage Votes": true,
+                "Teacher Proposals": true, "Corrections": true, "Suggestions": true,
+                "Admin Access Requests": true, "Main Message Settings": true,
+                "Footer Settings": true, "Section Expansion Settings": true, "Statistics": true,
             };
+            console.log('Client - Section settings loaded:', state.data.settings);
+            applySectionSettings(state.data.settings);
 
-            let sectionsToShow = sectionMap[activeTab] || [];
-            if (activeTab === 'settings' && sectionsToShow.includes('Section Expansion Settings')) {
-                sectionsToShow = allSections;
-            }
+            const sectionsToShow = activeTab === 'settings' && sectionMap[activeTab].includes('Section Expansion Settings') ? allSections : sectionMap[activeTab] || [];
+            const filteredSettings = Object.fromEntries(Object.entries(state.data.settings).filter(([section]) => sectionsToShow.includes(section)));
 
-            const filteredSettings = Object.fromEntries(
-                Object.entries(allSettings).filter(([section]) => sectionsToShow.includes(section))
-            );
-
-            sectionSettingsContainer.innerHTML = `
+            container.innerHTML = `
                 <h3>Section Settings for ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h3>
                 ${Object.entries(filteredSettings).length > 0 ? Object.entries(filteredSettings).map(([section, isExpanded]) => `
                     <div class="form-group toggle-group">
@@ -427,37 +547,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.querySelectorAll('.toggle-group input[type="checkbox"]').forEach(toggle => {
                 toggle.addEventListener('change', (e) => {
                     const sectionName = e.target.dataset.section;
-                    allSettings[sectionName] = e.target.checked;
+                    state.data.settings[sectionName] = e.target.checked;
                     const status = e.target.nextElementSibling.nextElementSibling;
                     if (status) status.textContent = e.target.checked ? 'Expanded' : 'Collapsed';
-                    applySectionSettings(allSettings);
-                });
-                toggle.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    toggle.dispatchEvent(new Event('change'));
+                    applySectionSettings(state.data.settings);
+                    saveSectionSettings();
                 });
             });
-
-            applySectionSettings(allSettings);
         } catch (error) {
             console.error('Client - Error loading section settings:', error);
-            sectionSettingsContainer.innerHTML = '<p class="error-message">Error loading settings.</p>';
-            showNotification('Failed to load section settings.', true);
+            state.data.settings = {
+                "Add New Teacher": false, "Manage Teachers": true, "Manage Votes": true,
+                "Teacher Proposals": true, "Corrections": true, "Suggestions": true,
+                "Admin Access Requests": true, "Main Message Settings": true,
+                "Footer Settings": true, "Section Expansion Settings": true, "Statistics": true,
+            };
+            applySectionSettings(state.data.settings);
+            container.innerHTML = '<p class="info-message">Using default settings due to load failure.</p>';
         }
     }
 
     // Save section settings
     async function saveSectionSettings() {
         try {
-            const response = await fetch('/api/admin/section-settings', {
+            const response = await fetch(`${BASE_URL}/api/admin/section-settings`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-                body: JSON.stringify(allSettings),
-                credentials: 'include'
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                body: JSON.stringify(state.data.settings),
+                credentials: 'include',
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            showNotification('Section settings saved successfully!');
-            await loadSectionSettings();
+            console.log('Client - Section settings saved');
         } catch (error) {
             console.error('Client - Error saving section settings:', error);
             showNotification('Failed to save section settings.', true);
@@ -470,90 +590,100 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sectionName = header.textContent.trim();
             if (settings[sectionName] !== undefined) {
                 const isExpanded = settings[sectionName];
-                header.nextElementSibling.style.display = isExpanded ? 'block' : 'none';
-                header.classList.toggle('expanded', isExpanded);
+                const content = header.nextElementSibling;
+                if (content) {
+                    content.style.display = isExpanded ? 'block' : 'none';
+                    header.classList.toggle('expanded', isExpanded);
+                }
             }
         });
     }
 
     // Load statistics
     async function loadStatistics() {
-        const statsTab = document.getElementById('stats-tab');
-        if (!statsTab) return;
+        const chartsContainer = elements['stats-charts'];
+        const message = elements['stats-message'];
+        if (!chartsContainer || !message) return;
         try {
-            const timeFrame = statsTimeframe.value;
-            const response = await fetch(`/api/admin/stats?timeFrame=${timeFrame}`, { credentials: 'include', headers: { 'X-CSRF-Token': csrfToken } });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const stats = await response.json();
-            statsTab.querySelector('.section-content').innerHTML = `
-                <div class="controls">
-                    <select id="stats-timeframe" class="sort-select" aria-label="Select statistics timeframe">
-                        <option value="1hour" ${timeFrame === '1hour' ? 'selected' : ''}>Last 1 Hour</option>
-                        <option value="6hours" ${timeFrame === '6hours' ? 'selected' : ''}>Last 6 Hours</option>
-                        <option value="1day" ${timeFrame === '1day' ? 'selected' : ''}>Last 1 Day</option>
-                        <option value="7days" ${timeFrame === '7days' ? 'selected' : ''}>Last 7 Days</option>
-                        <option value="1month" ${timeFrame === '1month' ? 'selected' : ''}>Last 1 Month</option>
-                    </select>
-                </div>
-                <div id="stats-charts" class="chart-grid">
-                    <div class="chart-container"><h3>Visits Over Time</h3><canvas id="visits-chart" style="max-height: 300px;"></canvas></div>
-                    <div class="chart-container"><h3>Vote Distribution</h3><canvas id="votes-chart" style="max-height: 300px;"></canvas></div>
-                    <div class="chart-container"><h3>Proposal Status</h3><canvas id="proposals-chart" style="max-height: 300px;"></canvas></div>
-                    <div class="chart-container"><h3>Top Teachers by Votes</h3><canvas id="top-teachers-chart" style="max-height: 300px;"></canvas></div>
-                </div>
-                <p>Stats for ${timeFrame}: Teachers: ${stats.totalTeachers}, Votes: ${stats.totalVotes}, Visits: ${stats.totalVisits}</p>
+            const timeFrame = elements['stats-timeframe'].value;
+            const stats = await fetchData('/api/admin/stats', { timeFrame });
+            chartsContainer.innerHTML = `
+                <canvas id="statsChart" width="300" height="200"></canvas>
             `;
-            statsTimeframe.addEventListener('change', loadStatistics); // Re-attach listener
-            // Add Chart.js initialization here if needed
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Teachers', 'Votes', 'Visits'],
+                    datasets: [{
+                        label: `Stats (${timeFrame})`,
+                        data: [stats.totalTeachers, stats.totalVotes, stats.totalVisits],
+                        backgroundColor: ['#007bff', '#28a745', '#ffc107'],
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+            message.textContent = `Stats for ${timeFrame} loaded.`;
+            message.className = 'info-message';
         } catch (error) {
             console.error('Client - Error loading statistics:', error);
-            statsTab.querySelector('.section-content').innerHTML = `<p class="error-message">Error: ${error.message}</p>`;
+            chartsContainer.innerHTML = `<p class="error-message">Error: ${error.message}</p>`;
+            message.textContent = `Error: ${error.message}`;
+            message.className = 'error-message';
         }
     }
 
     // Load footer settings
     async function loadFooterSettings() {
+        const form = elements['footer-settings-form'];
+        const status = elements['footer-message-status'];
+        if (!form || !status) return;
         try {
-            const response = await fetch('/api/footer-settings', { credentials: 'include', headers: { 'X-CSRF-Token': csrfToken } });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const settings = await response.json();
+            const settings = await fetchData('/api/footer-settings');
             document.getElementById('footer-email-input').value = settings.email || '';
             document.getElementById('footer-message-input').value = settings.message || '';
             document.getElementById('footer-show-message').checked = settings.showMessage ?? false;
-            footerMessageStatus.textContent = 'Footer settings loaded.';
+            document.getElementById('footer-email').innerHTML = `Email: <a href="mailto:${settings.email || 'admin@example.com'}">${settings.email || 'admin@example.com'}</a>`;
+            document.getElementById('footer-message').textContent = settings.showMessage ? (settings.message || 'Welcome to Teacher Tally!') : '';
+            status.textContent = 'Footer settings loaded.';
+            status.className = 'info-message';
         } catch (error) {
             console.error('Client - Error loading footer settings:', error);
-            footerMessageStatus.textContent = `Error: ${error.message}`;
-            footerMessageStatus.className = 'error-message';
+            status.textContent = `Error: ${error.message}`;
+            status.className = 'error-message';
         }
     }
 
     // Load message settings
     async function loadMessageSettings() {
+        const form = elements['message-settings-form'];
+        const status = elements['message-status'];
+        if (!form || !status) return;
         try {
-            const response = await fetch('/api/message-settings', { credentials: 'include', headers: { 'X-CSRF-Token': csrfToken } });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const settings = await response.json();
+            const settings = await fetchData('/api/message-settings');
             document.getElementById('main-message').value = settings.message || '';
             document.getElementById('show-main-message').checked = settings.showMessage ?? false;
-            messageStatus.textContent = 'Message settings loaded.';
+            status.textContent = settings.showMessage && settings.message ? settings.message : 'Message settings loaded.';
+            status.className = 'info-message';
         } catch (error) {
             console.error('Client - Error loading message settings:', error);
-            messageStatus.textContent = `Error: ${error.message}`;
-            messageStatus.className = 'error-message';
+            status.textContent = `Error: ${error.message}`;
+            status.className = 'error-message';
         }
     }
 
     // Save message settings
     async function saveMessageSettings() {
-        const message = sanitizeInput(document.getElementById('main-message').value);
-        const showMessage = document.getElementById('show-main-message').checked;
+        const form = elements['message-settings-form'];
+        if (!form) return;
+        const message = sanitizeInput(document.getElementById('main-message')?.value || '');
+        const showMessage = document.getElementById('show-main-message')?.checked ?? false;
         try {
-            const response = await fetch('/api/admin/message-settings', {
+            const response = await fetch(`${BASE_URL}/api/admin/message-settings`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
                 body: JSON.stringify({ message, showMessage }),
-                credentials: 'include'
+                credentials: 'include',
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             showNotification('Message settings saved!');
@@ -566,15 +696,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Save footer settings
     async function saveFooterSettings() {
-        const email = sanitizeInput(document.getElementById('footer-email-input').value);
-        const message = sanitizeInput(document.getElementById('footer-message-input').value);
-        const showMessage = document.getElementById('footer-show-message').checked;
+        const form = elements['footer-settings-form'];
+        if (!form) return;
+        const email = sanitizeInput(document.getElementById('footer-email-input')?.value || '');
+        const message = sanitizeInput(document.getElementById('footer-message-input')?.value || '');
+        const showMessage = document.getElementById('footer-show-message')?.checked ?? false;
         try {
-            const response = await fetch('/api/admin/footer-settings', {
+            const response = await fetch(`${BASE_URL}/api/admin/footer-settings`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
                 body: JSON.stringify({ email, message, showMessage }),
-                credentials: 'include'
+                credentials: 'include',
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             showNotification('Footer settings saved!');
@@ -585,27 +717,103 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Add touch listeners for dynamically added buttons
-    function addTouchListeners() {
-        document.querySelectorAll('.submit-btn, .delete-btn, .approve-btn, .pagination-btn').forEach(btn => {
-            btn.removeEventListener('touchstart', handleTouch); // Prevent duplicate listeners
-            btn.addEventListener('touchstart', handleTouch);
-        });
+    // Add New Teacher Form Submission
+    async function handleAddTeacherForm(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const messageDiv = elements['add-teacher-message'];
 
-        document.querySelectorAll('.teacher-row').forEach(row => {
-            row.removeEventListener('touchstart', toggleTeacherDetailsTouch);
-            row.addEventListener('touchstart', toggleTeacherDetailsTouch);
+        // Collect schedule data from fixed blocks
+        const schedule = [];
+        for (let i = 0; i < 4; i++) {
+            const subject = formData.get(`schedule[${i}][subject]`)?.trim();
+            const grade = formData.get(`schedule[${i}][grade]`)?.trim();
+            if (subject && grade) {
+                schedule.push({ subject, grade });
+            }
+        }
+        // Remove individual schedule entries and add as JSON
+        for (let i = 0; i < 4; i++) {
+            formData.delete(`schedule[${i}][subject]`);
+            formData.delete(`schedule[${i}][grade]`);
+        }
+        formData.set('schedule', JSON.stringify(schedule));
+
+        // Optional: Validate image file (size, type)
+        const imageFile = formData.get('image');
+        if (imageFile && imageFile.size > 0) {
+            const maxSize = 5 * 1024 * 1024; // 5MB limit
+            if (imageFile.size > maxSize) {
+                messageDiv.textContent = 'Image file size exceeds 5MB limit.';
+                messageDiv.style.color = 'red';
+                showNotification('Image too large. Maximum size is 5MB.', true);
+                return;
+            }
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!validTypes.includes(imageFile.type)) {
+                messageDiv.textContent = 'Invalid image type. Use JPG, PNG, or GIF.';
+                messageDiv.style.color = 'red';
+                showNotification('Please upload a valid image (JPG, PNG, GIF).', true);
+                return;
+            }
+        }
+
+        try {
+            const response = await fetchData('/api/teachers', {}, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Authorization': `Bearer ${state.token}`,
+                    'X-CSRF-Token': state.csrfToken
+                    // 'Content-Type' is omitted because FormData sets it automatically with boundary
+                }
+            });
+            messageDiv.textContent = response.message || 'Teacher added successfully!';
+            messageDiv.style.color = 'green';
+            form.reset();
+            // Refresh the teachers list
+            state.data.teachers = [];
+            await loadTeachers();
+            showNotification('Teacher added successfully!');
+        } catch (error) {
+            console.error('Client - Error adding teacher:', error.message);
+            messageDiv.textContent = error.message || 'Failed to add teacher.';
+            messageDiv.style.color = 'red';
+            showNotification('Error adding teacher.', true);
+        }
+    }
+
+    // Initialize Add Teacher Form
+    function initializeAddTeacherForm() {
+        const form = elements['teacher-submit-form'];
+        if (form) {
+            form.removeEventListener('submit', handleAddTeacherForm); // Prevent duplicate listeners
+            form.addEventListener('submit', handleAddTeacherForm);
+            console.log('Client - Add New Teacher form initialized');
+        } else {
+            console.warn('Client - Add New Teacher form not found');
+        }
+    }
+
+    // Add event listeners for buttons
+    function addButtonListeners() {
+        document.querySelectorAll('.submit-btn, .delete-btn, .approve-btn, .edit-btn, .pagination-btn').forEach(btn => {
+            btn.removeEventListener('click', handleButtonAction);
+            btn.addEventListener('click', handleButtonAction);
         });
     }
 
-    function handleTouch(e) {
-        e.preventDefault();
-        const action = e.target.dataset.action;
-        const id = e.target.dataset.id;
-        const name = e.target.dataset.name;
-        const page = e.target.dataset.page;
+    // Unified button action handler
+    function handleButtonAction(e) {
+        const action = this.dataset.action;
+        const id = this.dataset.id;
+        const name = this.dataset.name;
+        const email = this.dataset.email;
+        const page = parseInt(this.dataset.page);
 
         switch (action) {
+            case 'edit-teacher': window.toggleTeacherDetails(id); break;
             case 'update-vote': window.updateVote(id); break;
             case 'delete-vote': window.showDeleteVoteModal(id); break;
             case 'update-teacher': window.updateTeacher(id); break;
@@ -614,59 +822,53 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'delete-proposal': window.showDeleteProposalModal(id, name); break;
             case 'implement-correction': window.implementCorrection(id); break;
             case 'delete-correction': window.showDeleteCorrectionModal(id); break;
+            case 'approve-admin-request': window.approveAdminRequest(id); break;
+            case 'delete-admin-request': window.showDeleteAdminRequestModal(id, name); break;
+            case 'deny-admin-request': window.showDenyAdminRequestModal(id, name); break;
+            case 'delete-suggestion': window.showDeleteSuggestionModal(id, email); break;
         }
-        if (page) {
-            const pageNum = parseInt(page);
-            if (e.target.closest('.pagination')?.parentElement.id === 'teachers-table') {
-                loadTeachers(pageNum);
-            } else if (e.target.closest('.pagination')?.parentElement.id === 'votes-table') {
-                loadVotes(pageNum);
-            }
+
+        if (!isNaN(page)) {
+            const parentId = this.closest('.pagination')?.parentElement.id;
+            if (parentId === 'teachers-table') loadTeachers(page);
+            else if (parentId === 'votes-table') loadVotes(page);
+            else if (parentId === 'suggestions-table') loadSuggestions(page);
+            else if (parentId === 'admin-requests-table') loadAdminRequests(page);
         }
     }
 
-    function toggleTeacherDetailsTouch(e) {
-        e.preventDefault();
-        const teacherId = e.target.closest('.teacher-row').dataset.id;
-        window.toggleTeacherDetails(teacherId);
-    }
-
-    // Event Listeners
-    mobileMenuToggle.addEventListener('click', () => tabNav.classList.toggle('active'));
-    mobileMenuToggle.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        tabNav.classList.toggle('active');
-    });
-
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
-            const tabContent = document.getElementById(`${btn.dataset.tab}-tab`);
-            if (tabContent) tabContent.classList.add('active');
-
-            updateDropdownVisibility(btn.dataset.tab);
-            switch (btn.dataset.tab) {
+    // Tab switching
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+        const tabContent = elements[tabName];
+        if (tabBtn && tabContent) {
+            tabBtn.classList.add('active');
+            tabContent.classList.add('active');
+            state.activeTab = tabName;
+            updateDropdownVisibility(tabName);
+            switch (tabName) {
                 case 'teachers': loadTeachers(); break;
                 case 'votes': loadVotes(); break;
                 case 'proposals': loadTeacherProposals(); break;
                 case 'corrections': loadCorrections(); break;
-                case 'settings':
-                    loadMessageSettings();
-                    loadFooterSettings();
-                    break;
+                case 'suggestions': loadSuggestions(); break;
+                case 'admin-requests': loadAdminRequests(); break;
+                case 'settings': loadMessageSettings(); loadFooterSettings(); loadSectionSettings(); break;
                 case 'stats': loadStatistics(); break;
+                case 'add-teacher': initializeAddTeacherForm(); break;
+                default: console.warn(`Client - Unknown tab: ${tabName}`);
             }
-            loadSectionSettings();
-            if (window.innerWidth <= 768) tabNav.classList.remove('active');
-        });
-        btn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            btn.dispatchEvent(new Event('click'));
-        });
-    });
+            if (window.innerWidth <= 768) elements['tab-nav'].classList.remove('active');
+        } else {
+            showNotification(`Tab "${tabName}" not found.`, true);
+            console.error(`Client - Tab "${tabName}" not found`);
+        }
+    }
 
+    // Event Listeners
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
     document.querySelectorAll('.section-toggle').forEach(header => {
         header.addEventListener('click', () => {
             const content = header.nextElementSibling;
@@ -674,83 +876,108 @@ document.addEventListener('DOMContentLoaded', async () => {
             content.style.display = isExpanded ? 'block' : 'none';
             header.classList.toggle('expanded', isExpanded);
             const sectionName = header.textContent.trim();
-            allSettings[sectionName] = isExpanded;
-            const toggle = document.querySelector(`#toggle-${sectionName.replace(/\s+/g, '-')}`);
-            if (toggle) toggle.checked = isExpanded;
-        });
-        header.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            header.dispatchEvent(new Event('click'));
+            state.data.settings[sectionName] = isExpanded;
+            saveSectionSettings();
         });
     });
 
-    teacherForm.addEventListener('submit', async (e) => {
+    elements['teacher-form']?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = new FormData(teacherForm);
+        const formData = new FormData(elements['teacher-form']);
         try {
-            const response = await fetch('/api/teachers', {
+            const response = await fetch(`${BASE_URL}/api/admin/teachers`, {
                 method: 'POST',
-                headers: { 'X-CSRF-Token': csrfToken },
+                headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
                 body: formData,
-                credentials: 'include'
+                credentials: 'include',
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
             showNotification('Teacher added successfully!');
-            teacherForm.reset();
+            elements['teacher-form'].reset();
+            state.data.teachers = [];
             loadTeachers();
         } catch (error) {
             console.error('Client - Error adding teacher:', error);
-            showNotification('Error adding teacher.', true);
+            showNotification(`Error adding teacher: ${error.message}`, true);
         }
     });
 
-    footerSettingsForm.addEventListener('submit', async (e) => {
+    elements['footer-settings-form']?.addEventListener('submit', async (e) => {
         e.preventDefault();
         await saveFooterSettings();
     });
 
-    messageSettingsForm.addEventListener('submit', async (e) => {
+    elements['message-settings-form']?.addEventListener('submit', async (e) => {
         e.preventDefault();
         await saveMessageSettings();
     });
 
     const debouncedLoadTeachers = debounce(() => loadTeachers(1), 300);
     const debouncedLoadVotes = debounce(() => loadVotes(1), 300);
+    const debouncedLoadSuggestions = debounce(() => loadSuggestions(1), 300);
+    const debouncedLoadAdminRequests = debounce(() => loadAdminRequests(1), 300);
 
-    teacherSearch.addEventListener('input', debouncedLoadTeachers);
-    teachersPerPageSelect.addEventListener('change', () => loadTeachers(1));
-    teacherSort.addEventListener('change', () => loadTeachers(1));
-    teacherSortDirection.addEventListener('change', () => loadTeachers(1));
-    voteSearch.addEventListener('input', debouncedLoadVotes);
-    votesPerPageSelect.addEventListener('change', () => loadVotes(1));
-    voteSort.addEventListener('change', () => loadVotes(1));
-    voteSortDirection.addEventListener('change', () => loadVotes(1));
-    statsTimeframe.addEventListener('change', loadStatistics);
+    elements['teacher-search']?.addEventListener('input', debouncedLoadTeachers);
+    elements['teachers-per-page']?.addEventListener('change', () => loadTeachers(1));
+    elements['teacher-sort']?.addEventListener('change', () => loadTeachers(1));
+    elements['teacher-sort-direction']?.addEventListener('change', () => loadTeachers(1));
+    elements['vote-search']?.addEventListener('input', debouncedLoadVotes);
+    elements['votes-per-page']?.addEventListener('change', () => loadVotes(1));
+    elements['vote-sort']?.addEventListener('change', () => loadVotes(1));
+    elements['vote-sort-direction']?.addEventListener('change', () => loadVotes(1));
+    elements['suggestion-search']?.addEventListener('input', debouncedLoadSuggestions);
+    elements['suggestions-per-page']?.addEventListener('change', () => loadSuggestions(1));
+    elements['suggestion-sort']?.addEventListener('change', () => loadSuggestions(1));
+    elements['suggestion-sort-direction']?.addEventListener('change', () => loadSuggestions(1));
+    elements['request-search']?.addEventListener('input', debouncedLoadAdminRequests);
+    elements['requests-per-page']?.addEventListener('change', () => loadAdminRequests(1));
+    elements['request-sort']?.addEventListener('change', () => loadAdminRequests(1));
+    elements['request-sort-direction']?.addEventListener('change', () => loadAdminRequests(1));
+    elements['stats-timeframe']?.addEventListener('change', loadStatistics);
 
     // Global functions
+    window.logout = () => {
+        localStorage.removeItem('adminToken');
+        document.cookie = 'adminToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+        showNotification('Logged out successfully!');
+        setTimeout(() => window.location.href = '/pages/admin/login.html', 1000);
+    };
+
     window.toggleTeacherDetails = (teacherId) => {
         const detailsRow = document.getElementById(`teacher-details-${teacherId}`);
         if (detailsRow) detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
     };
 
     window.updateTeacher = async (id) => {
+        const statusElement = document.getElementById(`edit-status-${id}`);
         const formData = new FormData();
-        formData.append('id', sanitizeInput(document.getElementById(`edit-id-detail-${id}`).textContent));
-        formData.append('name', sanitizeInput(document.getElementById(`edit-name-${id}`).textContent));
-        formData.append('description', sanitizeInput(document.getElementById(`edit-desc-${id}`).textContent));
+        ['id', 'name', 'desc', 'schedule', 'bio', 'tags', 'email', 'phone'].forEach(field => {
+            const input = document.getElementById(`edit-${field}-${id}`);
+            formData.append(field === 'desc' ? 'description' : field, sanitizeInput(input?.value.trim() || ''));
+            input.dataset.original = input.value.trim();
+        });
+        const newId = formData.get('id');
+        const originalId = document.getElementById(`edit-id-${id}`).dataset.original;
+
         try {
-            const response = await fetch(`/api/admin/teachers/${id}`, {
+            statusElement.textContent = 'Updating...';
+            statusElement.className = 'info-message';
+            const response = await fetch(`${BASE_URL}/api/admin/teachers/${originalId}`, {
                 method: 'PUT',
-                headers: { 'X-CSRF-Token': csrfToken },
+                headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
                 body: formData,
-                credentials: 'include'
+                credentials: 'include',
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            state.data.teachers = state.data.teachers.map(t => t.id === originalId ? { ...t, ...Object.fromEntries(formData) } : t);
+            statusElement.textContent = 'Updated successfully!';
+            statusElement.className = 'success-message';
             showNotification('Teacher updated successfully!');
-            allTeachers = [];
             loadTeachers();
         } catch (error) {
             console.error('Client - Error updating teacher:', error);
+            statusElement.textContent = `Error: ${error.message}`;
+            statusElement.className = 'error-message';
             showNotification('Error updating teacher.', true);
         }
     };
@@ -758,14 +985,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.showDeleteTeacherModal = (id, name) => {
         showModal('Confirm Deletion', `Are you sure you want to delete ${name}?`, 'Delete', async () => {
             try {
-                const response = await fetch(`/api/admin/teachers/${id}`, {
+                const response = await fetch(`${BASE_URL}/api/admin/teachers/${id}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-Token': csrfToken },
-                    credentials: 'include'
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 showNotification('Teacher deleted successfully!');
-                allTeachers = [];
+                state.data.teachers = state.data.teachers.filter(t => t.id !== id);
                 loadTeachers();
             } catch (error) {
                 console.error('Client - Error deleting teacher:', error);
@@ -776,19 +1003,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.updateVote = async (voteId) => {
         const voteData = {
-            rating: parseInt(document.getElementById(`edit-rating-${voteId}`).textContent),
-            comment: sanitizeInput(document.getElementById(`edit-comment-${voteId}`).textContent)
+            rating: parseInt(document.getElementById(`edit-rating-${voteId}`)?.textContent || 0),
+            comment: sanitizeInput(document.getElementById(`edit-comment-${voteId}`)?.textContent || ''),
         };
         if (isNaN(voteData.rating) || voteData.rating < 1 || voteData.rating > 5) {
             showNotification('Rating must be between 1 and 5.', true);
             return;
         }
         try {
-            const response = await fetch(`/api/admin/votes/${voteId}`, {
+            const response = await fetch(`${BASE_URL}/api/admin/votes/${voteId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
                 body: JSON.stringify(voteData),
-                credentials: 'include'
+                credentials: 'include',
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             showNotification('Vote updated successfully!');
@@ -802,10 +1029,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.showDeleteVoteModal = (voteId) => {
         showModal('Confirm Deletion', `Are you sure you want to delete vote ID ${voteId}?`, 'Delete', async () => {
             try {
-                const response = await fetch(`/api/admin/votes/${voteId}`, {
+                const response = await fetch(`${BASE_URL}/api/admin/votes/${voteId}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-Token': csrfToken },
-                    credentials: 'include'
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 showNotification('Vote deleted successfully!');
@@ -825,31 +1052,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             try {
-                const response = await fetch(`/api/admin/teacher-proposals/approve/${proposalId}`, {
+                const response = await fetch(`${BASE_URL}/api/admin/teacher-proposals/approve/${proposalId}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
                     body: JSON.stringify({ id: teacherId }),
-                    credentials: 'include'
+                    credentials: 'include',
                 });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
                 showNotification('Proposal approved successfully!');
                 loadTeacherProposals();
-                allTeachers = [];
+                state.data.teachers = [];
                 loadTeachers();
             } catch (error) {
                 console.error('Client - Error approving proposal:', error);
-                showNotification('Error approving proposal.', true);
+                showNotification(`Error approving proposal: ${error.message}`, true);
             }
         }, '<input type="text" id="teacher-id" placeholder="e.g., T123">');
     };
 
     window.showDeleteProposalModal = (proposalId, name) => {
-        showModal('Confirm Deletion', `Are you sure you want to delete proposal for ${name}?`, 'Delete', async () => {
+        showModal('Confirm Deletion', `Are you sure you want to delete the proposal for ${name}?`, 'Delete', async () => {
             try {
-                const response = await fetch(`/api/admin/teacher-proposals/${proposalId}`, {
+                const response = await fetch(`${BASE_URL}/api/admin/teacher-proposals/${proposalId}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-Token': csrfToken },
-                    credentials: 'include'
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 showNotification('Proposal deleted successfully!');
@@ -861,18 +1088,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
-    window.implementCorrection = (correctionId) => {
-        showModal('Implement Correction', `Implement correction ID ${correctionId}?`, 'Implement', async () => {
+    window.implementCorrection = async (correctionId) => {
+        showModal('Implement Correction', `Are you sure you want to implement correction ID ${correctionId}?`, 'Implement', async () => {
             try {
-                const response = await fetch(`/api/admin/corrections/${correctionId}/implement`, {
+                const response = await fetch(`${BASE_URL}/api/admin/corrections/${correctionId}/implement`, {
                     method: 'POST',
-                    headers: { 'X-CSRF-Token': csrfToken },
-                    credentials: 'include'
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 showNotification('Correction implemented successfully!');
                 loadCorrections();
-                allTeachers = [];
+                state.data.teachers = [];
                 loadTeachers();
             } catch (error) {
                 console.error('Client - Error implementing correction:', error);
@@ -882,12 +1109,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.showDeleteCorrectionModal = (correctionId) => {
-        showModal('Confirm Deletion', `Delete correction ID ${correctionId}?`, 'Delete', async () => {
+        showModal('Confirm Deletion', `Are you sure you want to delete correction ID ${correctionId}?`, 'Delete', async () => {
             try {
-                const response = await fetch(`/api/admin/corrections/${correctionId}`, {
+                const response = await fetch(`${BASE_URL}/api/admin/corrections/${correctionId}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-Token': csrfToken },
-                    credentials: 'include'
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 showNotification('Correction deleted successfully!');
@@ -899,24 +1126,89 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
-    window.logout = async () => {
-        document.cookie = 'adminToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
-        showNotification('Logged out successfully!');
-        setTimeout(() => window.location.href = '/pages/admin/login.html', 1000);
+    window.approveAdminRequest = (requestId) => {
+        showModal('Approve Admin Request', `Are you sure you want to approve admin request ID ${requestId}?`, 'Approve', async () => {
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin-request/approve/${requestId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                showNotification('Admin request approved successfully!');
+                loadAdminRequests();
+            } catch (error) {
+                console.error('Client - Error approving admin request:', error);
+                showNotification('Error approving admin request.', true);
+            }
+        });
+    };
+
+    window.showDeleteAdminRequestModal = (requestId, name) => {
+        showModal('Confirm Deletion', `Are you sure you want to delete the admin request for ${name}?`, 'Delete', async () => {
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin-request/${requestId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                showNotification('Admin request deleted successfully!');
+                loadAdminRequests();
+            } catch (error) {
+                console.error('Client - Error deleting admin request:', error);
+                showNotification('Error deleting admin request.', true);
+            }
+        });
+    };
+
+    window.showDenyAdminRequestModal = (requestId, name) => {
+        showModal('Deny Admin Request', `Are you sure you want to deny the admin request for ${name}?`, 'Deny', async () => {
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin-request/deny/${requestId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                showNotification('Admin request denied successfully!');
+                loadAdminRequests();
+            } catch (error) {
+                console.error('Client - Error denying admin request:', error);
+                showNotification('Error denying admin request.', true);
+            }
+        });
+    };
+
+    window.showDeleteSuggestionModal = (suggestionId, email) => {
+        showModal('Confirm Deletion', `Are you sure you want to delete the suggestion from ${email}?`, 'Delete', async () => {
+            try {
+                const response = await fetch(`${BASE_URL}/api/suggestions/${suggestionId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                showNotification('Suggestion deleted successfully!');
+                loadSuggestions();
+            } catch (error) {
+                console.error('Client - Error deleting suggestion:', error);
+                showNotification('Error deleting suggestion.', true);
+            }
+        });
     };
 
     // Initial load
     const isAuthenticated = await checkAdminStatus();
     if (isAuthenticated) {
-        loadTeachers();
-        loadVotes();
-        loadTeacherProposals();
-        loadCorrections();
-        await loadSectionSettings();
-        loadMessageSettings();
-        loadFooterSettings();
-        loadStatistics();
+        await loadSectionSettings(); // Load settings first to apply expansions
         const defaultTabBtn = document.querySelector('.tab-btn[data-tab="teachers"]');
-        if (defaultTabBtn) defaultTabBtn.click();
+        if (defaultTabBtn) switchTab('teachers');
+        else {
+            const firstTab = document.querySelector('.tab-btn');
+            if (firstTab) switchTab(firstTab.dataset.tab);
+        }
+        initializeAddTeacherForm(); // Initialize form on load in case "add-teacher" is default
+        addButtonListeners();
     }
 });

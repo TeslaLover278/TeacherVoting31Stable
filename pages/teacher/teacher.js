@@ -9,15 +9,14 @@ const votedTeachers = document.cookie.split('; ')
     .filter(Boolean) || [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Client - Teacher script loaded, initializing...');
     await fetchCsrfToken();
     await checkAdminStatus();
     await loadTeacherProfile();
     setupEventListeners();
+    loadMainMessage();
 });
 
-/**
- * Fetch CSRF token from the server
- */
 async function fetchCsrfToken() {
     try {
         const response = await fetch('/api/csrf-token', { credentials: 'include' });
@@ -33,23 +32,12 @@ async function fetchCsrfToken() {
     }
 }
 
-/**
- * Check if the user is an admin using JWT verification
- */
 async function checkAdminStatus() {
     try {
         const response = await fetch('/api/admin/verify', { credentials: 'include' });
         isAdmin = response.ok;
         const adminBtn = document.querySelector('.admin-btn');
-        const adminStatus = document.getElementById('admin-status');
         adminBtn.textContent = isAdmin ? 'Admin Dashboard' : 'Admin Login';
-        if (isAdmin) {
-            adminStatus.style.display = 'none';
-        } else {
-            adminStatus.textContent = 'Not logged in';
-            adminStatus.classList.add('error');
-            adminStatus.style.display = 'inline';
-        }
     } catch (error) {
         console.error('Client - Error verifying admin status:', error.message);
         isAdmin = false;
@@ -57,16 +45,12 @@ async function checkAdminStatus() {
     }
 }
 
-/**
- * Load the teacher profile data from the server
- */
 async function loadTeacherProfile() {
     if (!teacherId) {
         showNotification('No teacher ID provided.', true);
         setTimeout(() => window.location.href = '/', 2000);
         return;
     }
-
     try {
         const response = await fetch(`/api/teachers/${teacherId}`, { credentials: 'include' });
         if (!response.ok) {
@@ -88,9 +72,6 @@ async function loadTeacherProfile() {
     }
 }
 
-/**
- * Render the teacher profile UI
- */
 function renderTeacherProfile() {
     const profileContainer = document.querySelector('.teacher-profile');
     if (!profileContainer) return;
@@ -103,9 +84,9 @@ function renderTeacherProfile() {
         </div>
         <div class="teacher-content">
             <div class="teacher-left">
-                <p class="teacher-description">${teacherData.description}</p>
                 <p class="teacher-bio"><strong>Bio:</strong> ${teacherData.bio}</p>
                 <p class="teacher-classes"><strong>Classes:</strong> ${teacherData.classes.join(', ')}</p>
+                <p class="teacher-tags"><strong>Tags:</strong> ${teacherData.tags.join(', ')}</p>
                 <div class="schedule-section">
                     <h3 class="schedule-heading">Schedule</h3>
                     <table class="schedule-table">
@@ -172,9 +153,6 @@ function renderTeacherProfile() {
     setupCorrectionsButton();
 }
 
-/**
- * Set up event listeners for navigation buttons
- */
 function setupEventListeners() {
     document.querySelector('.logo')?.addEventListener('click', () => window.location.href = '/');
     document.querySelector('.admin-btn')?.addEventListener('click', () => {
@@ -183,9 +161,6 @@ function setupEventListeners() {
     document.querySelector('.submit-teacher-btn')?.addEventListener('click', () => window.location.href = '/pages/teacher/submit-teacher.html');
 }
 
-/**
- * Set up interactive star rating system
- */
 function setupRatingStars() {
     const stars = document.querySelectorAll('#star-rating .star');
     const submitBtn = document.getElementById('submit-rating');
@@ -205,18 +180,11 @@ function setupRatingStars() {
     submitBtn.addEventListener('click', submitRating);
 }
 
-/**
- * Highlight stars up to the selected rating
- * @param {string|number} rating - The rating to highlight up to
- */
 function highlightStars(rating) {
     const stars = document.querySelectorAll('#star-rating .star');
     stars.forEach(star => star.classList.toggle('selected', star.dataset.rating <= rating));
 }
 
-/**
- * Submit a rating to the server and update the UI
- */
 async function submitRating() {
     const submitBtn = document.getElementById('submit-rating');
     const rating = parseInt(submitBtn.dataset.rating);
@@ -245,7 +213,6 @@ async function submitRating() {
         hasVoted = true;
         votedTeachers.push(teacherId);
         document.cookie = `votedTeachers=${votedTeachers.join(',')}; Path=/; Max-Age=31536000; SameSite=Strict`;
-
         teacherData.avg_rating = data.avg_rating;
         teacherData.rating_count = data.rating_count;
         teacherData.ratings.push({ rating, comment, is_explicit: data.is_explicit });
@@ -256,9 +223,6 @@ async function submitRating() {
     }
 }
 
-/**
- * Set up toggle for showing all reviews
- */
 function setupReviewToggle() {
     const toggleBtn = document.querySelector('.toggle-btn');
     const reviewsList = document.querySelector('.reviews-list');
@@ -279,27 +243,18 @@ function setupReviewToggle() {
     });
 }
 
-/**
- * Set up admin action buttons (edit/delete)
- */
 function setupAdminActions() {
     document.getElementById('edit-teacher-btn')?.addEventListener('click', showEditForm);
     document.getElementById('delete-teacher-btn')?.addEventListener('click', showDeleteModal);
 }
 
-/**
- * Set up the corrections button and modal
- */
 function setupCorrectionsButton() {
     const correctionsBtn = document.getElementById('corrections-btn');
     const modal = document.getElementById('corrections-modal');
     const cancelBtn = document.getElementById('cancel-correction');
     const form = document.getElementById('corrections-form');
 
-    if (!correctionsBtn || !modal || !cancelBtn || !form) {
-        console.error('Client - Correction elements not found');
-        return;
-    }
+    if (!correctionsBtn || !modal || !cancelBtn || !form) return;
 
     correctionsBtn.addEventListener('click', () => modal.classList.add('active'));
     cancelBtn.addEventListener('click', () => {
@@ -320,11 +275,11 @@ function setupCorrectionsButton() {
         const formData = new FormData();
         formData.append('suggestion', suggestion);
         if (file) formData.append('file', file);
-        formData.append('_csrf', csrfToken);
 
         try {
             const response = await fetch(`/api/corrections/${teacherId}`, {
                 method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken },
                 credentials: 'include',
                 body: formData
             });
@@ -342,108 +297,119 @@ function setupCorrectionsButton() {
     });
 }
 
-/**
- * Display the edit form for the teacher
- */
 function showEditForm() {
     const profileContainer = document.querySelector('.teacher-profile');
     profileContainer.innerHTML = `
-        <form class="edit-form">
+        <form id="edit-teacher-form" class="edit-form" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="${csrfToken}">
             <div class="form-group">
                 <label for="edit-name">Name:</label>
-                <input type="text" id="edit-name" value="${teacherData.name}" required>
+                <input type="text" id="edit-name" name="name" value="${teacherData.name}">
             </div>
             <div class="form-group">
                 <label for="edit-room">Room Number:</label>
-                <input type="text" id="edit-room" value="${teacherData.room_number}" required>
+                <input type="text" id="edit-room" name="room_number" value="${teacherData.room_number}">
             </div>
             <div class="form-group">
-                <label for="edit-description">Description:</label>
-                <input type="text" id="edit-description" value="${teacherData.description}" required>
-            </div>
-            <div class="form-group">
-                <label for="edit-bio">Bio:</label>
-                <textarea id="edit-bio" required>${teacherData.bio}</textarea>
+    		<label for="edit-bio">Bio:</label>
+   		<textarea id="edit-bio" name="bio">${teacherData.bio}</textarea>
             </div>
             <div class="form-group">
                 <label for="edit-classes">Classes (comma-separated):</label>
-                <input type="text" id="edit-classes" value="${teacherData.classes.join(', ')}" required>
+                <input type="text" id="edit-classes" name="classes" value="${teacherData.classes.join(', ')}">
             </div>
             <div class="form-group">
                 <label for="edit-tags">Tags (comma-separated):</label>
-                <input type="text" id="edit-tags" value="${teacherData.tags.join(', ')}" required>
+                <input type="text" id="edit-tags" name="tags" value="${teacherData.tags.join(', ')}">
             </div>
             <div class="form-group">
-                <label for="edit-image">Image URL (optional):</label>
-                <input type="url" id="edit-image" value="${teacherData.image_link || ''}">
+                <label for="edit-image">Upload New Image (optional):</label>
+                <input type="file" id="edit-image" name="image" accept="image/*">
+                <p>Current Image: <img src="${teacherData.image_link || '/public/images/default-teacher.jpg'}" alt="Current Image" style="max-width: 100px;"></p>
             </div>
             <div class="schedule-edit">
                 <h3>Schedule</h3>
                 ${teacherData.schedule.map((s, i) => `
                     <div class="schedule-block" data-index="${i}">
                         <label>Block ${i + 1}:</label>
-                        <input type="text" class="block" value="${s.block}" required>
-                        <input type="text" class="subject" value="${s.subject}" required>
-                        <input type="text" class="grade" value="${s.grade}" required>
+                        <input type="text" class="block" name="schedule[${i}][block]" value="${s.block}">
+                        <input type="text" class="subject" name="schedule[${i}][subject]" value="${s.subject}">
+                        <input type="text" class="grade" name="schedule[${i}][grade]" value="${s.grade}">
                     </div>
                 `).join('')}
             </div>
             <div class="admin-actions">
                 <button type="submit" class="submit-btn">Save Changes</button>
-                <button type="button" class="cancel-btn" onclick="loadTeacherProfile()">Cancel</button>
+                <button type="button" class="cancel-btn" id="cancel-edit">Cancel</button>
             </div>
         </form>
     `;
 
-    document.querySelector('.edit-form').addEventListener('submit', async (e) => {
+    document.getElementById('edit-teacher-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const updatedData = {
-            name: document.getElementById('edit-name').value.trim(),
-            room_number: document.getElementById('edit-room').value.trim(),
-            description: document.getElementById('edit-description').value.trim(),
-            bio: document.getElementById('edit-bio').value.trim(),
-            classes: document.getElementById('edit-classes').value.split(',').map(c => c.trim()).filter(c => c),
-            tags: document.getElementById('edit-tags').value.split(',').map(t => t.trim()).filter(t => t),
-            image_link: document.getElementById('edit-image').value.trim() || '',
-            schedule: Array.from(document.querySelectorAll('.schedule-block')).map(block => ({
-                block: block.querySelector('.block').value.trim(),
-                subject: block.querySelector('.subject').value.trim(),
-                grade: block.querySelector('.grade').value.trim()
-            }))
-        };
+        const form = e.target;
+        const formData = new FormData(form);
 
-        if (!updatedData.classes.length || !updatedData.tags.length || updatedData.schedule.some(s => !s.block || !s.subject || !s.grade)) {
-            showNotification('All required fields must be filled correctly.', true);
-            return;
+        // Process schedule into a JSON string
+        const schedule = [];
+        teacherData.schedule.forEach((_, i) => {
+            const block = formData.get(`schedule[${i}][block]`)?.trim() || '';
+            const subject = formData.get(`schedule[${i}][subject]`)?.trim() || '';
+            const grade = formData.get(`schedule[${i}][grade]`)?.trim() || '';
+            schedule.push({ block, subject, grade });
+        });
+        teacherData.schedule.forEach((_, i) => {
+            formData.delete(`schedule[${i}][block]`);
+            formData.delete(`schedule[${i}][subject]`);
+            formData.delete(`schedule[${i}][grade]`);
+        });
+        formData.set('schedule', JSON.stringify(schedule));
+
+        // Log the FormData contents for debugging
+        console.log('Client - Sending FormData to server:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+
+        // Validate image (optional)
+        const imageFile = formData.get('image');
+        if (imageFile && imageFile.size > 0) {
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (imageFile.size > maxSize) {
+                showNotification('Image file size exceeds 5MB limit.', true);
+                return;
+            }
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!validTypes.includes(imageFile.type)) {
+                showNotification('Invalid image type. Use JPG, PNG, or GIF.', true);
+                return;
+            }
         }
 
         try {
             const response = await fetch(`/api/admin/teachers/${teacherId}`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRF-Token': csrfToken
                 },
                 credentials: 'include',
-                body: JSON.stringify(updatedData)
+                body: formData
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to update teacher');
 
             showNotification('Teacher updated successfully!');
-            teacherData = { ...teacherData, ...updatedData, ratings: teacherData.ratings, avg_rating: teacherData.avg_rating, rating_count: teacherData.rating_count };
+            teacherData = { ...teacherData, ...data, ratings: teacherData.ratings, avg_rating: teacherData.avg_rating, rating_count: teacherData.rating_count };
             await loadTeacherProfile();
         } catch (error) {
             console.error('Client - Error updating teacher:', error.message);
             showNotification(`Error updating teacher: ${error.message}`, true);
         }
     });
+
+    document.getElementById('cancel-edit').addEventListener('click', () => loadTeacherProfile());
 }
 
-/**
- * Display a confirmation modal for deleting the teacher
- */
 function showDeleteModal() {
     const modal = document.getElementById('modal');
     modal.classList.add('active');
@@ -471,69 +437,58 @@ function showDeleteModal() {
     document.getElementById('cancel-delete').addEventListener('click', () => modal.classList.remove('active'));
 }
 
-/**
- * Show a notification message to the user
- * @param {string} message - The message to display
- * @param {boolean} isError - Whether the notification is an error
- */
 function showNotification(message, isError = false) {
     const notification = document.getElementById('notification');
+    if (!notification) return;
     notification.className = `notification ${isError ? 'error' : 'success'}`;
     notification.textContent = message;
+    notification.style.opacity = '0';
     notification.style.display = 'block';
-    setTimeout(() => notification.style.display = 'none', 3000);
+    requestAnimationFrame(() => {
+        notification.style.opacity = '1';
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.addEventListener('transitionend', () => {
+                notification.style.display = 'none';
+            }, { once: true });
+        }, 3000);
+    });
 }
 
-// Main message handling (moved from second DOMContentLoaded)
-document.addEventListener('DOMContentLoaded', () => {
+function loadMainMessage() {
     const currentPath = window.location.pathname;
-    const isAdminPage = currentPath.includes('/pages/admin/login.html') || currentPath.includes('/pages/admin/dashboard.html');
-    if (isAdminPage) {
-        console.log('Main message skipped on admin page.');
-        return;
-    }
+    if (currentPath.includes('/pages/admin/')) return;
 
     const messageDiv = document.getElementById('main-message');
     const messageText = document.getElementById('message-text');
     const closeButton = document.getElementById('close-message');
-
-    if (!messageDiv || !messageText || !closeButton) {
-        console.error('Main message elements not found in DOM.');
-        return;
-    }
+    if (!messageDiv || !messageText || !closeButton) return;
 
     function shouldShowMessage(newMessage) {
         const lastClosed = localStorage.getItem('mainMessageClosedTime');
         const lastMessage = localStorage.getItem('mainMessageContent');
         const now = Date.now();
-        const fiveMinutes = 300000; // 5 minutes in milliseconds
+        const fiveMinutes = 300000;
         return !lastClosed || lastMessage !== newMessage || (now - parseInt(lastClosed) >= fiveMinutes);
     }
 
-    async function loadMainMessage() {
-        try {
-            const response = await fetch('/api/message-settings', { credentials: 'include' });
+    fetch('/api/message-settings', { credentials: 'include' })
+        .then(response => {
             if (!response.ok) throw new Error('Failed to fetch message settings');
-            const data = await response.json();
-
-            const { message, showMessage } = data;
-            messageText.textContent = message;
-
-            if (showMessage && shouldShowMessage(message)) {
+            return response.json();
+        })
+        .then(data => {
+            messageText.textContent = data.message;
+            if (data.showMessage && shouldShowMessage(data.message)) {
                 messageDiv.classList.add('active');
                 messageDiv.style.display = 'block';
             } else {
                 messageDiv.classList.remove('active');
                 messageDiv.style.display = 'none';
             }
-
-            localStorage.setItem('mainMessageContent', message);
-        } catch (error) {
-            console.error('Error fetching main message:', error.message);
-            messageDiv.classList.remove('active');
-            messageDiv.style.display = 'none';
-        }
-    }
+            localStorage.setItem('mainMessageContent', data.message);
+        })
+        .catch(error => console.error('Client - Error fetching message settings:', error.message));
 
     closeButton.addEventListener('click', () => {
         messageDiv.classList.remove('active');
@@ -548,6 +503,4 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('mainMessageClosedTime', Date.now().toString());
         }
     }, { once: true });
-
-    loadMainMessage();
-});
+}

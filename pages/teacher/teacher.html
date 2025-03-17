@@ -3,102 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content=""> <!-- Store CSRF token here -->
+    <meta name="csrf-token" content="">
     <title id="dynamic-title">Teacher Profile</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <style>
+        .header-content {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+        }
+        .mobile-menu-toggle {
+            font-size: 24px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: none;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 20px;
+            background-color: #333;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            min-width: 150px;
+        }
+        .dropdown-menu.active {
+            display: block;
+        }
+        .dropdown-menu button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: none;
+            border: none;
+            color: white;
+            text-align: left;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .dropdown-menu button:hover {
+            background-color: #555;
+        }
+        .header-buttons.desktop-only {
+            display: flex;
+            gap: 10px;
+        }
+        .tab-nav {
+            display: none;
+        }
+        .modal {
+            display: none;
+        }
+        .modal.active {
+            display: block;
+        }
+        .notification {
+            transition: opacity 0.5s ease;
+        }
+        .form-group input[type="file"] {
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+            .header-buttons.desktop-only {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Rating Logo" class="logo" onclick="window.location.href='/'">
-            <h1 class="header-title">Rate Your Teachers</h1>
-            <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-            <div class="header-buttons desktop-only">
-                <button class="submit-teacher-btn" onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
-                <button class="admin-btn" onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
+<header class="site-header">
+    <div class="header-content">
+        <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo">
+        <h1 class="header-title"><a href="/" style="color: white; text-decoration: none;">Teacher Tally</a></h1>
+        <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
+        <div class="header-buttons desktop-only">
+            <button class="submit-teacher-btn">Submit a Teacher</button>
+            <button class="admin-btn">Admin Dashboard</button>
+        </div>
+        <div class="dropdown-menu" id="dropdown-menu">
+            <button onclick="window.location.href='/'">Home</button>
+            <button onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
+            <button onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
+        </div>
+        <nav id="tab-nav" class="tab-nav">
+            <button class="tab-btn" data-tab="home" onclick="window.location.href='/'">Home</button>
+        </nav>
+    </div>
+</header>
+<main class="teacher-profile-container">
+    <div class="teacher-profile" id="teacher-profile"></div>
+</main>
+<footer class="site-footer">
+    <p id="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
+    <p id="footer-message">Welcome to Teacher Tally!</p>
+</footer>
+<div id="notification" class="notification"></div>
+<div id="main-message" class="modal">
+    <div class="modal-content">
+        <span id="message-text"></span>
+        <button id="close-message">X</button>
+    </div>
+</div>
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h2>Confirm Deletion</h2>
+        <p>Are you sure you want to delete this teacher and their votes?</p>
+        <button id="confirm-delete" class="modal-btn">Yes</button>
+        <button id="cancel-delete" class="modal-btn">No</button>
+    </div>
+</div>
+<div id="corrections-modal" class="modal">
+    <div class="modal-content">
+        <h2>Submit a Correction</h2>
+        <form id="corrections-form" class="edit-form">
+            <input type="hidden" name="_csrf" id="csrf-token">
+            <div class="form-group">
+                <label for="correction-suggestion">Suggestion:</label>
+                <textarea id="correction-suggestion" name="suggestion" rows="4" placeholder="Describe the correction..." required></textarea>
             </div>
-            <nav id="tab-nav" class="tab-nav">
-                <button class="tab-btn" data-tab="home" onclick="window.location.href='/'">Home</button>
-            </nav>
-        </div>
-    </header>
-    <main class="teacher-profile-container">
-        <div class="teacher-profile" id="teacher-profile"></div>
-    </main>
-    <footer class="site-footer">
-        <p id="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
-        <p id="footer-message">Welcome to Rate Your Teachers!</p>
-    </footer>
-    <div id="notification" class="notification"></div>
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <h2>Confirm Deletion</h2>
-            <p>Are you sure you want to delete this teacher and their votes?</p>
-            <button id="confirm-delete" class="modal-btn">Yes</button>
-            <button id="cancel-delete" class="modal-btn">No</button>
-        </div>
+            <div class="form-group">
+                <label for="correction-file">Upload File (optional):</label>
+                <input type="file" id="correction-file" name="file" accept=".jpg,.jpeg,.png,.pdf,.txt">
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="submit-btn">Submit</button>
+                <button type="button" id="cancel-correction" class="cancel-btn">Cancel</button>
+            </div>
+        </form>
     </div>
-    <div id="corrections-modal" class="modal">
-        <div class="modal-content">
-            <h2>Submit a Correction</h2>
-            <form id="corrections-form" class="edit-form">
-                <input type="hidden" name="_csrf" id="csrf-token">
-                <div class="form-group">
-                    <label for="correction-suggestion">Suggestion:</label>
-                    <textarea id="correction-suggestion" name="suggestion" rows="4" placeholder="Describe the correction..." required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="correction-file">Upload File (optional):</label>
-                    <input type="file" id="correction-file" name="file" accept=".jpg,.jpeg,.png,.pdf,.txt">
-                </div>
-                <div class="modal-actions">
-                    <button type="submit" class="submit-btn">Submit</button>
-                    <button type="button" id="cancel-correction" class="cancel-btn">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <script src="/pages/teacher/teacher.js"></script> <!-- Main script for teacher profile -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
-            const tabNav = document.getElementById('tab-nav');
-            const tabButtons = document.querySelectorAll('.tab-btn');
-
-            // Mobile menu toggle
-            mobileMenuToggle.addEventListener('click', () => {
-                tabNav.classList.toggle('active');
-            });
-
-            // Tab navigation (closes menu on mobile after selection)
-            tabButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (window.innerWidth <= 768) tabNav.classList.remove('active');
-                });
-            });
-
-            // Placeholder form submission handler for corrections
-            document.getElementById('corrections-form')?.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const notification = document.getElementById('notification');
-                notification.textContent = 'Correction submitted (placeholder)';
-                notification.className = 'notification success';
-                notification.style.display = 'block';
-                document.getElementById('corrections-modal').classList.remove('active');
-                setTimeout(() => notification.style.display = 'none', 3000);
-            });
-
-            // Placeholder cancel button for corrections modal
-            document.getElementById('cancel-correction')?.addEventListener('click', () => {
-                document.getElementById('corrections-modal').classList.remove('active');
-            });
-
-            // Placeholder modal cancel button
-            document.getElementById('cancel-delete')?.addEventListener('click', () => {
-                document.getElementById('modal').classList.remove('active');
+</div>
+<script src="/pages/teacher/teacher.js" defer></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+        const dropdownMenu = document.getElementById('dropdown-menu');
+        mobileMenuToggle.addEventListener('click', () => dropdownMenu.classList.toggle('active'));
+        dropdownMenu.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.innerWidth <= 768) dropdownMenu.classList.remove('active');
             });
         });
-    </script>
+        document.addEventListener('click', (e) => {
+            if (!mobileMenuToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.remove('active');
+            }
+        });
+    });
+</script>
 </body>
 </html>

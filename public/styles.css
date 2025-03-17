@@ -19,6 +19,7 @@ body {
     text-align: center;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     position: relative;
+    z-index: 50; /* Match index.html */
 }
 
 .header-content {
@@ -28,12 +29,16 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     flex-wrap: wrap;
+    position: relative;
+    z-index: 50; /* Match index.html */
 }
 
 .logo {
     height: 40px;
     cursor: pointer;
     margin-right: 2rem;
+    z-index: 55; /* Match index.html */
+    pointer-events: auto; /* Ensure clickable */
 }
 
 .header-title {
@@ -41,11 +46,14 @@ body {
     font-size: 1.5rem;
     flex-grow: 1;
     text-align: center;
+    z-index: 45; /* Below logo and toggle */
 }
 
-.header-buttons {
+.header-buttons.desktop-only {
     display: flex;
     gap: 0.5rem;
+    align-items: center;
+    z-index: 50; /* Match index.html */
 }
 
 .admin-btn, .submit-teacher-btn {
@@ -59,6 +67,8 @@ body {
     transition: background-color 0.3s, transform 0.2s ease;
     min-width: 48px;
     min-height: 48px;
+    z-index: 50;
+    pointer-events: auto;
 }
 
 .admin-btn:hover, .submit-teacher-btn:hover {
@@ -76,6 +86,42 @@ body {
     cursor: pointer;
     min-width: 48px;
     min-height: 48px;
+    z-index: 55; /* Match index.html */
+    pointer-events: auto; /* Ensure clickable */
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 20px;
+    background-color: #333;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    min-width: 150px;
+}
+
+.dropdown-menu.active {
+    display: block;
+}
+
+.dropdown-menu button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: white;
+    text-align: left;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    pointer-events: auto;
+}
+
+.dropdown-menu button:hover {
+    background-color: #555;
 }
 
 /* Footer Styles */
@@ -87,6 +133,7 @@ body {
     position: relative;
     bottom: 0;
     width: 100%;
+    z-index: 30;
 }
 
 .footer-email, .footer-message {
@@ -108,18 +155,34 @@ body {
 }
 
 /* Notification Styles */
-.notification {
+.notification-container {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 1rem 1.5rem;
-    color: white;
-    border-radius: 8px;
+    top: 10px;
+    right: 10px;
     z-index: 1000;
-    display: none;
-    align-items: center;
-    gap: 0.5rem;
+    max-width: 300px;
+    width: 100%;
+}
+
+.notification {
+    position: absolute; /* Change from relative to absolute */
+    top: 10%; /* Moves it higher up */
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1rem 2.5rem 1rem 1.5rem;
+    color: black;
+    border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #fff;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+.notification.info {
+    background-color: #00B7D1;
 }
 
 .notification.success {
@@ -128,6 +191,37 @@ body {
 
 .notification.error {
     background-color: #FF0000;
+}
+
+.notification.fade-out {
+    opacity: 0;
+}
+
+.notification p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.notification .close-btn {
+    position: absolute;  /* Position it relative to the .notification */
+    top: 8px;  /* Adjust for spacing */
+    right: 8px; /* Move to the right */
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s ease, transform 0.2s ease;
+    min-width: 20px;
+    min-height: 20px;
+}
+
+.notification .close-btn:hover {
+    transform: scale(1.2);  /* Slight zoom effect on hover */
+    color: #ff5555;  /* Change color to red on hover */
 }
 
 /* Homepage Styles */
@@ -147,6 +241,7 @@ body {
     background-color: #fff;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 30;
 }
 
 .directory-title {
@@ -157,11 +252,30 @@ body {
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+.toggle-filters-btn {
+    background-color: #00B7D1;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+    z-index: 45; /* Match index.html */
+    pointer-events: auto; /* Ensure clickable */
+}
+
+.toggle-filters-btn:hover {
+    background-color: #009bb5;
+}
+
 .controls {
     margin: 1rem 0;
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    z-index: 40;
+    pointer-events: auto;
 }
 
 .search-input {
@@ -172,6 +286,7 @@ body {
     font-size: 1rem;
     margin-bottom: 1rem;
     transition: border-color 0.3s, box-shadow 0.3s;
+    pointer-events: auto;
 }
 
 .search-input:focus {
@@ -186,6 +301,8 @@ body {
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
+    z-index: 40;
+    pointer-events: auto;
 }
 
 .sort-options label {
@@ -203,6 +320,8 @@ body {
     cursor: pointer;
     transition: border-color 0.3s;
     min-width: 100px;
+    z-index: 45; /* Match index.html */
+    pointer-events: auto; /* Ensure clickable */
 }
 
 .sort-select:focus {
@@ -210,11 +329,14 @@ body {
     outline: none;
 }
 
+/* Rest of the styles remain unchanged */
 .teacher-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1.5rem;
     margin-top: 1rem;
+    z-index: 30;
+    pointer-events: auto;
 }
 
 .teacher-card {
@@ -225,6 +347,8 @@ body {
     text-align: center;
     transition: transform 0.3s, box-shadow 0.3s;
     cursor: pointer;
+    z-index: 30;
+    pointer-events: auto;
 }
 
 .teacher-card:hover {
@@ -266,6 +390,8 @@ body {
     text-decoration: none;
     border-radius: 5px;
     transition: background-color 0.3s;
+    z-index: 31;
+    pointer-events: auto;
 }
 
 .view-profile:hover {
@@ -278,6 +404,8 @@ body {
     justify-content: center;
     gap: 0.5rem;
     flex-wrap: wrap;
+    z-index: 30;
+    pointer-events: auto;
 }
 
 .pagination-btn {
@@ -289,6 +417,8 @@ body {
     transition: background-color 0.3s, color 0.3s;
     min-width: 48px;
     min-height: 48px;
+    z-index: 30;
+    pointer-events: auto;
 }
 
 .pagination-btn:hover {
@@ -307,6 +437,7 @@ body {
     opacity: 0.6;
 }
 
+/* Remaining styles unchanged below this point */
 /* Teacher Profile Styles */
 .teacher-profile-container {
     display: flex;
@@ -524,6 +655,8 @@ body {
     transition: background-color 0.3s, transform 0.2s ease;
     min-width: 48px;
     min-height: 48px;
+    z-index: 30;
+    pointer-events: auto;
 }
 
 .submit-btn:hover {
@@ -625,23 +758,23 @@ body {
 
 /* Modal Styles */
 .modal {
-    display: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    z-index: 1000;
+    background: rgba(0, 0, 0, 0.5); /* Dim background */
     opacity: 0;
-    transition: opacity 0.3s ease;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .modal.active {
-    display: flex;
     opacity: 1;
-    justify-content: center;
-    align-items: center;
+    visibility: visible;
 }
 
 .modal-content {
@@ -651,13 +784,48 @@ body {
     padding: 2rem;
     border-radius: 15px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    position: relative;
-    transform: translateY(-20px);
-    transition: transform 0.3s ease;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .modal.active .modal-content {
-    transform: translateY(0);
+    opacity: 1;
+    transform: translate(-50%, -50%);
+}
+
+#edit-bio {
+    width: 100%; /* Dynamic width based on container */
+    max-width: 100%; /* Ensures it doesn't overflow */
+    min-width: 300px; /* Optional: Sets a minimum width */
+    height: 200px; /* Fixed height */
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    resize: vertical; /* Allows resizing only in the vertical direction */
+}
+
+/* Close button */
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.modal-close:hover {
+    color: #ff5555;
+    transform: scale(1.2);
 }
 
 .modal-content h2 {
@@ -671,6 +839,7 @@ body {
     margin-bottom: 1.5rem;
 }
 
+/* Button styles */
 .modal-btn {
     padding: 0.75rem 1.5rem;
     border: none;
@@ -686,6 +855,7 @@ body {
     transform: translateY(-2px);
 }
 
+/* Confirm button */
 #confirm-action {
     background-color: #00B7D1;
     color: white;
@@ -695,6 +865,7 @@ body {
     background-color: #009bb5;
 }
 
+/* Cancel button */
 #cancel-action {
     background-color: #e0e0e0;
     color: #333;
@@ -748,15 +919,17 @@ body {
 
 .close-btn {
     position: absolute;
-    top: 10px;
-    right: 15px;
+    top: 8px;
+    right: 13px;
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
-    color: #666;
+    color: #000000c4;
     cursor: pointer;
     transition: color 0.2s ease, transform 0.2s ease;
+    z-index: 1001;
+    pointer-events: auto;
 }
 
 .close-btn:hover {
@@ -765,8 +938,8 @@ body {
 }
 
 #main-message p#message-text {
-    margin: 0 0 10px 0;
-    font-size: 16px;
+    margin: 12px 0 10px 0;
+    font-size: 20px;
     line-height: 1.5;
     color: #333;
     background: #ffffff;
@@ -912,7 +1085,7 @@ body {
 
 .admin-dashboard .content-container {
     width: 85%;
-    max-width: 1640px;
+    max-width: 2400px;
 }
 
 /* Toggle Switch */
@@ -961,35 +1134,45 @@ body {
     transform: translateX(26px);
 }
 
-/* Tab Navigation */
+/* Updated Tab Navigation */
 .tab-nav {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    border-bottom: 2px solid #ddd;
-    flex-wrap: wrap;
-    transition: max-height 0.3s ease-in-out;
+    justify-content: flex-start;
+    background-color: #ffffff;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.1rem 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    z-index: 40;
+    pointer-events: auto;
 }
 
 .tab-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #00B7D1;
     background: none;
     border: none;
-    padding: 0.75rem 1.5rem;
+    border-radius: 4px 4px 0 0;
     cursor: pointer;
-    font-size: 1rem;
-    color: #666;
-    transition: color 0.3s, border-bottom 0.3s;
-    min-width: 48px;
-    min-height: 48px;
+    transition: background-color 0.3s, color 0.3s, box-shadow 0.2s;
+    min-width: 100px;
+    text-align: center;
+    z-index: 40;
+    pointer-events: auto;
 }
 
 .tab-btn:hover {
-    color: #00B7D1;
+    background-color: #e9ecef;
+    color: #212529;
 }
 
 .tab-btn.active {
+    background-color: #ffffff;
     color: #00B7D1;
-    border-bottom: 2px solid #00B7D1;
+    box-shadow: inset 0 -3px 0 #00B7D1;
+    font-weight: 600;
 }
 
 .tab-content {
@@ -1109,56 +1292,21 @@ body {
 /* Mobile Adjustments */
 @media (max-width: 768px) {
     .header-content {
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
         padding: 0.5rem;
     }
 
-    .desktop-only {
-        display: none;
-    }
-
-    .header-buttons {
-        margin-top: 0.5rem;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
     .mobile-menu-toggle {
         display: block;
-        position: absolute;
-        right: 1rem;
-        top: 1rem;
+    }
+
+    .header-buttons.desktop-only {
+        display: none;
     }
 
     .tab-nav {
-        display: none;
-        flex-direction: column;
-        position: absolute;
-        top: 60px;
-        left: 0;
-        width: 100%;
-        background-color: #00B7D1;
-        z-index: 1000;
-        max-height: 0;
-        overflow: hidden;
-    }
-
-    .tab-nav.active {
-        display: flex;
-        max-height: 500px;
-    }
-
-    .tab-btn {
-        width: 100%;
-        text-align: left;
-        padding: 1rem;
-        color: white;
-        border-bottom: 1px solid #009bb5;
-    }
-
-    .tab-btn.active {
-        border-bottom: 2px solid white;
+        display: flex; /* Keep visible for content tabs */
     }
 
     .content-container {
@@ -1229,8 +1377,12 @@ body {
 
 /* Desktop Preservation */
 @media (min-width: 769px) {
-    .tab-nav {
-        display: flex !important;
+    .mobile-menu-toggle {
+        display: none;
+    }
+
+    .dropdown-menu {
+        display: none !important;
     }
 
     .chart-grid {
@@ -1249,6 +1401,11 @@ body {
         margin-right: 1rem;
     }
 
+    .header-title a:hover {
+        text-decoration: underline;
+        color: #e0f7fa;
+    }
+
     .teacher-card {
         padding: 1rem;
     }
@@ -1261,4 +1418,38 @@ body {
     .teacher-name {
         font-size: 1.5rem;
     }
+}
+
+.teacher-details-content {
+    padding: 10px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+}
+
+.edit-status {
+    margin-left: 10px;
+    font-size: 0.9em;
+}
+
+.success-message {
+    color: green;
+}
+
+.error-message {
+    color: red;
+}
+
+.info-message {
+    color: blue;
+}
+
+.teacher-details-content label {
+    display: block;
+    margin: 5px 0;
+}
+
+.teacher-details-content input {
+    width: 80%;
+    padding: 5px;
+    margin-left: 10px;
 }
