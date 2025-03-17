@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchTeachers(page = 1) {
         const grid = document.getElementById('teacher-grid');
         const pagination = document.getElementById('pagination');
+        console.log('Index.js - fetchTeachers - Grid exists:', !!grid, 'Pagination exists:', !!pagination);
         if (!grid || !pagination) {
             console.error('Index.js - Required elements (teacher-grid or pagination) missing');
             showNotification('Page elements missing. Please refresh.', true);
@@ -256,10 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Delegated event listeners for reliability
     function setupEventListeners() {
         console.log('Index.js - Setting up delegated event listeners');
         document.addEventListener('click', (e) => {
+            console.log('Index.js - Click event detected on:', e.target.tagName, 'with class:', e.target.className);
             if (e.target.matches('.mobile-menu-toggle')) {
                 e.preventDefault();
                 console.log('Index.js - Mobile menu toggle clicked');
@@ -363,6 +364,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initialize() {
         console.log('Index.js - Starting initialization');
+        console.log('Index.js - DOM state - #teachers-tab:', !!document.getElementById('teachers-tab'), 
+                    '#teacher-grid:', !!document.getElementById('teacher-grid'), 
+                    '#pagination:', !!document.getElementById('pagination'));
         setupTabs();
         setupEventListeners();
         fetchSettings();
