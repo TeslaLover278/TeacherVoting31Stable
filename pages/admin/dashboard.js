@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    const BASE_URL = window.location.origin; // https://teachertally.com
     console.log('Client - Dashboard script loaded, initializing...');
 
     // Centralized state management
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             requests: [],
             proposals: [],
             corrections: [],
+            accounts: { users: [], admins: [], totalUsers: 0, totalAdmins: 0 },
             settings: {},
         },
         pages: {
@@ -19,10 +21,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             votes: 1,
             suggestions: 1,
             requests: 1,
+            accounts: 1,
         },
         activeTab: 'teachers',
     };
-    const BASE_URL = 'http://localhost:3000'; // Adjust if server port differs (e.g., 'http://localhost:3001')
+    console.log('Client - BASE_URL set to:', BASE_URL);
 
     // Element references with lazy loading via Proxy
     const elements = new Proxy({}, {
@@ -42,11 +45,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         'suggestions-table', 'admin-requests-table', 'teachers-message', 'votes-message',
         'proposal-message', 'corrections-message', 'suggestions-message', 'admin-requests-message',
         'teacher-search', 'teachers-per-page', 'teacher-sort', 'teacher-sort-direction',
-        'vote-search', 'votes-per-page', 'vote-sort', 'vote-sort-direction', 'suggestion-search',
-        'suggestions-per-page', 'suggestion-sort', 'suggestion-sort-direction', 'request-search',
-        'requests-per-page', 'request-sort', 'request-sort-direction', 'footer-settings-form',
-        'footer-message-status', 'message-settings-form', 'message-status', 'stats-timeframe',
-        'section-settings-container', 'tab-nav', 'add-teacher-message'
+        'vote-search', 'votes-per-page', 'vote-sort', 'vote-sort-direction', 'vote-teacher-id-filter',
+        'vote-teacher-name-filter', 'vote-comment-filter', 'vote-rating-filter',
+        'suggestion-search', 'suggestions-per-page', 'suggestion-sort', 'suggestion-sort-direction',
+        'request-search', 'requests-per-page', 'request-sort', 'request-sort-direction',
+        'footer-settings-form', 'footer-message-status', 'message-settings-form', 'message-status',
+        'stats-timeframe', 'section-settings-container', 'tab-nav', 'add-teacher-message',
+        'accounts-table', 'accounts-message', 'accounts-per-page', 'create-account-form', // Added for new tab
     ];
     const missingElements = requiredIds.filter(id => !elements[id]);
     if (missingElements.length > 0) {
@@ -60,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!csrfResponse.ok) throw new Error(`HTTP ${csrfResponse.status}`);
         state.csrfToken = (await csrfResponse.json()).csrfToken;
         console.log('Client - CSRF token fetched:', state.csrfToken);
-        document.querySelector('meta[name="csrf-token"]').setAttribute('content', state.csrfToken);
+        document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', state.csrfToken);
         document.querySelectorAll('input[name="_csrf"]').forEach(input => input.value = state.csrfToken);
     } catch (error) {
         console.error('Client - Failed to fetch CSRF token:', error.message);
@@ -71,17 +76,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Utility: Show notification
     function showNotification(messageText, isError = false) {
         let notification = elements['notification'];
-        notification.className = `notification ${isError ? 'error' : 'success'}`;
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'notification';
+            document.body.appendChild(notification);
+            elements['notification'] = notification;
+        }
+        notification.className = `notification ${isError ? 'error' : 'success'} active`;
         notification.textContent = messageText;
+        notification.style.display = 'block';
         notification.style.opacity = '0';
-        requestAnimationFrame(() => {
-            notification.style.display = 'block';
-            notification.style.opacity = '1';
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                notification.addEventListener('transitionend', () => notification.style.display = 'none', { once: true });
-            }, 3000);
-        });
+        requestAnimationFrame(() => notification.style.opacity = '1');
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.addEventListener('transitionend', () => {
+                notification.style.display = 'none';
+                notification.classList.remove('active');
+            }, { once: true });
+        }, 3000);
     }
 
     // Utility: Show modal
@@ -136,21 +148,67 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Logout function
+    window.logout = async () => {
+        try {
+            const response = await fetch(`${BASE_URL}/api/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': state.csrfToken
+                },
+                credentials: 'include'
+            });
+            if (!response.ok) throw new Error(`Logout failed: ${response.status}`);
+            console.log('Client - Logout successful');
+        } catch (error) {
+            console.error('Client - Logout failed, proceeding with client-side cleanup:', error);
+        } finally {
+            localStorage.removeItem('adminToken');
+            document.cookie = 'adminToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+            document.cookie = 'connect.sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+            showNotification('Logged out successfully!');
+            setTimeout(() => window.location.href = '/pages/admin/login.html', 1000);
+        }
+    };
+
     // Update dropdown visibility
     function updateDropdownVisibility(activeTab) {
-        const dropdowns = ['teacher-search', 'teachers-per-page', 'teacher-sort', 'teacher-sort-direction',
+        const dropdowns = [
+            'teacher-search', 'teachers-per-page', 'teacher-sort', 'teacher-sort-direction',
             'vote-search', 'votes-per-page', 'vote-sort', 'vote-sort-direction',
+            'vote-teacher-id-filter', 'vote-teacher-name-filter', 'vote-comment-filter', 'vote-rating-filter',
             'suggestion-search', 'suggestions-per-page', 'suggestion-sort', 'suggestion-sort-direction',
-            'request-search', 'requests-per-page', 'request-sort', 'request-sort-direction', 'stats-timeframe'
+            'request-search', 'requests-per-page', 'request-sort', 'request-sort-direction',
+            'stats-timeframe', 'accounts-per-page'
         ].map(id => elements[id]);
         dropdowns.forEach(el => el?.parentElement && (el.parentElement.style.display = 'none'));
         const showDropdowns = (ids) => ids.forEach(id => elements[id]?.parentElement && (elements[id].parentElement.style.display = 'block'));
         switch (activeTab) {
-            case 'teachers': showDropdowns(['teacher-search', 'teachers-per-page', 'teacher-sort', 'teacher-sort-direction']); break;
-            case 'votes': showDropdowns(['vote-search', 'votes-per-page', 'vote-sort', 'vote-sort-direction']); break;
-            case 'suggestions': showDropdowns(['suggestion-search', 'suggestions-per-page', 'suggestion-sort', 'suggestion-sort-direction']); break;
-            case 'admin-requests': showDropdowns(['request-search', 'requests-per-page', 'request-sort', 'request-sort-direction']); break;
-            case 'stats': elements['stats-timeframe']?.parentElement && (elements['stats-timeframe'].parentElement.style.display = 'block'); break;
+            case 'teachers':
+                showDropdowns(['teacher-search', 'teachers-per-page', 'teacher-sort', 'teacher-sort-direction']);
+                break;
+            case 'votes':
+                showDropdowns([
+                    'vote-search', 'votes-per-page', 'vote-sort', 'vote-sort-direction',
+                    'vote-teacher-id-filter', 'vote-teacher-name-filter', 'vote-comment-filter', 'vote-rating-filter'
+                ]);
+                break;
+            case 'suggestions':
+                showDropdowns(['suggestion-search', 'suggestions-per-page', 'suggestion-sort', 'suggestion-sort-direction']);
+                break;
+            case 'admin-requests':
+                showDropdowns(['request-search', 'requests-per-page', 'request-sort', 'request-sort-direction']);
+                break;
+            case 'stats':
+                elements['stats-timeframe']?.parentElement && (elements['stats-timeframe'].parentElement.style.display = 'block');
+                break;
+            case 'accounts':
+                showDropdowns(['accounts-per-page']);
+                break;
+            case 'create-account':
+                // No dropdowns needed for create-account tab
+                break;
         }
     }
 
@@ -165,6 +223,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     credentials: 'include',
                     ...options,
                 });
+                if (res.status === 401) {
+                    console.error('Client - Unauthorized, logging out');
+                    await window.logout();
+                    return null;
+                }
                 if (!res.ok) {
                     const errorText = await res.text();
                     throw new Error(`HTTP ${res.status}: ${errorText}`);
@@ -175,7 +238,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (error) {
                 console.error(`Client - Fetch attempt ${attempt + 1} failed for ${endpoint}:`, error.message);
                 if (attempt === retries) throw error;
-                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
             }
         }
     }
@@ -210,6 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             if (!state.data.teachers.length) {
                 const data = await fetchData('/api/admin/teachers', { perPage: 100 });
+                if (!data) return;
                 state.data.teachers = Array.isArray(data) ? data : data.teachers || [];
             }
             const searchQuery = elements['teacher-search']?.value.toLowerCase() || '';
@@ -229,14 +293,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderTable(
                 table,
                 teachers,
-                ['ID', 'Name', 'Description', 'Schedule', 'Bio', 'Tags', 'Email', 'Phone', 'Actions'],
+                ['ID', 'Name', 'Description', 'Schedule', 'Tags', 'Email', 'Phone', 'Actions'],
                 t => `
                     <tr class="teacher-row" data-id="${t.id}">
                         <td>${sanitizeInput(t.id)}</td>
                         <td>${sanitizeInput(t.name)}</td>
                         <td>${sanitizeInput(t.description)}</td>
                         <td>${sanitizeInput(t.schedule || '')}</td>
-                        <td>${sanitizeInput(t.bio || '')}</td>
                         <td>${sanitizeInput(t.tags || '')}</td>
                         <td>${sanitizeInput(t.email || '')}</td>
                         <td>${sanitizeInput(t.phone || '')}</td>
@@ -246,13 +309,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </td>
                     </tr>
                     <tr id="teacher-details-${t.id}" class="teacher-details">
-                        <td colspan="9">
+                        <td colspan="8">
                             <div class="teacher-details-content">
                                 <label>ID: <input type="text" id="edit-id-${t.id}" value="${sanitizeInput(t.id)}" data-original="${sanitizeInput(t.id)}"></label><br>
                                 <label>Name: <input type="text" id="edit-name-${t.id}" value="${sanitizeInput(t.name)}" data-original="${sanitizeInput(t.name)}"></label><br>
                                 <label>Description: <input type="text" id="edit-desc-${t.id}" value="${sanitizeInput(t.description)}" data-original="${sanitizeInput(t.description)}"></label><br>
                                 <label>Schedule: <textarea id="edit-schedule-${t.id}" data-original="${sanitizeInput(t.schedule || '')}">${sanitizeInput(t.schedule || '')}</textarea></label><br>
-                                <label>Bio: <textarea id="edit-bio-${t.id}" data-original="${sanitizeInput(t.bio || '')}">${sanitizeInput(t.bio || '')}</textarea></label><br>
                                 <label>Tags: <input type="text" id="edit-tags-${t.id}" value="${sanitizeInput(t.tags || '')}" data-original="${sanitizeInput(t.tags || '')}"></label><br>
                                 <label>Email: <input type="email" id="edit-email-${t.id}" value="${sanitizeInput(t.email || '')}" data-original="${sanitizeInput(t.email || '')}"></label><br>
                                 <label>Phone: <input type="tel" id="edit-phone-${t.id}" value="${sanitizeInput(t.phone || '')}" data-original="${sanitizeInput(t.phone || '')}"></label><br>
@@ -268,6 +330,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 message,
                 (shown, total) => `Loaded ${shown} of ${total} teachers.`
             );
+
+            document.querySelectorAll('.teacher-row').forEach(row => {
+                row.addEventListener('click', (e) => {
+                    if (!e.target.closest('button')) {
+                        const teacherId = row.dataset.id;
+                        window.location.href = `/pages/teacher/teacher.html?id=${teacherId}`;
+                    }
+                });
+            });
+
             addButtonListeners();
         } catch (error) {
             console.error('Client - Error loading teachers:', error);
@@ -283,25 +355,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         const message = elements['votes-message'];
         if (!table || !message) return;
         try {
+            if (!state.data.teachers.length) {
+                const teacherData = await fetchData('/api/admin/teachers', { perPage: 100 });
+                if (!teacherData) return;
+                state.data.teachers = Array.isArray(teacherData) ? teacherData : teacherData.teachers || [];
+            }
+
             const params = {
                 page,
                 perPage: parseInt(elements['votes-per-page']?.value) || 10,
                 search: encodeURIComponent(elements['vote-search']?.value.toLowerCase() || ''),
                 sort: elements['vote-sort']?.value || 'id',
                 direction: elements['vote-sort-direction']?.value || 'asc',
+                teacherId: encodeURIComponent(elements['vote-teacher-id-filter']?.value.toLowerCase() || ''),
+                teacherName: encodeURIComponent(elements['vote-teacher-name-filter']?.value.toLowerCase() || ''),
+                comment: encodeURIComponent(elements['vote-comment-filter']?.value.toLowerCase() || ''),
+                rating: elements['vote-rating-filter']?.value || ''
             };
             const data = await fetchData('/api/admin/votes', params);
+            if (!data) return;
             const { votes, total } = data;
             state.pages.votes = page;
 
+            const votesWithNames = votes.map(v => {
+                const teacher = state.data.teachers.find(t => t.id === v.teacher_id);
+                return { ...v, teacher_name: teacher ? teacher.name : v.teacher_id };
+            });
+
+            const filteredVotes = votesWithNames.filter(v => {
+                const matchesTeacherId = !params.teacherId || v.teacher_id.toLowerCase().includes(params.teacherId);
+                const matchesTeacherName = !params.teacherName || v.teacher_name.toLowerCase().includes(params.teacherName);
+                const matchesComment = !params.comment || (v.comment || '').toLowerCase().includes(params.comment);
+                const matchesRating = !params.rating || v.rating.toString() === params.rating;
+                return matchesTeacherId && matchesTeacherName && matchesComment && matchesRating;
+            });
+
             renderTable(
                 table,
-                votes,
-                ['Vote ID', 'Teacher ID', 'Rating', 'Comment', 'Explicit', 'Actions'],
+                filteredVotes,
+                ['Vote ID', 'Teacher ID', 'Teacher Name', 'Rating', 'Comment', 'Explicit', 'Actions'],
                 v => `
                     <tr>
                         <td>${sanitizeInput(v.id)}</td>
                         <td>${sanitizeInput(v.teacher_id)}</td>
+                        <td>${sanitizeInput(v.teacher_name)}</td>
                         <td contenteditable="true" id="edit-rating-${v.id}">${sanitizeInput(v.rating)}</td>
                         <td contenteditable="true" id="edit-comment-${v.id}">${sanitizeInput(v.comment || '')}</td>
                         <td>${v.is_explicit ? 'Yes' : 'No'}</td>
@@ -313,9 +410,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `,
                 page,
                 params.perPage,
-                total,
+                filteredVotes.length,
                 message,
-                (shown, total) => `Loaded ${shown} of ${total} votes.`
+                (shown, total) => `Loaded ${shown} of ${total} filtered votes (out of ${votes.length} total).`
             );
             addButtonListeners();
         } catch (error) {
@@ -340,6 +437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 direction: elements['suggestion-sort-direction']?.value || 'desc',
             };
             const data = await fetchData('/api/suggestions', params);
+            if (!data) return;
             state.data.suggestions = (data.suggestions || []).filter(s => !state.data.suggestions.some(existing => existing.id === s.id));
             state.pages.suggestions = page;
 
@@ -386,6 +484,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 direction: elements['request-sort-direction']?.value || 'desc',
             };
             const data = await fetchData('/api/admin-request', params);
+            if (!data) return;
             state.data.requests = (data.requests || []).filter(r => !state.data.requests.some(existing => existing.id === r.id));
             state.pages.requests = page;
 
@@ -428,6 +527,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!table || !message) return;
         try {
             const proposals = await fetchData('/api/admin/teacher-proposals');
+            if (!proposals) return;
             state.data.proposals = proposals;
 
             table.innerHTML = `
@@ -467,20 +567,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!table || !message) return;
         try {
             const corrections = await fetchData('/api/admin/corrections');
+            if (!corrections) return;
             state.data.corrections = corrections;
 
             table.innerHTML = `
                 <table class="admin-table">
-                    <thead><tr><th>ID</th><th>Teacher</th><th>Suggestion</th><th>Submitted</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>ID</th><th>Teacher</th><th>Suggestion</th><th>File</th><th>Submitted</th><th>Actions</th></tr></thead>
                     <tbody>
                         ${corrections.map(c => `
                             <tr>
                                 <td>${sanitizeInput(c.id)}</td>
-                                <td>${sanitizeInput(c.teacher_name || c.teacher_id)}</td>
+                                <td>${sanitizeInput(c.teacher_name)}</td>
                                 <td>${sanitizeInput(c.suggestion)}</td>
+                                <td>${c.file_path ? `<a href="${sanitizeInput(c.file_path)}" target="_blank">View</a>` : 'None'}</td>
                                 <td>${new Date(c.submitted_at).toLocaleString()}</td>
                                 <td>
-                                    <button class="submit-btn" data-action="implement-correction" data-id="${c.id}">Implement</button>
+                                    <button class="approve-btn" data-action="implement-correction" data-id="${c.id}">Implement</button>
                                     <button class="delete-btn" data-action="delete-correction" data-id="${c.id}">Delete</button>
                                 </td>
                             </tr>
@@ -499,6 +601,172 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Load accounts with pagination
+async function loadAccounts(page = state.pages.accounts) {
+    const table = elements['accounts-table'];
+    const message = elements['accounts-message'];
+    if (!table || !message) return;
+
+    try {
+        const perPage = parseInt(elements['accounts-per-page']?.value) || 10;
+        state.pages.accounts = page;
+
+        const accountData = await fetchData('/api/admin/accounts', { page, perPage });
+        if (!accountData || !accountData.accounts) {
+            throw new Error('No account data received');
+        }
+
+        state.data.accounts.accounts = accountData.accounts || [];
+        state.data.accounts.total = accountData.total || 0;
+
+        const combinedAccounts = state.data.accounts.accounts.map(account => ({
+            ...account,
+            points: account.points !== undefined ? account.points : 0,
+            email: account.email || 'N/A',
+            role: account.role || 'user' // Adjust if you add role to the database
+        }));
+
+        renderTable(
+            table,
+            combinedAccounts,
+            ['ID', 'Username', 'Email', 'Role', 'Points', 'Status', 'Actions'],
+            account => {
+                const isLocked = account.is_locked;
+                const lockedUntil = account.locked_until ? new Date(account.locked_until) : null;
+                let lockStatus = isLocked ? 'Locked' : 'Active';
+                if (isLocked && lockedUntil) {
+                    const now = new Date();
+                    const timeLeft = Math.max(0, Math.floor((lockedUntil - now) / 1000 / 60));
+                    lockStatus += timeLeft > 0 ? ` (${timeLeft} min left)` : ' (Expired)';
+                }
+
+                return `
+                    <tr>
+                        <td>${sanitizeInput(account.id)}</td>
+                        <td>${sanitizeInput(account.username)}</td>
+                        <td>${sanitizeInput(account.email)}</td>
+                        <td>${sanitizeInput(account.role)}</td>
+                        <td>
+                            <input type="number" id="edit-points-${account.id}" value="${sanitizeInput(account.points)}" min="0" style="width: 60px;">
+                        </td>
+                        <td>${lockStatus}</td>
+                        <td>
+                            <button class="action-btn toggle-btn ${isLocked ? 'unlock' : 'lock'}" 
+                                    data-action="toggle-account-lock" data-id="${account.id}" data-role="${account.role}" 
+                                    data-lock="${!isLocked}">
+                                ${isLocked ? 'Unlock' : 'Lock'}
+                            </button>
+                            <button class="action-btn update-btn" 
+                                    data-action="update-points" data-id="${account.id}" data-role="${account.role}">
+                                Update Points
+                            </button>
+                            <button class="action-btn history-btn" 
+                                    data-action="view-points-history" data-id="${account.id}">
+                                View History
+                            </button>
+                            <button class="action-btn delete-btn" 
+                                    data-action="delete-account" data-id="${account.id}" data-role="${account.role}">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            },
+            page,
+            perPage,
+            state.data.accounts.total,
+            message,
+            (shown, total) => `Loaded ${shown} of ${total} accounts.`
+        );
+
+        addButtonListeners();
+    } catch (error) {
+        console.error('Client - Error loading accounts:', error);
+        table.innerHTML = '<p class="error-message">Error loading accounts.</p>';
+        message.textContent = `Error: ${error.message}`;
+        message.className = 'error-message';
+    }
+}
+
+async function fetchCsrfToken() {
+    try {
+        const response = await fetch('/api/csrf-token', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch CSRF token');
+        const data = await response.json();
+        csrfToken = data.csrfToken;
+        console.log('Client - CSRF token fetched:');
+    } catch (error) {
+        console.error('Client - Error fetching CSRF token:', error.message);
+        showNotification('Error initializing security token', true);
+    }
+}
+
+    // Initialize Create Account Form
+async function initializeCreateAccountForm() {
+    const form = document.getElementById('create-account-form');
+    if (!form) {
+        console.warn('Client - Create Account form not found');
+        return;
+    }
+
+    const message = document.getElementById('create-account-message') || document.createElement('p');
+    message.id = 'create-account-message';
+    form.parentElement.appendChild(message);
+
+    form.removeEventListener('submit', handleCreateAccountForm);
+    form.addEventListener('submit', handleCreateAccountForm);
+    console.log('Client - Create Account form initialized');
+}
+
+async function handleCreateAccountForm(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const messageDiv = document.getElementById('create-account-message');
+
+    const role = formData.get('role') || 'user';
+    const username = sanitizeInput(formData.get('username'));
+    const email = role === 'user' ? sanitizeInput(formData.get('email')) : null;
+    const password = sanitizeInput(formData.get('password'));
+
+    if (!username || !password || (role === 'user' && !email)) {
+        messageDiv.textContent = 'All required fields must be filled.';
+        messageDiv.style.color = 'red';
+        showNotification('All required fields must be filled.', true);
+        return;
+    }
+
+    const data = role === 'user' ? { username, email, password } : { username, password, role: 'admin' };
+    const endpoint = role === 'user' ? '/api/users/create' : '/api/admins/create';
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken // Use the fetched token
+            },
+            credentials: 'include',
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to create account');
+        }
+
+        messageDiv.textContent = `${role === 'user' ? 'User' : 'Admin'} account created successfully!`;
+        messageDiv.style.color = 'green';
+        form.reset();
+        showNotification(`${role === 'user' ? 'User' : 'Admin'} account created successfully!`);
+    } catch (error) {
+        console.error('Client - Error creating account:', error.message);
+        messageDiv.textContent = error.message || 'Failed to create account.';
+        messageDiv.style.color = 'red';
+        showNotification('Error creating account.', true);
+    }
+}
+
     // Load and apply section settings
     async function loadSectionSettings() {
         const container = elements['section-settings-container'];
@@ -513,7 +781,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             'admin-requests': ['Admin Access Requests'],
             'settings': ['Main Message Settings', 'Footer Settings', 'Section Expansion Settings'],
             'stats': ['Statistics'],
-            'add-teacher': ['Add New Teacher']
+            'add-teacher': ['Add New Teacher'],
+            'accounts': ['Manage Accounts'],
+            'create-account': ['Create Account'] // Added new tab
         };
         const allSections = Object.values(sectionMap).flat();
 
@@ -523,7 +793,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 "Teacher Proposals": true, "Corrections": true, "Suggestions": true,
                 "Admin Access Requests": true, "Main Message Settings": true,
                 "Footer Settings": true, "Section Expansion Settings": true, "Statistics": true,
+                "Manage Accounts": true, "Create Account": true
             };
+            if (!state.data.settings) return;
             console.log('Client - Section settings loaded:', state.data.settings);
             applySectionSettings(state.data.settings);
 
@@ -561,6 +833,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 "Teacher Proposals": true, "Corrections": true, "Suggestions": true,
                 "Admin Access Requests": true, "Main Message Settings": true,
                 "Footer Settings": true, "Section Expansion Settings": true, "Statistics": true,
+                "Manage Accounts": true, "Create Account": true
             };
             applySectionSettings(state.data.settings);
             container.innerHTML = '<p class="info-message">Using default settings due to load failure.</p>';
@@ -607,6 +880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const timeFrame = elements['stats-timeframe'].value;
             const stats = await fetchData('/api/admin/stats', { timeFrame });
+            if (!stats) return;
             chartsContainer.innerHTML = `
                 <canvas id="statsChart" width="300" height="200"></canvas>
             `;
@@ -640,6 +914,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!form || !status) return;
         try {
             const settings = await fetchData('/api/footer-settings');
+            if (!settings) return;
             document.getElementById('footer-email-input').value = settings.email || '';
             document.getElementById('footer-message-input').value = settings.message || '';
             document.getElementById('footer-show-message').checked = settings.showMessage ?? false;
@@ -661,6 +936,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!form || !status) return;
         try {
             const settings = await fetchData('/api/message-settings');
+            if (!settings) return;
             document.getElementById('main-message').value = settings.message || '';
             document.getElementById('show-main-message').checked = settings.showMessage ?? false;
             status.textContent = settings.showMessage && settings.message ? settings.message : 'Message settings loaded.';
@@ -724,7 +1000,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const formData = new FormData(form);
         const messageDiv = elements['add-teacher-message'];
 
-        // Collect schedule data from fixed blocks
         const schedule = [];
         for (let i = 0; i < 4; i++) {
             const subject = formData.get(`schedule[${i}][subject]`)?.trim();
@@ -733,17 +1008,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 schedule.push({ subject, grade });
             }
         }
-        // Remove individual schedule entries and add as JSON
         for (let i = 0; i < 4; i++) {
             formData.delete(`schedule[${i}][subject]`);
             formData.delete(`schedule[${i}][grade]`);
         }
         formData.set('schedule', JSON.stringify(schedule));
 
-        // Optional: Validate image file (size, type)
         const imageFile = formData.get('image');
         if (imageFile && imageFile.size > 0) {
-            const maxSize = 5 * 1024 * 1024; // 5MB limit
+            const maxSize = 5 * 1024 * 1024;
             if (imageFile.size > maxSize) {
                 messageDiv.textContent = 'Image file size exceeds 5MB limit.';
                 messageDiv.style.color = 'red';
@@ -766,13 +1039,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: {
                     'Authorization': `Bearer ${state.token}`,
                     'X-CSRF-Token': state.csrfToken
-                    // 'Content-Type' is omitted because FormData sets it automatically with boundary
                 }
             });
+            if (!response) return;
             messageDiv.textContent = response.message || 'Teacher added successfully!';
             messageDiv.style.color = 'green';
             form.reset();
-            // Refresh the teachers list
             state.data.teachers = [];
             await loadTeachers();
             showNotification('Teacher added successfully!');
@@ -788,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function initializeAddTeacherForm() {
         const form = elements['teacher-submit-form'];
         if (form) {
-            form.removeEventListener('submit', handleAddTeacherForm); // Prevent duplicate listeners
+            form.removeEventListener('submit', handleAddTeacherForm);
             form.addEventListener('submit', handleAddTeacherForm);
             console.log('Client - Add New Teacher form initialized');
         } else {
@@ -797,45 +1069,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Add event listeners for buttons
-    function addButtonListeners() {
-        document.querySelectorAll('.submit-btn, .delete-btn, .approve-btn, .edit-btn, .pagination-btn').forEach(btn => {
-            btn.removeEventListener('click', handleButtonAction);
-            btn.addEventListener('click', handleButtonAction);
-        });
-    }
+function addButtonListeners() {
+    console.log('Client - Adding button listeners');
+    const buttons = document.querySelectorAll('.submit-btn, .delete-btn, .approve-btn, .edit-btn, .pagination-btn, .update-btn, .toggle-btn, .history-btn');
+    console.log(`Client - Found ${buttons.length} buttons to attach listeners`);
+    buttons.forEach(btn => {
+        btn.removeEventListener('click', handleButtonAction);
+        btn.addEventListener('click', handleButtonAction);
+        console.log(`Client - Listener added to button: ${btn.dataset.action || btn.id}`);
+    });
+}
 
     // Unified button action handler
-    function handleButtonAction(e) {
-        const action = this.dataset.action;
-        const id = this.dataset.id;
-        const name = this.dataset.name;
-        const email = this.dataset.email;
-        const page = parseInt(this.dataset.page);
+function handleButtonAction(e) {
+    const action = this.dataset.action;
+    const id = this.dataset.id;
+    const name = this.dataset.name;
+    const email = this.dataset.email;
+    const page = parseInt(this.dataset.page);
+    const lock = this.dataset.lock === 'true';
+    const role = this.dataset.role;
 
-        switch (action) {
-            case 'edit-teacher': window.toggleTeacherDetails(id); break;
-            case 'update-vote': window.updateVote(id); break;
-            case 'delete-vote': window.showDeleteVoteModal(id); break;
-            case 'update-teacher': window.updateTeacher(id); break;
-            case 'delete-teacher': window.showDeleteTeacherModal(id, name); break;
-            case 'approve-proposal': window.approveProposal(id); break;
-            case 'delete-proposal': window.showDeleteProposalModal(id, name); break;
-            case 'implement-correction': window.implementCorrection(id); break;
-            case 'delete-correction': window.showDeleteCorrectionModal(id); break;
-            case 'approve-admin-request': window.approveAdminRequest(id); break;
-            case 'delete-admin-request': window.showDeleteAdminRequestModal(id, name); break;
-            case 'deny-admin-request': window.showDenyAdminRequestModal(id, name); break;
-            case 'delete-suggestion': window.showDeleteSuggestionModal(id, email); break;
-        }
-
-        if (!isNaN(page)) {
-            const parentId = this.closest('.pagination')?.parentElement.id;
-            if (parentId === 'teachers-table') loadTeachers(page);
-            else if (parentId === 'votes-table') loadVotes(page);
-            else if (parentId === 'suggestions-table') loadSuggestions(page);
-            else if (parentId === 'admin-requests-table') loadAdminRequests(page);
-        }
+    switch (action) {
+        case 'edit-teacher': window.toggleTeacherDetails(id); break;
+        case 'update-vote': window.updateVote(id); break;
+        case 'delete-vote': window.showDeleteVoteModal(id); break;
+        case 'update-teacher': window.updateTeacher(id); break;
+        case 'delete-teacher': window.showDeleteTeacherModal(id, name); break;
+        case 'approve-proposal': window.approveProposal(id); break;
+        case 'delete-proposal': window.showDeleteProposalModal(id, name); break;
+        case 'implement-correction': window.implementCorrection(id); break;
+        case 'delete-correction': window.showDeleteCorrectionModal(id); break;
+        case 'approve-admin-request': window.approveAdminRequest(id); break;
+        case 'delete-admin-request': window.showDeleteAdminRequestModal(id, name); break;
+        case 'deny-admin-request': window.showDenyAdminRequestModal(id, name); break;
+        case 'delete-suggestion': window.showDeleteSuggestionModal(id, email); break;
+        case 'toggle-account-lock': window.toggleAccountLock(id, lock, role); break;
+        case 'update-points': window.updatePoints(id, role); break;
+        case 'view-points-history': window.viewPointsHistory(id); break;
+        case 'delete-account': window.showDeleteAccountModal(id, role); break;
     }
+
+    if (!isNaN(page)) {
+        const parentId = this.closest('.pagination')?.parentElement.id;
+        if (parentId === 'teachers-table') loadTeachers(page);
+        else if (parentId === 'votes-table') loadVotes(page);
+        else if (parentId === 'suggestions-table') loadSuggestions(page);
+        else if (parentId === 'admin-requests-table') loadAdminRequests(page);
+        else if (parentId === 'accounts-table') loadAccounts(page);
+    }
+}
 
     // Tab switching
     function switchTab(tabName) {
@@ -858,7 +1141,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 case 'settings': loadMessageSettings(); loadFooterSettings(); loadSectionSettings(); break;
                 case 'stats': loadStatistics(); break;
                 case 'add-teacher': initializeAddTeacherForm(); break;
-                default: console.warn(`Client - Unknown tab: ${tabName}`);
+                case 'accounts': loadAccounts(); break;
+                case 'create-account': initializeCreateAccountForm(); break;
+                default: console.log(`Client - Unknown tab: ${tabName}`);
             }
             if (window.innerWidth <= 768) elements['tab-nav'].classList.remove('active');
         } else {
@@ -916,6 +1201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const debouncedLoadVotes = debounce(() => loadVotes(1), 300);
     const debouncedLoadSuggestions = debounce(() => loadSuggestions(1), 300);
     const debouncedLoadAdminRequests = debounce(() => loadAdminRequests(1), 300);
+    const debouncedLoadAccounts = debounce(() => loadAccounts(1), 300);
 
     elements['teacher-search']?.addEventListener('input', debouncedLoadTeachers);
     elements['teachers-per-page']?.addEventListener('change', () => loadTeachers(1));
@@ -925,6 +1211,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements['votes-per-page']?.addEventListener('change', () => loadVotes(1));
     elements['vote-sort']?.addEventListener('change', () => loadVotes(1));
     elements['vote-sort-direction']?.addEventListener('change', () => loadVotes(1));
+    elements['vote-teacher-id-filter']?.addEventListener('input', debouncedLoadVotes);
+    elements['vote-teacher-name-filter']?.addEventListener('input', debouncedLoadVotes);
+    elements['vote-comment-filter']?.addEventListener('input', debouncedLoadVotes);
+    elements['vote-rating-filter']?.addEventListener('change', () => loadVotes(1));
     elements['suggestion-search']?.addEventListener('input', debouncedLoadSuggestions);
     elements['suggestions-per-page']?.addEventListener('change', () => loadSuggestions(1));
     elements['suggestion-sort']?.addEventListener('change', () => loadSuggestions(1));
@@ -934,15 +1224,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements['request-sort']?.addEventListener('change', () => loadAdminRequests(1));
     elements['request-sort-direction']?.addEventListener('change', () => loadAdminRequests(1));
     elements['stats-timeframe']?.addEventListener('change', loadStatistics);
+    elements['accounts-per-page']?.addEventListener('change', () => loadAccounts(1));
 
     // Global functions
-    window.logout = () => {
-        localStorage.removeItem('adminToken');
-        document.cookie = 'adminToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
-        showNotification('Logged out successfully!');
-        setTimeout(() => window.location.href = '/pages/admin/login.html', 1000);
-    };
-
     window.toggleTeacherDetails = (teacherId) => {
         const detailsRow = document.getElementById(`teacher-details-${teacherId}`);
         if (detailsRow) detailsRow.style.display = detailsRow.style.display === 'none' ? 'table-row' : 'none';
@@ -1044,18 +1328,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
-    window.approveProposal = (proposalId) => {
+    window.approveProposal = async (proposalId) => {
         showModal('Approve Proposal', `Assign a Teacher ID for proposal ${proposalId}:`, 'Approve', async () => {
-            const teacherId = document.getElementById('teacher-id')?.value.trim();
+            const teacherIdInput = document.getElementById('teacher-id');
+            const teacherId = teacherIdInput?.value.trim();
             if (!teacherId) {
                 showNotification('Teacher ID is required.', true);
                 return;
             }
             try {
-                const response = await fetch(`${BASE_URL}/api/admin/teacher-proposals/approve/${proposalId}`, {
+                const response = await fetch(`${BASE_URL}/api/admin/teacher-proposals/${proposalId}/approve`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
-                    body: JSON.stringify({ id: teacherId }),
+                    body: JSON.stringify({ teacherId }),
                     credentials: 'include',
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
@@ -1127,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.approveAdminRequest = (requestId) => {
-        showModal('Approve Admin Request', `Are you sure you want to approve admin request ID ${requestId}?`, 'Approve', async () => {
+        showModal('Approve Admin Request', `You will need to create account manually. Adding streamlining soon... ${requestId}?`, 'Approve', async () => {
             try {
                 const response = await fetch(`${BASE_URL}/api/admin-request/approve/${requestId}`, {
                     method: 'POST',
@@ -1137,6 +1422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 showNotification('Admin request approved successfully!');
                 loadAdminRequests();
+                loadAccounts();
             } catch (error) {
                 console.error('Client - Error approving admin request:', error);
                 showNotification('Error approving admin request.', true);
@@ -1198,17 +1484,189 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
+    // Toggle account lock status with duration
+    window.toggleAccountLock = async (id, lock, role) => {
+        if (!lock) {
+            // Unlock immediately
+            const endpoint = role === 'admin' ? `/api/admins/${id}/lock` : `/api/users/${id}/lock`;
+            try {
+                const response = await fetch(`${BASE_URL}${endpoint}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    body: JSON.stringify({ lock: false }),
+                    credentials: 'include',
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                showNotification('Account unlocked successfully!');
+                loadAccounts();
+            } catch (error) {
+                console.error('Client - Error unlocking account:', error);
+                showNotification('Error unlocking account.', true);
+            }
+        } else {
+            // Lock with duration
+            showModal(
+                'Lock Account',
+                `Enter the number of hours to lock account ${id}:`,
+                'Lock',
+                async () => {
+                    const hoursInput = document.getElementById('lock-hours');
+                    const hours = parseInt(hoursInput?.value);
+                    if (isNaN(hours) || hours <= 0) {
+                        showNotification('Please enter a valid number of hours.', true);
+                        return;
+                    }
+                    const endpoint = role === 'admin' ? `/api/admins/${id}/lock` : `/api/users/${id}/lock`;
+                    try {
+                        const response = await fetch(`${BASE_URL}${endpoint}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                            body: JSON.stringify({ lock: true, duration: hours * 60 }), // Convert hours to minutes
+                            credentials: 'include',
+                        });
+                        if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                        showNotification(`Account locked for ${hours} hour(s) successfully!`);
+                        loadAccounts();
+                    } catch (error) {
+                        console.error('Client - Error locking account:', error);
+                        showNotification('Error locking account.', true);
+                    }
+                },
+                '<input type="number" id="lock-hours" min="1" placeholder="Hours (e.g., 24)">'
+            );
+        }
+    };
+
+    // Update points balance
+window.updatePoints = async (id, role) => {
+    const pointsElement = document.getElementById(`edit-points-${id}`);
+    const points = parseInt(pointsElement.value);
+    if (isNaN(points) || points < 0) {
+        showNotification('Points must be a non-negative number.', true);
+        pointsElement.value = pointsElement.defaultValue;
+        return;
+    }
+
+    try {
+        // Ensure the latest CSRF token is used
+        const csrfResponse = await fetch(`${BASE_URL}/api/csrf-token`, { credentials: 'include' });
+        if (!csrfResponse.ok) throw new Error(`Failed to refresh CSRF token: ${csrfResponse.status}`);
+        const { csrfToken } = await csrfResponse.json();
+        state.csrfToken = csrfToken; // Update state with fresh token
+        console.log('Client - Refreshed CSRF token for updatePoints:', csrfToken);
+
+        const response = await fetchData(`/api/admin/accounts/${id}/points`, {}, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': state.csrfToken },
+            body: JSON.stringify({ points })
+        });
+        if (!response) return;
+        showNotification(response.message || 'Points updated successfully!');
+        pointsElement.defaultValue = points;
+        loadAccounts();
+    } catch (error) {
+        console.error('Client - Error updating points:', error);
+        pointsElement.value = pointsElement.defaultValue;
+        showNotification(`Error updating points: ${error.message}`, true);
+    }
+};
+    // Delete account
+    window.showDeleteAccountModal = (id, role) => {
+        showModal('Confirm Deletion', `Are you sure you want to delete ${role} ID ${id}?`, 'Delete', async () => {
+            const endpoint = role === 'admin' ? `/api/admins/${id}` : `/api/users/${id}`;
+            try {
+                const response = await fetch(`${BASE_URL}${endpoint}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
+                    credentials: 'include',
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                showNotification(`${role} deleted successfully!`);
+                loadAccounts();
+            } catch (error) {
+                console.error(`Client - Error deleting ${role.toLowerCase()}:`, error);
+                showNotification(`Error deleting ${role.toLowerCase()}.`, true);
+            }
+        });
+    };
+
+window.viewPointsHistory = async (id) => {
+    console.log(`Client - Starting viewPointsHistory for user ID ${id}`);
+    try {
+        const historyData = await fetchData(`/api/admin/accounts/${id}/points`);
+        console.log(`Client - Received history data for ID ${id}:`, historyData);
+        if (!historyData) {
+            console.warn(`Client - No history data returned for ID ${id}`);
+            showNotification('No points history data received.', true);
+            return;
+        }
+
+        const { user, transactions } = historyData;
+        if (!user || !user.username) {
+            console.warn(`Client - Invalid user data for ID ${id}:`, user);
+            showNotification('User not found or invalid data.', true);
+            return;
+        }
+
+        const totalPoints = user.totalPoints !== undefined ? user.totalPoints : 0;
+        const transactionRows = transactions && transactions.length > 0
+            ? transactions.map(t => {
+                console.log(`Client - Transaction for ID ${id}:`, t);
+                return `
+                    <tr>
+                        <td>${new Date(t.timestamp).toLocaleString()}</td>
+                        <td>${sanitizeInput(t.reason)}</td>
+                        <td>${t.points > 0 ? '+' : ''}${t.points}</td>
+                    </tr>
+                `;
+              }).join('')
+            : '<tr><td colspan="3">No transactions found.</td></tr>';
+
+        console.log(`Client - Rendering modal for ID ${id} with ${transactions?.length || 0} transactions`);
+        const modalHtml = `
+            <div class="modal active">
+                <div class="modal-content">
+                    <h2>Points History for ${sanitizeInput(user.username)}</h2>
+                    <p>Total Points: ${totalPoints}</p>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Reason</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${transactionRows}
+                        </tbody>
+                    </table>
+                    <button id="close-points-history" class="modal-btn">Close</button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = document.querySelector('.modal.active');
+        document.getElementById('close-points-history').addEventListener('click', () => {
+            console.log(`Client - Closing points history modal for ID ${id}`);
+            modal.remove();
+        });
+    } catch (error) {
+        console.error(`Client - Error in viewPointsHistory for ID ${id}:`, error.message);
+        showNotification(`Error loading points history: ${error.message}`, true);
+    }
+};
+
     // Initial load
     const isAuthenticated = await checkAdminStatus();
     if (isAuthenticated) {
-        await loadSectionSettings(); // Load settings first to apply expansions
+        await loadSectionSettings();
         const defaultTabBtn = document.querySelector('.tab-btn[data-tab="teachers"]');
         if (defaultTabBtn) switchTab('teachers');
         else {
             const firstTab = document.querySelector('.tab-btn');
             if (firstTab) switchTab(firstTab.dataset.tab);
         }
-        initializeAddTeacherForm(); // Initialize form on load in case "add-teacher" is default
+        initializeAddTeacherForm();
         addButtonListeners();
     }
 });

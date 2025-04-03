@@ -1,0 +1,19 @@
+<!-- /pages/components/header.html -->
+<link rel="stylesheet" href="/css/global.css">
+<link rel="stylesheet" href="/public/styles.css">
+
+<header class="site-header">
+    <div class="header-content">
+        <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" onclick="window.location.href='/'">
+        <a href="/" class="header-title-link"><h1 class="header-title">Teacher Tally</h1></a>
+        <div class="header-buttons desktop-only">
+            <button id="desktop-auth-btn" class="admin-btn" onclick="window.location.href='/pages/auth/login.html'">Login</button>
+            <!-- Dynamic buttons: Admin (for admins), Logout (when logged in), Sign Up (when logged out) -->
+        </div>
+        <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-label="Toggle mobile menu">☰</button>
+        <div id="dropdown-menu" class="dropdown-menu">
+            <button id="mobile-auth-btn" class="admin-btn" onclick="window.location.href='/pages/auth/login.html'">Login</button>
+            <!-- Dynamic buttons: Admin (for admins), Logout (when logged in), Sign Up (when logged out) -->
+        </div>
+    </div>
+</header>

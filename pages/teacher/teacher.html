@@ -83,38 +83,28 @@
 </head>
 <body>
 <header class="site-header">
-    <div class="header-content">
-        <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo">
-        <h1 class="header-title"><a href="/" style="color: white; text-decoration: none;">Teacher Tally</a></h1>
-        <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-        <div class="header-buttons desktop-only">
-            <button class="submit-teacher-btn">Submit a Teacher</button>
-            <button class="admin-btn">Admin Dashboard</button>
+     <div class="header-content">
+            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" id="header-logo">
+            <a href="/" class="header-title-link">
+                <h1 class="header-title">Teacher Tally</h1>
+            </a>
+            <div class="header-buttons desktop-only">
+                <button id="desktop-auth-btn" class="admin-btn">Loading...</button>
+            </div>
+            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+            <div class="dropdown-menu" id="dropdown-menu">
+                <button id="mobile-auth-btn" class="header-btn">Loading...</button>
+            </div>
         </div>
-        <div class="dropdown-menu" id="dropdown-menu">
-            <button onclick="window.location.href='/'">Home</button>
-            <button onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
-            <button onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
-        </div>
-        <nav id="tab-nav" class="tab-nav">
-            <button class="tab-btn" data-tab="home" onclick="window.location.href='/'">Home</button>
-        </nav>
-    </div>
 </header>
 <main class="teacher-profile-container">
     <div class="teacher-profile" id="teacher-profile"></div>
 </main>
 <footer class="site-footer">
-    <p id="footer-email"><a href="mailto:support@rateyourteacher.com">support@rateyourteacher.com</a></p>
-    <p id="footer-message">Welcome to Teacher Tally!</p>
+        <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-message">Welcome to Teacher Tally!</p>
 </footer>
 <div id="notification" class="notification"></div>
-<div id="main-message" class="modal">
-    <div class="modal-content">
-        <span id="message-text"></span>
-        <button id="close-message">X</button>
-    </div>
-</div>
 <div id="modal" class="modal">
     <div class="modal-content">
         <h2>Confirm Deletion</h2>
@@ -144,22 +134,43 @@
     </div>
 </div>
 <script src="/pages/teacher/teacher.js" defer></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
-        const dropdownMenu = document.getElementById('dropdown-menu');
-        mobileMenuToggle.addEventListener('click', () => dropdownMenu.classList.toggle('active'));
-        dropdownMenu.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (window.innerWidth <= 768) dropdownMenu.classList.remove('active');
-            });
-        });
-        document.addEventListener('click', (e) => {
-            if (!mobileMenuToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                dropdownMenu.classList.remove('active');
+    <script src="/public/header.js" defer></script>
+    <script src="/public/footer.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/pages/components/header.html')
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to load header HTML');
+                    return response.text();
+                })
+                .then(html => {
+                    document.getElementById('header-placeholder').innerHTML = html;
+                    const script = document.createElement('script');
+                    script.src = '/public/header.js';
+                    script.onload = () => {
+                        if (typeof initializeHeader === 'function') {
+                            initializeHeader();
+                        } else {
+                            console.error('initializeHeader function not found');
+                        }
+                    };
+                    script.onerror = () => console.error('Failed to load header.js');
+                    document.body.appendChild(script);
+                })
+                .catch(err => console.error('Error loading header:', err));
+
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    if (typeof window.logout === 'function') {
+                        window.logout();
+                    } else {
+                        console.warn('Logout function not yet available');
+                    }
+                });
             }
         });
-    });
+    </script>
 </script>
 </body>
 </html>

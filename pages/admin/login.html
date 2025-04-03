@@ -3,11 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
     <title>Admin Login - Teacher Tally</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
     <style>
-        /* Login Form Styles */
+        /* Full-page flexbox layout */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        main {
+            flex: 1 0 auto;
+        }
+
+        /* Login Form */
         .login-container {
             max-width: 400px;
             margin: 50px auto;
@@ -22,7 +38,7 @@
         .form-group label {
             display: block;
             margin-bottom: 5px;
-            color: #333; /* Matches site text */
+            color: #333;
         }
         .form-group input {
             width: 100%;
@@ -34,354 +50,228 @@
         .submit-btn {
             width: 100%;
             padding: 10px;
-            background: #007BFF; /* Site primary blue */
-            color: #fff; /* White text */
+            background: #00B7D1;
+            color: #fff;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             transition: background 0.2s;
         }
         .submit-btn:hover {
-            background: #0056b3; /* Darker blue on hover */
+            background: #03a4bb;
         }
+	.site-header {
+    	background: linear-gradient(135deg, #333 0%, #333 100%);
+    	padding: 1rem 2rem;
+    	text-align: center;
+    	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    	position: relative;
+    	z-index: 50;
+	}
         #login-message {
             margin-top: 10px;
             text-align: center;
         }
-        .info-message { color: #28a745; } /* Green for success */
-        .error-message { color: #dc3545; } /* Red for errors */
+        .info-message { color: #28a745; }
+        .error-message { color: #dc3545; }
+
+        /* Notification */
         .notification {
             position: fixed;
             top: 20px;
             right: 20px;
             padding: 10px 20px;
             border-radius: 5px;
-            color: #fff; /* White text */
+            color: #fff;
             opacity: 0;
             transition: opacity 0.3s;
         }
-        .notification.success { background: #28a745; } /* Green */
-        .notification.error { background: #dc3545; } /* Red */
+        .notification.success { background: #28a745; }
+        .notification.error { background: #dc3545; }
 
-        /* Header Styles */
-        .site-header {
-            background: #333; /* Dark gray from index.html */
-            color: #fff; /* White text */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .header-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 15px 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .logo {
-            height: 40px;
-            cursor: pointer;
-        }
-        .header-title {
-            margin: 0 20px;
-            font-size: 1.5em;
-        }
-        .header-title a {
-            color: #fff; /* White text */
-            text-decoration: none;
-        }
-        .mobile-menu-toggle {
-            font-size: 28px;
-            background: none;
-            border: none;
-            color: #fff; /* White */
-            cursor: pointer;
-            display: none;
-            padding: 5px 10px;
-        }
-        .header-buttons.desktop-only {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-        .header-buttons button {
-            padding: 8px 16px;
-            background: #007BFF; /* Site primary blue */
-            color: #fff; /* White text */
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .header-buttons button:hover {
-            background: #0056b3; /* Darker blue on hover */
-        }
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 20px;
-            background: #444; /* Slightly lighter gray for contrast */
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            min-width: 200px;
-            padding: 10px 0;
-        }
-        .dropdown-menu.active {
-            display: block;
-        }
-        .dropdown-menu button {
-            display: block;
-            width: 100%;
-            padding: 12px 20px;
-            background: none;
-            border: none;
-            color: #fff; /* White text */
-            text-align: left;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.2s;
-        }
-        .dropdown-menu button:hover {
-            background: #555; /* Darker gray on hover */
-        }
-
-        /* Footer Styles */
+        /* Footer */
         .site-footer {
-            background: #333; /* Match header */
-            color: #fff; /* White text */
+            background: #333;
+            color: #fff;
             padding: 10px;
             text-align: center;
+            flex-shrink: 0;
+            width: 100%;
         }
         .site-footer a {
-            color: #007BFF; /* Blue for links */
+            color: #00B7D1;
             text-decoration: none;
         }
         .site-footer a:hover {
-            color: #0056b3; /* Darker blue on hover */
+            color: #03a4bb;
         }
 
-        /* Responsive Design */
+        /* Responsive */
         @media (max-width: 768px) {
-            .header-content {
-                padding: 10px 15px;
-                flex-wrap: wrap;
-            }
-            .header-title {
-                font-size: 1.2em;
-                margin: 0 10px;
-            }
-            .mobile-menu-toggle {
-                display: block;
-            }
-            .header-buttons.desktop-only {
-                display: none;
-            }
-            .dropdown-menu {
-                right: 15px;
-                width: 100%;
-                max-width: 250px;
-                margin-top: 5px;
-            }
             .login-container {
                 margin: 20px 15px;
-            }
-        }
-        @media (min-width: 769px) {
-            .dropdown-menu {
-                display: none !important; /* Hidden on desktop */
             }
         }
     </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo">
-            <h1 class="header-title"><a href="/">Teacher Tally</a></h1>
-            <button class="mobile-menu-toggle" aria-label="Toggle navigation">☰</button>
-            <div class="header-buttons desktop-only">
-                <button class="submit-teacher-btn">Submit a Teacher</button>
-                <button id="admin-btn" class="admin-btn">Admin Login</button>
-            </div>
-            <div class="dropdown-menu" id="dropdown-menu">
-                <button onclick="window.location.href='/'">Home</button>
-                <button onclick="window.location.href='/pages/teacher/submit-teacher.html'">Submit a Teacher</button>
-                <button onclick="window.location.href='/pages/admin/login.html'">Admin Login</button>
-            </div>
+    <main>
+        <div id="header-placeholder"></div>
+
+        <div class="login-container">
+            <h2>Admin Login</h2>
+            <form id="login-form">
+                <input type="hidden" id="csrf-token" name="_csrf">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="submit-btn">Login</button>
+            </form>
+            <p id="login-message"></p>
         </div>
-    </header>
-    <div class="login-container">
-        <h2>Admin Login</h2>
-        <form id="login-form">
-            <input type="hidden" id="csrf-token" name="_csrf">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required placeholder="Enter username">
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required placeholder="Enter password">
-            </div>
-            <button type="submit" class="submit-btn">Login</button>
-        </form>
-        <p id="login-message"></p>
-    </div>
+
+        <div id="notification" class="notification"></div>
+    </main>
+
     <footer class="site-footer">
-        <p id="footer-email">Email: <a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
         <p id="footer-message">Welcome to Teacher Tally!</p>
     </footer>
-    <div id="notification" class="notification"></div>
+
+    <script src="/pages/auth/login.js" defer></script>
+    <script src="/public/header.js" defer></script>
+    <script src="/public/footer.js" defer></script>
     <script>
-        const API_BASE_URL = 'http://localhost:3000';
-        const MAX_RETRIES = 3;
-
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('Client - Login script loaded, initializing...');
-
-            let csrfToken = '';
-
-            // Header event listeners
-            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
-            const dropdownMenu = document.getElementById('dropdown-menu');
-            const logo = document.querySelector('.logo');
-            const submitTeacherBtn = document.querySelector('.submit-teacher-btn');
-            const adminBtn = document.getElementById('admin-btn');
-
-            if (mobileMenuToggle && dropdownMenu) {
-                mobileMenuToggle.addEventListener('click', () => {
-                    dropdownMenu.classList.toggle('active');
-                });
-                dropdownMenu.querySelectorAll('button').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        if (window.innerWidth <= 768) {
-                            dropdownMenu.classList.remove('active');
-                        }
-                    });
-                });
-                document.addEventListener('click', (e) => {
-                    if (!mobileMenuToggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
-                        dropdownMenu.classList.remove('active');
-                    }
-                });
-            }
-            if (logo) logo.addEventListener('click', () => window.location.href = '/');
-            if (submitTeacherBtn) submitTeacherBtn.addEventListener('click', () => window.location.href = '/pages/teacher/submit-teacher.html');
-            if (adminBtn) adminBtn.addEventListener('click', () => window.location.href = '/pages/admin/login.html');
-
-            function showNotification(message, type) {
-                const notification = document.getElementById('notification');
-                if (notification) {
-                    notification.textContent = message;
-                    notification.className = `notification ${type}`;
-                    notification.style.display = 'block';
-                    notification.style.opacity = '0';
-                    requestAnimationFrame(() => {
-                        notification.style.opacity = '1';
-                        setTimeout(() => {
-                            notification.style.opacity = '0';
-                            notification.addEventListener('transitionend', () => {
-                                notification.style.display = 'none';
-                            }, { once: true });
-                        }, 3000);
-                    });
-                } else {
-                    console.warn('Client - Notification element not found');
-                }
-            }
-
-            async function fetchWithTimeout(url, options = {}, timeout = 5000) {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), timeout);
-                try {
-                    const response = await fetch(url, { ...options, signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    return response;
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    throw error;
-                }
-            }
-
-            async function fetchCsrfToken(attempt = 1) {
-                try {
-                    const response = await fetchWithTimeout(`${API_BASE_URL}/api/csrf-token`, { credentials: 'include' });
-                    if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.status}`);
-                    const data = await response.json();
-                    csrfToken = data.csrfToken;
-                    const csrfInput = document.getElementById('csrf-token');
-                    if (csrfInput) csrfInput.value = csrfToken;
-                    console.log('Client - CSRF token fetched:', csrfToken);
-                } catch (error) {
-                    console.error(`Client - CSRF fetch attempt ${attempt} failed:`, error.message);
-                    if (attempt < MAX_RETRIES) {
-                        console.log(`Client - Retrying (${attempt + 1}/${MAX_RETRIES})...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-                        return fetchCsrfToken(attempt + 1);
-                    }
-                    showNotification('Error loading login form: Security token failed', 'error');
-                }
-            }
-
-            fetchCsrfToken();
-
-            const loginForm = document.getElementById('login-form');
-            const loginMessage = document.getElementById('login-message');
-
-            if (loginForm) {
-                loginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-
-                    const username = document.getElementById('username')?.value.trim() || '';
-                    const password = document.getElementById('password')?.value || '';
-
-                    if (!username || !password) {
-                        showNotification('Username and password are required', 'error');
-                        if (loginMessage) loginMessage.textContent = 'Please fill out all fields';
-                        return;
-                    }
-
-                    if (!csrfToken) {
-                        showNotification('Security token not loaded. Please wait or refresh.', 'error');
-                        if (loginMessage) loginMessage.textContent = 'Security token missing';
-                        return;
-                    }
-
-                    try {
-                        const response = await fetchWithTimeout(`${API_BASE_URL}/api/admin/login`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-Token': csrfToken
-                            },
-                            body: JSON.stringify({ username, password }),
-                            credentials: 'include'
-                        });
-
-                        const data = await response.json();
-
-                        if (response.ok) {
-                            showNotification('Login successful!', 'success');
-                            if (loginMessage) loginMessage.textContent = 'Login successful!';
-                            const footerEmail = document.getElementById('footer-email');
-                            if (footerEmail && data.email) {
-                                footerEmail.innerHTML = `Email: <a href="mailto:${data.email}">${data.email}</a>`;
-                            }
-                            setTimeout(() => window.location.href = '/pages/admin/dashboard.html', 1000);
+            fetch('/pages/components/header.html')
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to load header HTML');
+                    return response.text();
+                })
+                .then(html => {
+                    document.getElementById('header-placeholder').innerHTML = html;
+                    const script = document.createElement('script');
+                    script.src = '/public/header.js';
+                    script.onload = () => {
+                        if (typeof initializeHeader === 'function') {
+                            initializeHeader();
                         } else {
-                            showNotification('Login failed', 'error');
-                            if (loginMessage) loginMessage.textContent = data.error || 'Login failed';
+                            console.error('initializeHeader function not found');
                         }
-                    } catch (error) {
-                        console.error('Client - Login error:', error.message);
-                        showNotification('Server error during login', 'error');
-                        if (loginMessage) loginMessage.textContent = 'Server error during login';
+                    };
+                    script.onerror = () => console.error('Failed to load header.js');
+                    document.body.appendChild(script);
+                })
+                .catch(err => console.error('Error loading header:', err));
+
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    if (typeof window.logout === 'function') {
+                        window.logout();
+                    } else {
+                        console.warn('Logout function not yet available');
                     }
                 });
-            } else {
-                console.error('Client - login-form not found');
             }
         });
+    async function fetchCsrfToken() {
+        try {
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+            const data = await response.json();
+            
+            document.querySelector('meta[name="csrf-token"]').content = data.csrfToken;
+            document.getElementById('csrf-token').value = data.csrfToken;
+            
+            return data.csrfToken;
+        } catch (error) {
+            console.error('Client - Error fetching CSRF token:', error.message);
+            alert('Failed to load CSRF token. Please refresh.');
+            throw error;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        fetch('/pages/components/header.html')
+            .then(response => response.ok ? response.text() : Promise.reject('Failed to load header'))
+            .then(html => document.getElementById('header-placeholder').innerHTML = html)
+            .then(() => {
+                const script = document.createElement('script');
+                script.src = '/public/header.js';
+                script.onload = () => typeof initializeHeader === 'function' ? initializeHeader() : console.error('initializeHeader not found');
+                script.onerror = () => console.error('Failed to load header.js');
+                document.body.appendChild(script);
+            })
+            .catch(err => console.error('Error loading header:', err));
+
+        let csrfToken;
+        try {
+            csrfToken = await fetchCsrfToken();
+        } catch (error) {
+            return;
+        }
+
+        const loginForm = document.getElementById('login-form');
+        const loginMessage = document.getElementById('login-message');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(loginForm);
+            const username = formData.get('username')?.trim();
+            const password = formData.get('password');
+
+            if (!username || !password) {
+                showNotification('Username and password are required', 'error');
+                loginMessage.textContent = 'Please fill out all fields';
+                loginMessage.className = 'error-message';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ username, password, _csrf: csrfToken })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showNotification('Login successful!', 'success');
+                    loginMessage.textContent = 'Login successful! Redirecting...';
+                    loginMessage.className = 'info-message';
+                    setTimeout(() => window.location.href = '/pages/admin/dashboard.html', 1000);
+                } else {
+                    showNotification(`Login failed: ${data.error || 'Unknown error'}`, 'error');
+                    loginMessage.textContent = data.error || 'Login failed';
+                    loginMessage.className = 'error-message';
+                }
+            } catch (error) {
+                console.error('Client - Login error:', error.message);
+                showNotification('Server error during login', 'error');
+                loginMessage.textContent = 'Server error during login';
+                loginMessage.className = 'error-message';
+            }
+        });
+    });
+
+    function showNotification(message, type) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.className = `notification ${type}`;
+        notification.style.opacity = '1';
+        setTimeout(() => notification.style.opacity = '0', 3000);
+    }
     </script>
 </body>
 </html>

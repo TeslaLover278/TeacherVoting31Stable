@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Client - Login script loaded, initializing...');
 
-    const API_BASE_URL = 'http://localhost:3000';
+    const API_BASE_URL = window.location.origin;
     const MAX_RETRIES = 3;
 
     let csrfToken = '';
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const response = await fetchWithTimeout(`${API_BASE_URL}/api/admin/login`, {
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/login`, { // Changed to /api/login
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -93,13 +93,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (response.ok) {
                     showMessage(data.message || 'Login successful!', 'success');
-                    setTimeout(() => window.location.href = '/pages/admin/dashboard.html', 1000);
+                    const redirectUrl = data.isAdmin ? '/pages/admin/dashboard.html' : '/'; // Use isAdmin from response
+                    console.log('Client - Redirecting to:', redirectUrl);
+                    setTimeout(() => window.location.href = redirectUrl, 1000);
                 } else {
                     throw new Error(data.error || `HTTP ${response.status}: Login failed`);
                 }
             } catch (error) {
                 console.error('Client - Login error:', error.message);
-                showMessage(`Login failed: ${error.message}. Check credentials or server status.`, 'error');
+                const errorMsg = error.message.includes('401') ? 'Invalid username or password.' : `Login failed: ${error.message}`;
+                showMessage(errorMsg, 'error');
             }
         });
     } else {
@@ -153,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function sanitizeInput(input) {
         return input ? String(input).replace(/[&<>"']/g, match => ({
-            '&': '&', '<': '<', '>': '>', '"': '"', "'": '''
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;'
         })[match]) : '';
     }
 });

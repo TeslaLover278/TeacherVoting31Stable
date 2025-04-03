@@ -5,20 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="">
     <title>Submit a Teacher - Teacher Tally</title>
+    <link rel="stylesheet" href="/css/global.css">
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
+    <style>
+        /* Page-specific styles */
+        .centered-container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group textarea { min-height: 150px; resize: vertical; }
+        .schedule-block label { display: block; margin-bottom: 5px; }
+        .submit-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            background-color: #00B7D1;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        .submit-btn:hover { background-color: #0056b3; }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            z-index: 1002;
+            display: none;
+            transition: opacity 0.5s ease;
+        }
+        .notification.success { background: #28a745; }
+        .notification.error { background: #dc3545; }
+        .main-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #f8d7da;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1001;
+            display: none;
+        }
+        .main-message.active { display: block; }
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            border: none;
+            background: none;
+            font-size: 18px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <header class="site-header">
         <div class="header-content">
-            <img src="/public/images/logo.png" alt="Logo" class="logo" onclick="window.location.href='/'">
-            <h1 class="header-title">Submit a Teacher</h1>
+            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" id="header-logo">
+            <a href="/" class="header-title-link">
+                <h1 class="header-title">Teacher Tally</h1>
+            </a>
             <div class="header-buttons desktop-only">
-                <button class="admin-btn" onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
+                <button id="desktop-auth-btn" class="admin-btn">Loading...</button>
             </div>
-            <button class="mobile-menu-toggle">☰</button>
-            <div class="dropdown-menu">
-                <button onclick="window.location.href='/pages/admin/dashboard.html'">Admin Dashboard</button>
+            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+            <div class="dropdown-menu" id="dropdown-menu">
+                <button id="mobile-auth-btn" class="header-btn">Loading...</button>
             </div>
         </div>
     </header>
@@ -28,71 +101,71 @@
             <h2>Submit a New Teacher Proposal</h2>
             <p>Please fill out the form below to propose a new teacher. All fields are required unless marked optional.</p>
             <form id="teacher-submit-form" class="edit-form" enctype="multipart/form-data">
+                <input type="hidden" id="csrf-token" name="_csrf">
                 <div class="form-group">
                     <label for="name">Name:</label>
-                    <input type="text" id="name" name="name" required placeholder="e.g., John Doe">
+                    <input type="text" id="name" name="name" required placeholder="e.g., John Doe" aria-label="Teacher name">
                     <span class="tooltip">Full name of the teacher</span>
                 </div>
                 <div class="form-group">
                     <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required placeholder="e.g., john.doe@example.com">
-                    <span class="tooltip">Contact email for the teacher</span>
+                    <input type="email" id="email" name="email" required placeholder="e.g., john.doe@example.com" aria-label="Your email">
+                    <span class="tooltip">Your email for contact</span>
                 </div>
                 <div class="form-group">
                     <label for="bio">Bio:</label>
-                    <textarea id="bio" name="bio" required placeholder="Short biography"></textarea>
+                    <textarea id="bio" name="bio" required placeholder="Short biography" aria-label="Teacher bio"></textarea>
                     <span class="tooltip">Brief background about the teacher</span>
                 </div>
                 <div class="form-group">
                     <label for="description">Description:</label>
-                    <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher">
+                    <input type="text" id="description" name="description" required placeholder="e.g., Math Teacher" aria-label="Teacher description">
                     <span class="tooltip">Brief description (e.g., role or subject)</span>
                 </div>
                 <div class="form-group">
                     <label for="classes">Classes:</label>
-                    <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus">
+                    <input type="text" id="classes" name="classes" required placeholder="e.g., Algebra, Calculus" aria-label="Classes taught">
                     <span class="tooltip">Comma-separated list of classes</span>
                 </div>
                 <div class="form-group">
                     <label for="tags">Tags:</label>
-                    <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem">
+                    <input type="text" id="tags" name="tags" required placeholder="e.g., math, stem" aria-label="Tags">
                     <span class="tooltip">Comma-separated list of tags</span>
                 </div>
                 <div class="form-group">
                     <label for="room_number">Room Number:</label>
-                    <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101">
+                    <input type="text" id="room_number" name="room_number" required placeholder="e.g., Room 101" aria-label="Room number">
                     <span class="tooltip">Classroom identifier</span>
                 </div>
                 <div class="schedule-edit">
-                    <label>Schedule:</label>
+                    <label>Schedule (optional):</label>
                     <span class="tooltip">Enter subject and grade for each block (optional)</span>
                     <div class="schedule-block" style="margin-bottom: 10px;">
                         <label>Block 1:</label>
-                        <input type="text" name="schedule[0][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;">
-                        <input type="text" name="schedule[0][grade]" placeholder="Grade" style="width: 45%;">
+                        <input type="text" name="schedule[0][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 1 Subject">
+                        <input type="text" name="schedule[0][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 1 Grade">
                     </div>
                     <div class="schedule-block" style="margin-bottom: 10px;">
                         <label>Block 2:</label>
-                        <input type="text" name="schedule[1][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;">
-                        <input type="text" name="schedule[1][grade]" placeholder="Grade" style="width: 45%;">
+                        <input type="text" name="schedule[1][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 2 Subject">
+                        <input type="text" name="schedule[1][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 2 Grade">
                     </div>
                     <div class="schedule-block" style="margin-bottom: 10px;">
                         <label>Block 3:</label>
-                        <input type="text" name="schedule[2][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;">
-                        <input type="text" name="schedule[2][grade]" placeholder="Grade" style="width: 45%;">
+                        <input type="text" name="schedule[2][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 3 Subject">
+                        <input type="text" name="schedule[2][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 3 Grade">
                     </div>
                     <div class="schedule-block" style="margin-bottom: 10px;">
                         <label>Block 4:</label>
-                        <input type="text" name="schedule[3][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;">
-                        <input type="text" name="schedule[3][grade]" placeholder="Grade" style="width: 45%;">
+                        <input type="text" name="schedule[3][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 4 Subject">
+                        <input type="text" name="schedule[3][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 4 Grade">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="image">Teacher Image:</label>
-                    <input type="file" id="image" name="image" accept="image/jpeg, image/png">
+                    <label for="image">Teacher Image (optional):</label>
+                    <input type="file" id="image" name="image" accept="image/jpeg, image/png" aria-label="Upload teacher image">
                     <span class="tooltip">Upload a JPEG or PNG image (optional)</span>
                 </div>
-                <input type="hidden" id="csrf-token" name="_csrf">
                 <button type="submit" class="submit-btn">Submit Proposal</button>
             </form>
             <p id="submit-message" class="info-message"></p>
@@ -100,202 +173,250 @@
     </main>
 
     <footer class="site-footer">
-        <p id="footer-email">Email: <a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
         <p id="footer-message">Welcome to Teacher Tally!</p>
     </footer>
 
-    <div id="notification" class="notification" style="display: none;"></div>
+    <div id="notification" class="notification"></div>
     <div id="main-message" class="main-message">
-        <button id="close-message" class="close-btn">×</button>
+        <button id="close-message" class="close-btn" aria-label="Close message">×</button>
         <p id="message-text"></p>
     </div>
-
+    <script src="/public/footer.js" defer></script>
+    <script src="/public/header.js" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const submitForm = document.getElementById('teacher-submit-form');
-            const submitMessage = document.getElementById('submit-message');
-            const notification = document.getElementById('notification');
-            const messageDiv = document.getElementById('main-message');
-            const messageText = document.getElementById('message-text');
-            const closeButton = document.getElementById('close-message');
-
-            if (!submitForm || !submitMessage || !notification) {
-                console.error('Client - Required elements for submit teacher page not found');
-                return;
-            }
-            if (!messageDiv || !messageText || !closeButton) {
-                console.error('Client - Main message elements not found in DOM');
-            }
-
-            let csrfToken = null;
-
-            // Fetch CSRF token
-            async function fetchCsrfToken() {
-                try {
-                    const response = await fetch('/api/csrf-token', { credentials: 'include' });
-                    if (!response.ok) throw new Error('Failed to fetch CSRF token');
-                    const data = await response.json();
-                    csrfToken = data.csrfToken;
-                    document.querySelector('meta[name="csrf-token"]').content = csrfToken;
-                    document.getElementById('csrf-token').value = csrfToken;
-                    console.log('Client - CSRF token fetched:', csrfToken);
-                } catch (error) {
-                    console.error('Client - Error fetching CSRF token:', error.message);
-                    showNotification('Error initializing security token', true);
-                }
-            }
-
-            // Show notification
-            function showNotification(messageText, isError = false) {
-                notification.textContent = messageText;
-                notification.className = `notification ${isError ? 'error' : 'success'}`;
-                notification.style.display = 'block';
-                setTimeout(() => notification.style.display = 'none', 3000);
-            }
-
-            // Validate room number
-            function validateRoomNumber(roomNumber, tags) {
-                const trimmedRoomNumber = roomNumber.trim();
-                const trimmedTags = tags.trim();
-
-                // Check if room_number matches tags
-                if (trimmedRoomNumber === trimmedTags) {
-                    return { valid: false, message: 'Room number cannot be the same as tags' };
-                }
-
-                // Check if room_number looks like a JSON array or list
-                if (trimmedRoomNumber.startsWith('[') || trimmedRoomNumber.includes(',')) {
-                    return { valid: false, message: 'Room number must be a single value (e.g., Room 101), not a list' };
-                }
-
-                return { valid: true };
-            }
-
-            // Handle main message display
-            const currentPath = window.location.pathname;
-            const isAdminPage = currentPath.includes('/pages/admin/login.html') || currentPath.includes('/pages/admin/dashboard.html');
-            if (!isAdminPage && messageDiv) {
-                function shouldShowMessage(newMessage) {
-                    const lastClosed = localStorage.getItem('mainMessageClosedTime');
-                    const lastMessage = localStorage.getItem('mainMessageContent');
-                    const now = Date.now();
-                    const fiveMinutes = 300000;
-                    return !lastClosed || lastMessage !== newMessage || (now - parseInt(lastClosed) >= fiveMinutes);
-                }
-
-                async function loadMainMessage() {
-                    try {
-                        const response = await fetch('/api/message-settings');
-                        if (!response.ok) throw new Error('Failed to fetch message settings');
-                        const data = await response.json();
-                        const { message, showMessage } = data;
-                        messageText.textContent = message;
-                        if (showMessage && shouldShowMessage(message)) {
-                            messageDiv.classList.add('active');
-                            messageDiv.style.display = 'block';
+            fetch('/pages/components/header.html')
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to load header HTML');
+                    return response.text();
+                })
+                .then(html => {
+                    document.getElementById('header-placeholder').innerHTML = html;
+                    const script = document.createElement('script');
+                    script.src = '/public/header.js';
+                    script.onload = () => {
+                        if (typeof initializeHeader === 'function') {
+                            initializeHeader();
                         } else {
-                            messageDiv.classList.remove('active');
-                            messageDiv.style.display = 'none';
+                            console.error('initializeHeader function not found');
                         }
-                        localStorage.setItem('mainMessageContent', message);
-                    } catch (error) {
-                        console.error('Error fetching main message:', error.message);
+                    };
+                    script.onerror = () => console.error('Failed to load header.js');
+                    document.body.appendChild(script);
+                })
+                .catch(err => console.error('Error loading header:', err));
+
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    if (typeof window.logout === 'function') {
+                        window.logout();
+                    } else {
+                        console.warn('Logout function not yet available');
+                    }
+                });
+            }
+        });
+    document.addEventListener('DOMContentLoaded', () => {
+        // Load universal header and initialize via header.js
+        fetch('/pages/components/header.html')
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load header HTML');
+                return response.text();
+            })
+            .then(html => {
+                document.getElementById('header-placeholder').innerHTML = html;
+                // header.js will handle initialization via its own DOMContentLoaded listener
+            })
+            .catch(err => console.error('Error loading header:', err));
+
+        const submitForm = document.getElementById('teacher-submit-form');
+        const submitMessage = document.getElementById('submit-message');
+        const notification = document.getElementById('notification');
+        const messageDiv = document.getElementById('main-message');
+        const messageText = document.getElementById('message-text');
+        const closeButton = document.getElementById('close-message');
+
+        if (!submitForm || !submitMessage || !notification) {
+            console.error('Client - Required elements for submit teacher page not found');
+            return;
+        }
+        if (!messageDiv || !messageText || !closeButton) {
+            console.error('Client - Main message elements not found in DOM');
+        }
+
+        let csrfToken = null;
+
+        async function fetchCsrfToken() {
+            try {
+                const response = await fetch('/api/csrf-token', { credentials: 'include' });
+                if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.status}`);
+                const data = await response.json();
+                csrfToken = data.csrfToken;
+                document.querySelector('meta[name="csrf-token"]').content = csrfToken;
+                document.getElementById('csrf-token').value = csrfToken;
+                console.log('Client - CSRF token fetched:', csrfToken);
+            } catch (error) {
+                console.error('Client - Error fetching CSRF token:', error.message);
+                showNotification('Error initializing security token', true);
+            }
+        }
+
+        function showNotification(message, isError = false) {
+            notification.textContent = message;
+            notification.className = `notification ${isError ? 'error' : 'success'}`;
+            notification.style.display = 'block';
+            notification.style.opacity = '1';
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.addEventListener('transitionend', () => {
+                    notification.style.display = 'none';
+                    notification.style.opacity = '1';
+                }, { once: true });
+            }, 3000);
+        }
+
+        function validateRoomNumber(roomNumber, tags) {
+            const trimmedRoomNumber = roomNumber.trim();
+            const trimmedTags = tags.trim();
+
+            if (trimmedRoomNumber === trimmedTags) {
+                return { valid: false, message: 'Room number cannot be the same as tags' };
+            }
+            if (trimmedRoomNumber.startsWith('[') || trimmedRoomNumber.includes(',')) {
+                return { valid: false, message: 'Room number must be a single value (e.g., Room 101), not a list' };
+            }
+            return { valid: true };
+        }
+
+        const currentPath = window.location.pathname;
+        const isAdminPage = currentPath.includes('/pages/admin/');
+        if (!isAdminPage && messageDiv) {
+            function shouldShowMessage(newMessage) {
+                const lastClosed = localStorage.getItem('mainMessageClosedTime');
+                const lastMessage = localStorage.getItem('mainMessageContent');
+                const now = Date.now();
+                const fiveMinutes = 300000;
+                return !lastClosed || lastMessage !== newMessage || (now - parseInt(lastClosed) >= fiveMinutes);
+            }
+
+            async function loadMainMessage() {
+                try {
+                    const response = await fetch('/api/message-settings', { credentials: 'include' });
+                    if (!response.ok) throw new Error(`Failed to fetch message settings: ${response.status}`);
+                    const data = await response.json();
+                    messageText.textContent = data.message;
+                    if (data.showMessage && shouldShowMessage(data.message)) {
+                        messageDiv.classList.add('active');
+                        messageDiv.style.display = 'block';
+                    } else {
                         messageDiv.classList.remove('active');
                         messageDiv.style.display = 'none';
                     }
+                    localStorage.setItem('mainMessageContent', data.message);
+                } catch (error) {
+                    console.error('Error fetching main message:', error.message);
+                    messageDiv.classList.remove('active');
+                    messageDiv.style.display = 'none';
                 }
+            }
 
-                closeButton.addEventListener('click', () => {
+            closeButton.addEventListener('click', () => {
+                messageDiv.classList.remove('active');
+                messageDiv.style.display = 'none';
+                localStorage.setItem('mainMessageClosedTime', Date.now().toString());
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && messageDiv.classList.contains('active')) {
                     messageDiv.classList.remove('active');
                     messageDiv.style.display = 'none';
                     localStorage.setItem('mainMessageClosedTime', Date.now().toString());
-                });
+                }
+            }, { once: true });
 
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && messageDiv.classList.contains('active')) {
-                        messageDiv.classList.remove('active');
-                        messageDiv.style.display = 'none';
-                        localStorage.setItem('mainMessageClosedTime', Date.now().toString());
-                    }
-                }, { once: true });
+            loadMainMessage();
+        }
 
-                loadMainMessage();
-            } else if (isAdminPage) {
-                console.log('Main message skipped on admin page.');
+        submitForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(submitForm);
+            const schedule = [];
+            for (let i = 0; i < 4; i++) {
+                const subject = formData.get(`schedule[${i}][subject]`)?.trim();
+                const grade = formData.get(`schedule[${i}][grade]`)?.trim();
+                if (subject || grade) {
+                    schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
+                }
+                formData.delete(`schedule[${i}][subject]`);
+                formData.delete(`schedule[${i}][grade]`);
             }
+            formData.set('schedule', JSON.stringify(schedule));
+            formData.set('_csrf', csrfToken);
 
-            // Form submission
-            submitForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(submitForm);
-                const schedule = [];
-                for (let i = 0; i < 4; i++) {
-                    const subject = formData.get(`schedule[${i}][subject]`)?.trim();
-                    const grade = formData.get(`schedule[${i}][grade]`)?.trim();
-                    if (subject || grade) {
-                        schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
-                    }
-                    formData.delete(`schedule[${i}][subject]`);
-                    formData.delete(`schedule[${i}][grade]`);
-                }
-                formData.set('schedule', JSON.stringify(schedule));
-                formData.set('_csrf', csrfToken);
+            const requiredFields = ['name', 'bio', 'description', 'classes', 'tags', 'room_number', 'email'];
+            const roomNumber = formData.get('room_number')?.trim();
+            const tags = formData.get('tags')?.trim();
 
-                const requiredFields = ['name', 'bio', 'description', 'classes', 'tags', 'room_number', 'email'];
-                const roomNumber = formData.get('room_number')?.trim();
-                const tags = formData.get('tags')?.trim();
-
-                // Validate required fields
-                for (let field of requiredFields) {
-                    const value = formData.get(field)?.trim();
-                    if (!value) {
-                        submitMessage.textContent = `Error: ${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
-                        submitMessage.className = 'error-message';
-                        showNotification(`Error: ${field.charAt(0).toUpperCase() + field.slice(1)} is required.`, true);
-                        return;
-                    }
-                }
-
-                // Validate room_number
-                const roomValidation = validateRoomNumber(roomNumber, tags);
-                if (!roomValidation.valid) {
-                    submitMessage.textContent = `Error: ${roomValidation.message}`;
+            for (let field of requiredFields) {
+                const value = formData.get(field)?.trim();
+                if (!value) {
+                    submitMessage.textContent = `Error: ${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
                     submitMessage.className = 'error-message';
-                    showNotification(`Error: ${roomValidation.message}`, true);
+                    showNotification(`Error: ${field.charAt(0).toUpperCase() + field.slice(1)} is required.`, true);
                     return;
                 }
+            }
 
-                // Log form data for debugging
-                for (let [key, value] of formData.entries()) {
-                    console.log(`Client - Sending: ${key}=${value}`);
+            const roomValidation = validateRoomNumber(roomNumber, tags);
+            if (!roomValidation.valid) {
+                submitMessage.textContent = `Error: ${roomValidation.message}`;
+                submitMessage.className = 'error-message';
+                showNotification(`Error: ${roomValidation.message}`, true);
+                return;
+            }
+
+            const imageFile = formData.get('image');
+            if (imageFile && imageFile.size > 0) {
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (imageFile.size > maxSize) {
+                    showNotification('Image file size exceeds 5MB limit.', true);
+                    return;
                 }
-
-                try {
-                    const response = await fetch('/api/teacher-proposals', {
-                        method: 'POST',
-                        credentials: 'include',
-                        body: formData
-                    });
-                    const data = await response.json();
-                    if (response.ok) {
-                        submitMessage.textContent = 'Teacher proposal submitted successfully! Awaiting admin approval.';
-                        submitMessage.className = 'info-message';
-                        showNotification('Proposal submitted successfully!');
-                        submitForm.reset();
-                    } else {
-                        throw new Error(data.error || 'Failed to submit proposal');
-                    }
-                } catch (error) {
-                    console.error('Client - Error submitting teacher proposal:', error.message);
-                    submitMessage.textContent = `Error submitting proposal: ${error.message}`;
-                    submitMessage.className = 'error-message';
-                    showNotification('Error submitting proposal: ' + error.message, true);
+                const validTypes = ['image/jpeg', 'image/png'];
+                if (!validTypes.includes(imageFile.type)) {
+                    showNotification('Invalid image type. Use JPG or PNG.', true);
+                    return;
                 }
-            });
+            }
 
-            // Fetch CSRF token on load
-            fetchCsrfToken();
+            try {
+                const response = await fetch('/api/teacher-proposals', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'X-CSRF-Token': csrfToken },
+                    body: formData
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    submitMessage.textContent = 'Teacher proposal submitted successfully! Awaiting admin approval.';
+                    submitMessage.className = 'info-message';
+                    showNotification('Proposal submitted successfully!');
+                    submitForm.reset();
+                } else {
+                    throw new Error(data.error || `Failed to submit proposal: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Client - Error submitting teacher proposal:', error.message);
+                submitMessage.textContent = `Error submitting proposal: ${error.message}`;
+                submitMessage.className = 'error-message';
+                showNotification(`Error submitting proposal: ${error.message}`, true);
+            }
         });
+
+        fetchCsrfToken();
+    });
     </script>
 </body>
 </html>

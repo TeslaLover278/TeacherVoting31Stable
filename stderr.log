@@ -1,0 +1,401 @@
+/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:121
+        throw e;
+        ^
+
+Error: /home/teacdrjb/TeacherTally4/node_modules/sqlite3/build/Release/node_sqlite3.node: invalid ELF header
+    at Module._extensions..node (node:internal/modules/cjs/loader:1725:18)
+    at Module.load (node:internal/modules/cjs/loader:1313:32)
+    at Module._load (node:internal/modules/cjs/loader:1123:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Module.require (node:internal/modules/cjs/loader:1335:12)
+    at require (node:internal/modules/helpers:136:16)
+    at bindings (/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:112:48)
+    at Object.<anonymous> (/home/teacdrjb/TeacherTally4/node_modules/sqlite3/lib/sqlite3-binding.js:1:37)
+    at Module._compile (node:internal/modules/cjs/loader:1562:14) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.13.1
+/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:121
+        throw e;
+        ^
+
+Error: /home/teacdrjb/TeacherTally4/node_modules/sqlite3/build/Release/node_sqlite3.node: invalid ELF header
+    at Module._extensions..node (node:internal/modules/cjs/loader:1725:18)
+    at Module.load (node:internal/modules/cjs/loader:1313:32)
+    at Module._load (node:internal/modules/cjs/loader:1123:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Module.require (node:internal/modules/cjs/loader:1335:12)
+    at require (node:internal/modules/helpers:136:16)
+    at bindings (/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:112:48)
+    at Object.<anonymous> (/home/teacdrjb/TeacherTally4/node_modules/sqlite3/lib/sqlite3-binding.js:1:37)
+    at Module._compile (node:internal/modules/cjs/loader:1562:14) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.13.1
+/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:121
+        throw e;
+        ^
+
+Error: /home/teacdrjb/TeacherTally4/node_modules/sqlite3/build/Release/node_sqlite3.node: invalid ELF header
+    at Module._extensions..node (node:internal/modules/cjs/loader:1725:18)
+    at Module.load (node:internal/modules/cjs/loader:1313:32)
+    at Module._load (node:internal/modules/cjs/loader:1123:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Module.require (node:internal/modules/cjs/loader:1335:12)
+    at require (node:internal/modules/helpers:136:16)
+    at bindings (/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:112:48)
+    at Object.<anonymous> (/home/teacdrjb/TeacherTally4/node_modules/sqlite3/lib/sqlite3-binding.js:1:37)
+    at Module._compile (node:internal/modules/cjs/loader:1562:14) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.13.1
+/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:121
+        throw e;
+        ^
+
+Error: /home/teacdrjb/TeacherTally4/node_modules/sqlite3/build/Release/node_sqlite3.node: invalid ELF header
+    at Module._extensions..node (node:internal/modules/cjs/loader:1725:18)
+    at Module.load (node:internal/modules/cjs/loader:1313:32)
+    at Module._load (node:internal/modules/cjs/loader:1123:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Module.require (node:internal/modules/cjs/loader:1335:12)
+    at require (node:internal/modules/helpers:136:16)
+    at bindings (/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:112:48)
+    at Object.<anonymous> (/home/teacdrjb/TeacherTally4/node_modules/sqlite3/lib/sqlite3-binding.js:1:37)
+    at Module._compile (node:internal/modules/cjs/loader:1562:14) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.13.1
+/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:121
+        throw e;
+        ^
+
+Error: /home/teacdrjb/TeacherTally4/node_modules/sqlite3/build/Release/node_sqlite3.node: invalid ELF header
+    at Module._extensions..node (node:internal/modules/cjs/loader:1725:18)
+    at Module.load (node:internal/modules/cjs/loader:1313:32)
+    at Module._load (node:internal/modules/cjs/loader:1123:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Module.require (node:internal/modules/cjs/loader:1335:12)
+    at require (node:internal/modules/helpers:136:16)
+    at bindings (/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:112:48)
+    at Object.<anonymous> (/home/teacdrjb/TeacherTally4/node_modules/sqlite3/lib/sqlite3-binding.js:1:37)
+    at Module._compile (node:internal/modules/cjs/loader:1562:14) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.13.1
+/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:121
+        throw e;
+        ^
+
+Error: /home/teacdrjb/TeacherTally4/node_modules/sqlite3/build/Release/node_sqlite3.node: invalid ELF header
+    at Module._extensions..node (node:internal/modules/cjs/loader:1725:18)
+    at Module.load (node:internal/modules/cjs/loader:1313:32)
+    at Module._load (node:internal/modules/cjs/loader:1123:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:217:24)
+    at Module.require (node:internal/modules/cjs/loader:1335:12)
+    at require (node:internal/modules/helpers:136:16)
+    at bindings (/home/teacdrjb/TeacherTally4/node_modules/bindings/bindings.js:112:48)
+    at Object.<anonymous> (/home/teacdrjb/TeacherTally4/node_modules/sqlite3/lib/sqlite3-binding.js:1:37)
+    at Module._compile (node:internal/modules/cjs/loader:1562:14) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v22.13.1
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Error: misconfigured csrf
+    at csrf (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/csurf/index.js:71:19)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:328:13)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/serve-static/index.js:121:7)
+    at SendStream.emit (node:events:524:28)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:270:17)
+    at SendStream.onStatError (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:417:12)
+Error: misconfigured csrf
+    at csrf (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/csurf/index.js:71:19)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:328:13)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/serve-static/index.js:121:7)
+    at SendStream.emit (node:events:524:28)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:270:17)
+    at SendStream.onStatError (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:417:12)
+Error: misconfigured csrf
+    at csrf (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/csurf/index.js:71:19)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:328:13)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/serve-static/index.js:121:7)
+    at SendStream.emit (node:events:524:28)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:270:17)
+    at SendStream.onStatError (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:417:12)
+Error: misconfigured csrf
+    at csrf (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/csurf/index.js:71:19)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:328:13)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/serve-static/index.js:121:7)
+    at SendStream.emit (node:events:524:28)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:270:17)
+    at SendStream.onStatError (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:417:12)
+Error: misconfigured csrf
+    at csrf (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/csurf/index.js:71:19)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at trim_prefix (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:328:13)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:286:9
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/serve-static/index.js:121:7)
+    at SendStream.emit (node:events:524:28)
+    at SendStream.error (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:270:17)
+    at SendStream.onStatError (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/send/index.js:417:12)
+TypeError: Cannot read properties of undefined (reading 'csrfToken')
+    at /home/teacdrjb/TeacherTally4/server.js:292:61
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at /home/teacdrjb/TeacherTally4/server.js:127:5
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+TypeError: Cannot read properties of undefined (reading 'csrfToken')
+    at /home/teacdrjb/TeacherTally4/server.js:292:61
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at /home/teacdrjb/TeacherTally4/server.js:127:5
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+TypeError: Cannot read properties of undefined (reading 'csrfToken')
+    at /home/teacdrjb/TeacherTally4/server.js:292:61
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at /home/teacdrjb/TeacherTally4/server.js:127:5
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+TypeError: Cannot read properties of undefined (reading 'csrfToken')
+    at /home/teacdrjb/TeacherTally4/server.js:292:61
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at /home/teacdrjb/TeacherTally4/server.js:127:5
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+TypeError: Cannot read properties of undefined (reading 'csrfToken')
+    at /home/teacdrjb/TeacherTally4/server.js:292:61
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at /home/teacdrjb/TeacherTally4/server.js:127:5
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+TypeError: Cannot read properties of undefined (reading 'csrfToken')
+    at /home/teacdrjb/TeacherTally4/server.js:292:61
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at /home/teacdrjb/TeacherTally4/server.js:127:5
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+TypeError: Cannot read properties of undefined (reading 'csrfToken')
+    at /home/teacdrjb/TeacherTally4/server.js:292:61
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/index.js:280:10)
+    at /home/teacdrjb/TeacherTally4/server.js:127:5
+    at Layer.handle [as handle_request] (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express/lib/router/layer.js:95:5)
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+Server - Error parsing classes for teacher ID otte: Unexpected token 'r', "reagan.har"... is not valid JSON Raw value: reagan.hartney@gmail.com
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}
+ValidationError: The 'X-Forwarded-For' header is set but the Express 'trust proxy' setting is false (default). This could indicate a misconfiguration which would prevent express-rate-limit from accurately identifying users. See https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/ for more information.
+    at _Validations.<anonymous> (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:180:15)
+    at _Validations.wrap (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:313:18)
+    at _Validations.xForwardedForHeader (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:178:10)
+    at Object.keyGenerator (/home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:542:19)
+    at /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:595:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /home/teacdrjb/nodevenv/TeacherTally4/22/lib/node_modules/express-rate-limit/dist/index.cjs:576:5 {
+  code: 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_UNEXPECTED_X_FORWARDED_FOR/'
+}

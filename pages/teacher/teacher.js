@@ -1,6 +1,7 @@
 let teacherId = new URLSearchParams(window.location.search).get('id');
 let teacherData = null;
 let isAdmin = false;
+let isLoggedIn = false;
 let hasVoted = false;
 let csrfToken = null;
 const votedTeachers = document.cookie.split('; ')
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Client - Teacher script loaded, initializing...');
     await fetchCsrfToken();
     await checkAdminStatus();
+    await checkUserStatus();
     await loadTeacherProfile();
     setupEventListeners();
     loadMainMessage();
@@ -23,9 +25,7 @@ async function fetchCsrfToken() {
         if (!response.ok) throw new Error('Failed to fetch CSRF token');
         const data = await response.json();
         csrfToken = data.csrfToken;
-        document.querySelector('meta[name="csrf-token"]').content = csrfToken;
-        document.getElementById('csrf-token').value = csrfToken;
-        console.log('Client - CSRF token fetched:', csrfToken);
+        console.log('Client - CSRF token fetched:');
     } catch (error) {
         console.error('Client - Error fetching CSRF token:', error.message);
         showNotification('Error initializing security token', true);
@@ -37,11 +37,25 @@ async function checkAdminStatus() {
         const response = await fetch('/api/admin/verify', { credentials: 'include' });
         isAdmin = response.ok;
         const adminBtn = document.querySelector('.admin-btn');
-        adminBtn.textContent = isAdmin ? 'Admin Dashboard' : 'Admin Login';
+        if (adminBtn) adminBtn.textContent = isAdmin ? 'Admin Dashboard' : 'Login';
     } catch (error) {
         console.error('Client - Error verifying admin status:', error.message);
         isAdmin = false;
-        document.querySelector('.admin-btn').textContent = 'Admin Login';
+        const adminBtn = document.querySelector('.admin-btn');
+        if (adminBtn) adminBtn.textContent = 'Login';
+    }
+}
+
+async function checkUserStatus() {
+    try {
+        const response = await fetch('/api/user', { credentials: 'include' });
+        if (!response.ok) throw new Error('User not logged in');
+        const userData = await response.json();
+        isLoggedIn = true;
+        console.log('Client - User logged in:', userData);
+    } catch (error) {
+        console.log('Client - User not logged in:', error.message);
+        isLoggedIn = false;
     }
 }
 
@@ -63,7 +77,18 @@ async function loadTeacherProfile() {
             throw new Error(errorData.error || `Failed to load teacher: ${response.statusText}`);
         }
         teacherData = await response.json();
-        hasVoted = votedTeachers.includes(teacherId);
+
+        // Check if the user has voted
+        if (isLoggedIn) {
+            const voteCheck = await fetch(`/api/vote/check/${teacherId}`, {
+                credentials: 'include',
+                headers: { 'X-CSRF-Token': csrfToken }
+            });
+            hasVoted = voteCheck.ok && (await voteCheck.json()).hasVoted;
+        } else {
+            hasVoted = votedTeachers.includes(teacherId);
+        }
+
         document.title = `${teacherData.name} - Teacher Profile`;
         renderTeacherProfile();
     } catch (error) {
@@ -156,7 +181,7 @@ function renderTeacherProfile() {
 function setupEventListeners() {
     document.querySelector('.logo')?.addEventListener('click', () => window.location.href = '/');
     document.querySelector('.admin-btn')?.addEventListener('click', () => {
-        window.location.href = isAdmin ? '/pages/admin/dashboard.html' : '/pages/admin/login.html';
+        window.location.href = isAdmin ? '/pages/admin/dashboard.html' : '/pages/auth/login.html';
     });
     document.querySelector('.submit-teacher-btn')?.addEventListener('click', () => window.location.href = '/pages/teacher/submit-teacher.html');
 }
@@ -177,50 +202,81 @@ function setupRatingStars() {
         });
     });
 
-    submitBtn.addEventListener('click', submitRating);
+    submitBtn.addEventListener('click', async () => {
+        if (hasVoted) {
+            showNotification('You have already rated this teacher.', true);
+            return;
+        }
+
+        const rating = parseInt(submitBtn.dataset.rating);
+        const comment = document.getElementById('rating-comment')?.value.trim() || '';
+
+        if (!rating || rating < 1 || rating > 5) {
+            showNotification('Please select a rating between 1 and 5.', true);
+            return;
+        }
+
+        // Explicit content filter
+        const explicitWords = [
+            'fuck', 'shit', 'ass', 'bitch', 'damn', 'cock', 'cunt', 'pussy',
+            'bastard', 'whore', 'slut', 'dick', 'prick', 'fag', 'nigger'
+        ];
+        const lowerComment = comment.toLowerCase();
+        const isExplicit = explicitWords.some(word => lowerComment.includes(word));
+
+        if (isExplicit) {
+            showNotification('Your comment contains inappropriate language. Please revise.', true);
+            return;
+        }
+
+        const endpoint = isLoggedIn ? '/api/vote' : '/api/ratings';
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                credentials: 'include',
+                body: JSON.stringify({ teacher_id: teacherId, rating, comment })
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 401 && isLoggedIn) {
+                    showNotification('Session expired. Please log in again.', true);
+                    setTimeout(() => window.location.href = '/login.html', 2000);
+                    return;
+                }
+                if (response.status === 403 && data.error === 'Already voted') {
+                    showNotification('You have already rated this teacher.', true);
+                    hasVoted = true;
+                    renderTeacherProfile();
+                    return;
+                }
+                throw new Error(data.error || 'Failed to submit rating');
+            }
+
+            showNotification('Rating submitted successfully!');
+            hasVoted = true;
+            if (!isLoggedIn) {
+                votedTeachers.push(teacherId);
+                document.cookie = `votedTeachers=${votedTeachers.join(',')}; Path=/; Max-Age=31536000; SameSite=Strict`;
+            }
+            teacherData.avg_rating = data.avg_rating;
+            teacherData.rating_count = data.rating_count;
+            teacherData.ratings.push({ rating, comment, is_explicit: data.is_explicit });
+            renderTeacherProfile();
+        } catch (error) {
+            console.error('Client - Error submitting rating:', error.message);
+            showNotification(`Error submitting rating: ${error.message}`, true);
+        }
+    });
 }
 
 function highlightStars(rating) {
     const stars = document.querySelectorAll('#star-rating .star');
     stars.forEach(star => star.classList.toggle('selected', star.dataset.rating <= rating));
-}
-
-async function submitRating() {
-    const submitBtn = document.getElementById('submit-rating');
-    const rating = parseInt(submitBtn.dataset.rating);
-    const comment = document.getElementById('rating-comment')?.value.trim() || '';
-
-    if (!rating || rating < 1 || rating > 5) {
-        showNotification('Please select a rating between 1 and 5.', true);
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/ratings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
-            },
-            credentials: 'include',
-            body: JSON.stringify({ teacher_id: teacherId, rating, comment })
-        });
-        const data = await response.json();
-
-        if (!response.ok) throw new Error(data.error || 'Failed to submit rating');
-
-        showNotification('Rating submitted successfully!');
-        hasVoted = true;
-        votedTeachers.push(teacherId);
-        document.cookie = `votedTeachers=${votedTeachers.join(',')}; Path=/; Max-Age=31536000; SameSite=Strict`;
-        teacherData.avg_rating = data.avg_rating;
-        teacherData.rating_count = data.rating_count;
-        teacherData.ratings.push({ rating, comment, is_explicit: data.is_explicit });
-        renderTeacherProfile();
-    } catch (error) {
-        console.error('Client - Error submitting rating:', error.message);
-        showNotification(`Error submitting rating: ${error.message}`, true);
-    }
 }
 
 function setupReviewToggle() {
@@ -311,8 +367,8 @@ function showEditForm() {
                 <input type="text" id="edit-room" name="room_number" value="${teacherData.room_number}">
             </div>
             <div class="form-group">
-    		<label for="edit-bio">Bio:</label>
-   		<textarea id="edit-bio" name="bio">${teacherData.bio}</textarea>
+                <label for="edit-bio">Bio:</label>
+                <textarea id="edit-bio" name="bio">${teacherData.bio}</textarea>
             </div>
             <div class="form-group">
                 <label for="edit-classes">Classes (comma-separated):</label>
@@ -350,7 +406,6 @@ function showEditForm() {
         const form = e.target;
         const formData = new FormData(form);
 
-        // Process schedule into a JSON string
         const schedule = [];
         teacherData.schedule.forEach((_, i) => {
             const block = formData.get(`schedule[${i}][block]`)?.trim() || '';
@@ -365,13 +420,6 @@ function showEditForm() {
         });
         formData.set('schedule', JSON.stringify(schedule));
 
-        // Log the FormData contents for debugging
-        console.log('Client - Sending FormData to server:');
-        for (let [key, value] of formData.entries()) {
-            console.log(`${key}: ${value}`);
-        }
-
-        // Validate image (optional)
         const imageFile = formData.get('image');
         if (imageFile && imageFile.size > 0) {
             const maxSize = 5 * 1024 * 1024; // 5MB
@@ -389,9 +437,7 @@ function showEditForm() {
         try {
             const response = await fetch(`/api/admin/teachers/${teacherId}`, {
                 method: 'PUT',
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                },
+                headers: { 'X-CSRF-Token': csrfToken },
                 credentials: 'include',
                 body: formData
             });

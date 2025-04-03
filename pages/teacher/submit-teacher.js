@@ -31,7 +31,7 @@
                 </div>
                 <div class="form-group">
                     <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required placeholder="e.g., john.doe@example.com (Will be kept secret)">
+                    <input type="email" id="email" name="email" required placeholder="Your email. e.g., john.doe@example.com (Will be kept secret)">
                     <span class="tooltip">Your contact email to confirm details.</span>
                 </div>
                 <div class="form-group">
@@ -150,6 +150,31 @@
 
                 return { valid: true };
             }
+            document.addEventListener('DOMContentLoaded', () => {
+            console.log('JavaScript Loaded - Listening for Menu Clicks');
+
+            const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+
+            if (mobileMenuToggle && dropdownMenu) {
+                mobileMenuToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    console.log('☰ Menu Button Clicked!');
+                    dropdownMenu.classList.toggle('active');
+
+                    // Force show/hide logic
+                    if (dropdownMenu.classList.contains('active')) {
+                        dropdownMenu.style.display = 'block';
+                        console.log('Dropdown is now VISIBLE');
+                    } else {
+                        dropdownMenu.style.display = 'none';
+                        console.log('Dropdown is now HIDDEN');
+                    }
+                });
+            } else {
+                console.error('❌ Menu toggle button or dropdown menu NOT found!');
+            }
+        });
 
             // Form submission
             form.addEventListener('submit', async (e) => {

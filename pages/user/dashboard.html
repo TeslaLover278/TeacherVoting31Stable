@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>User Dashboard - Teacher Tally</title>
+    <link rel="stylesheet" href="/public/styles.css">
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <style>
+        .dashboard-container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 20px auto;
+        }
+        .welcome-section {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .welcome-section h2 {
+            margin: 0;
+            font-size: 1.8em;
+            color: #00B7D1;
+        }
+        .points-section {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .points-section h3 {
+            margin-top: 0;
+            font-size: 1.5em;
+            color: #00B7D1;
+        }
+        .points-section p {
+            font-size: 1.2em;
+            color: #555;
+            margin: 10px 0;
+        }
+        .points-section .points-value {
+            font-weight: bold;
+            color: #00B7D1;
+            font-size: 1.4em;
+        }
+        .votes-section {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .votes-section h3 {
+            margin-top: 0;
+            font-size: 1.5em;
+            color: #00B7D1;
+        }
+        .vote-card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .vote-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .vote-card h4 {
+            margin: 0 0 10px;
+            font-size: 1.2em;
+            color: #00B7D1;
+        }
+        .vote-card p {
+            margin: 5px 0;
+            color: #555;
+        }
+        .vote-card select,
+        .vote-card textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        .vote-card .edit-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .submit-btn, .cancel-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9em;
+        }
+        .submit-btn {
+            background: #00B7D1;
+            color: #fff;
+        }
+        .submit-btn:hover {
+            background: #03a4bb;
+        }
+        .cancel-btn {
+            background: #dc3545;
+            color: #fff;
+        }
+        .cancel-btn:hover {
+            background: #c82333;
+        }
+        .edit-toggle-btn {
+            background: #00B7D1;
+            color: #fff;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .edit-toggle-btn:hover {
+            background: #218838;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: #fff;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 2000;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+        .notification.success { background: #10b981; }
+        .notification.error { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <main class="dashboard-container">
+        <div class="welcome-section">
+            <h2>Welcome, <span id="username"></span>!</h2>
+        </div>
+        <div class="points-section">
+            <h3>Your Points</h3>
+            <p>You have <span class="points-value" id="points-value">0</span> points!</p>
+            <p>Earn points by rating teachers (2 points each), logging in daily (5 points for consecutive days), or submitting approved teacher proposals (10 points each).</p>
+        </div>
+        <div class="votes-section">
+            <h3>Your Votes</h3>
+            <div id="votes-list"></div>
+        </div>
+    </main>
+    <div class="notification" id="notification"></div>
+    <script src="/public/header.js" defer></script>
+    <script src="/public/footer.js" defer></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        fetch('/pages/components/header.html')
+            .then(response => response.ok ? response.text() : Promise.reject('Failed to load header'))
+            .then(html => {
+                document.getElementById('header-placeholder').innerHTML = html;
+                window.initializeHeader(); // Ensure header.js runs after load
+            })
+            .catch(err => console.error('Error loading header:', err));
+
+        // Fetch CSRF token
+        fetch('/api/csrf-token')
+            .then(response => response.json())
+            .then(data => {
+                document.querySelector('meta[name="csrf-token"]').setAttribute('content', data.csrfToken);
+            })
+            .catch(err => console.error('Error fetching CSRF token:', err));
+
+        // Fetch user data and votes
+        fetch('/api/user', {
+            credentials: 'include'
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch user data');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('username').textContent = data.username;
+                document.getElementById('points-value').textContent = data.points || 0;
+                loadVotes(data.id);
+            })
+            .catch(err => {
+                console.error('Error fetching user data:', err);
+                showNotification('Error loading user data', 'error');
+                setTimeout(() => window.location.href = '/pages/auth/login.html', 2000);
+            });
+    });
+
+    function loadVotes(userId) {
+        fetch('/api/user/votes', {
+            credentials: 'include'
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch votes');
+                return response.json();
+            })
+            .then(votes => {
+                const votesList = document.getElementById('votes-list');
+                votesList.innerHTML = '';
+                votes.forEach(vote => {
+                    const voteCard = document.createElement('div');
+                    voteCard.className = 'vote-card';
+                    voteCard.innerHTML = `
+                        <h4>${vote.teacher_name}</h4>
+                        <p>Rating: <span class="current-rating">${vote.rating}</span>/5</p>
+                        <p>Comment: <span class="current-comment">${vote.comment || 'None'}</span></p>
+                        <select class="edit-rating" style="display: none;">
+                            ${[1, 2, 3, 4, 5].map(r => `<option value="${r}" ${r === vote.rating ? 'selected' : ''}>${r}</option>`).join('')}
+                        </select>
+                        <textarea class="edit-comment" style="display: none;">${vote.comment || ''}</textarea>
+                        <button class="edit-toggle-btn">Edit</button>
+                        <div class="edit-actions" style="display: none;">
+                            <button class="submit-btn">Submit</button>
+                            <button class="cancel-btn">Cancel</button>
+                        </div>
+                    `;
+                    votesList.appendChild(voteCard);
+
+                    const editBtn = voteCard.querySelector('.edit-toggle-btn');
+                    const submitBtn = voteCard.querySelector('.submit-btn');
+                    const cancelBtn = voteCard.querySelector('.cancel-btn');
+                    const ratingDisplay = voteCard.querySelector('.current-rating');
+                    const commentDisplay = voteCard.querySelector('.current-comment');
+                    const ratingEdit = voteCard.querySelector('.edit-rating');
+                    const commentEdit = voteCard.querySelector('.edit-comment');
+                    const editActions = voteCard.querySelector('.edit-actions');
+
+                    editBtn.addEventListener('click', () => {
+                        ratingDisplay.style.display = 'none';
+                        commentDisplay.style.display = 'none';
+                        editBtn.style.display = 'none';
+                        ratingEdit.style.display = 'block';
+                        commentEdit.style.display = 'block';
+                        editActions.style.display = 'flex';
+                    });
+
+                    cancelBtn.addEventListener('click', () => {
+                        ratingEdit.style.display = 'none';
+                        commentEdit.style.display = 'none';
+                        editActions.style.display = 'none';
+                        ratingDisplay.style.display = 'inline';
+                        commentDisplay.style.display = 'inline';
+                        editBtn.style.display = 'block';
+                        ratingEdit.value = vote.rating;
+                        commentEdit.value = vote.comment || '';
+                    });
+
+                    submitBtn.addEventListener('click', () => {
+                        const newRating = parseInt(ratingEdit.value);
+                        const newComment = commentEdit.value.trim();
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                        fetch(`/api/vote/${vote.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
+                            },
+                            body: JSON.stringify({ rating: newRating, comment: newComment }),
+                            credentials: 'include'
+                        })
+                        .then(response => {
+                            if (!response.ok) throw new Error('Failed to update vote');
+                            return response.json();
+                        })
+                        .then(data => {
+                            ratingDisplay.textContent = newRating;
+                            commentDisplay.textContent = newComment || 'None';
+                            ratingDisplay.style.display = 'inline';
+                            commentDisplay.style.display = 'inline';
+                            editBtn.style.display = 'block';
+                            ratingEdit.style.display = 'none';
+                            commentEdit.style.display = 'none';
+                            editActions.style.display = 'none';
+                            showNotification('Vote updated successfully', 'success');
+                        })
+                        .catch(err => {
+                            console.error('Error updating vote:', err);
+                            showNotification('Failed to update vote', 'error');
+                        });
+                    });
+                });
+            })
+            .catch(err => {
+                console.error('Error fetching votes:', err);
+                showNotification('Error loading votes', 'error');
+            });
+    }
+
+    function showNotification(message, type) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.className = `notification ${type}`;
+        notification.style.opacity = '1';
+        setTimeout(() => {
+            notification.style.opacity = '0';
+        }, 3000);
+    }
+    </script>
+</body>
+</html>

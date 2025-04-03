@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Signup - Teacher Tally</title>
+    <link rel="stylesheet" href="/public/styles.css">
+    <style>
+        .site-footer {
+            position: absolute; /* Position footer at bottom */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%; /* Full width of viewport */
+            text-align: center;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #00B7D1 0%, #00A3C4 100%);
+            color: #fff;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 30;
+        }
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .signup-container {
+            flex: 1 0 auto;
+        }
+        .signup-footer {
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-content">
+            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" id="header-logo">
+            <a href="/" class="header-title-link">
+                <h1 class="header-title">Teacher Tally</h1>
+            </a>
+            <div class="header-buttons desktop-only">
+                <button id="desktop-auth-btn" class="admin-btn">Loading...</button>
+            </div>
+            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
+            <div class="dropdown-menu" id="dropdown-menu">
+                <button id="mobile-auth-btn" class="header-btn">Loading...</button>
+            </div>
+        </div>
+    </header>
+    <div class="signup-container">
+        <h2>Sign Up</h2>
+        <form id="signupForm" class="signup-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+                <div id="usernameFeedback" class="feedback"></div>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+                <div class="privacy-note">Your email will be kept strictly confidential and never shared.</div>
+                <div id="emailFeedback" class="feedback"></div>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+                <div id="passwordFeedback" class="feedback"></div>
+            </div>
+            <button type="submit" id="signupButton" class="signup-btn" disabled>Sign Up</button>
+        </form>
+    </div>
+    <footer id="footer" class="signup-footer">
+        <p id="footer-email" class="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-message" class="footer-message">Welcome to Teacher Tally!</p>
+    </footer>
+    <script src="/pages/auth/signup.js"></script>
+    <script src="/public/footer.js" defer></script>
+    <script src="/public/header.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/pages/components/header.html')
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to load header HTML');
+                    return response.text();
+                })
+                .then(html => {
+                    document.getElementById('header-placeholder').innerHTML = html;
+                    const script = document.createElement('script');
+                    script.src = '/public/header.js';
+                    script.onload = () => {
+                        if (typeof initializeHeader === 'function') {
+                            initializeHeader();
+                        } else {
+                            console.error('initializeHeader function not found');
+                        }
+                    };
+                    script.onerror = () => console.error('Failed to load header.js');
+                    document.body.appendChild(script);
+                })
+                .catch(err => console.error('Error loading header:', err));
+
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    if (typeof window.logout === 'function') {
+                        window.logout();
+                    } else {
+                        console.warn('Logout function not yet available');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
