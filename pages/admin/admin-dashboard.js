@@ -3,28 +3,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Client - Dashboard script loaded, initializing...');
 
     // Centralized state management
-    const state = {
-        csrfToken: '',
-        token: localStorage.getItem('adminToken') || getCookie('adminToken'),
-        data: {
-            teachers: [],
-            votes: [],
-            suggestions: [],
-            requests: [],
-            proposals: [],
-            corrections: [],
-            accounts: { users: [], admins: [], totalUsers: 0, totalAdmins: 0 },
-            settings: {},
-        },
-        pages: {
-            teachers: 1,
-            votes: 1,
-            suggestions: 1,
-            requests: 1,
-            accounts: 1,
-        },
-        activeTab: 'teachers',
-    };
+const state = {
+    csrfToken: '',
+    token: localStorage.getItem('adminToken') || getCookie('adminToken'),
+    data: {
+        teachers: [],
+        votes: [],
+        suggestions: [],
+        requests: [],
+        proposals: [],
+        corrections: [],
+        accounts: { users: [], admins: [], totalUsers: 0, totalAdmins: 0 },
+        settings: {},
+        spotlight: { teacherId: null, name: '' }, // Added spotlight state
+    },
+    pages: {
+        teachers: 1,
+        votes: 1,
+        suggestions: 1,
+        requests: 1,
+        accounts: 1,
+    },
+    activeTab: 'teachers',
+};
     console.log('Client - BASE_URL set to:', BASE_URL);
 
     // Element references with lazy loading via Proxy
@@ -212,36 +213,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function fetchData(endpoint, params = {}, options = {}, retries = 2) {
-        const url = new URL(endpoint, BASE_URL);
-        Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
-        console.log(`Client - Fetching: ${url.toString()}`);
-        for (let attempt = 0; attempt <= retries; attempt++) {
-            try {
-                const res = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken, ...options.headers },
-                    credentials: 'include',
-                    ...options,
-                });
-                if (res.status === 401) {
-                    console.error('Client - Unauthorized, logging out');
-                    await window.logout();
-                    return null;
-                }
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    throw new Error(`HTTP ${res.status}: ${errorText}`);
-                }
-                const data = await res.json();
-                console.log(`Client - Fetched ${endpoint}:`, data);
-                return data;
-            } catch (error) {
-                console.error(`Client - Fetch attempt ${attempt + 1} failed for ${endpoint}:`, error.message);
-                if (attempt === retries) throw error;
-                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+async function fetchData(endpoint, params = {}, options = {}, retries = 2) {
+    // Ensure endpoint starts with a slash
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    let url;
+    try {
+        url = new URL(normalizedEndpoint, BASE_URL);
+    } catch (error) {
+        console.error(`Client - Invalid URL construction: BASE_URL=${BASE_URL}, endpoint=${endpoint}`, error);
+        throw new Error(`Invalid URL: ${error.message}`);
+    }
+    Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+    console.log(`Client - Fetching: ${url.toString()}`);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken, ...options.headers },
+                credentials: 'include',
+                ...options,
+            });
+            if (res.status === 401) {
+                console.error('Client - Unauthorized, logging out');
+                await window.logout();
+                return null;
             }
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errorText}`);
+            }
+            const data = await res.json();
+            console.log(`Client - Fetched ${endpoint}:`, data);
+            return data;
+        } catch (error) {
+            console.error(`Client - Fetch attempt ${attempt + 1} failed for ${endpoint}:`, error.message);
+            if (attempt === retries) throw error;
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         }
     }
+}
 
     // Render table with pagination
     function renderTable(container, data, headers, rowTemplate, page, perPage, total, messageEl, messageText) {
@@ -265,89 +274,225 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Load teachers
-    async function loadTeachers(page = state.pages.teachers) {
-        const table = elements['teachers-table'];
-        const message = elements['teachers-message'];
-        if (!table || !message) return;
-        try {
-            if (!state.data.teachers.length) {
-                const data = await fetchData('/api/admin/teachers', { perPage: 100 });
-                if (!data) return;
-                state.data.teachers = Array.isArray(data) ? data : data.teachers || [];
+async function toggleSpotlight(teacherId, isSpotlight) {
+    console.log(`Client - Sending POST to set spotlight: ${teacherId}, ${isSpotlight}`);
+    try {
+        const response = await fetchData('/api/admin/spotlight', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': state.csrfToken,
+                'Authorization': `Bearer ${state.token}`,
+                'Cache-Control': 'no-cache, no-store' // Prevent caching
+            },
+            body: JSON.stringify({ teacherId, isSpotlight })
+        });
+        console.log(`Client - Spotlight response:`, response);
+        if (response && response.success !== false) {
+            // Find the teacher name from state
+            const teacher = state.data.teachers.find(t => String(t.id) === String(teacherId));
+            const name = teacher ? teacher.name : teacherId;
+            // Update the current spotlight display
+            const spotlightName = document.getElementById('spotlight-name');
+            if (spotlightName) {
+                spotlightName.textContent = isSpotlight ? name : 'None';
             }
-            const searchQuery = elements['teacher-search']?.value.toLowerCase() || '';
-            const sortField = elements['teacher-sort']?.value || 'id';
-            const sortDirection = elements['teacher-sort-direction']?.value || 'asc';
-            const perPage = parseInt(elements['teachers-per-page']?.value) || 10;
-            state.pages.teachers = page;
+            showNotification(`Spotlight ${isSpotlight ? 'set to' : 'unset for'} ${name}`, false);
+        } else {
+            showNotification(`Failed to update spotlight.`, true);
+        }
+        loadTeachers();
+    } catch (error) {
+        console.error(`Client - Error setting spotlight: ${error.message}`);
+        showNotification(`Failed to update spotlight: ${error.message}`, true);
+    }
+}
 
-            const teachers = state.data.teachers
-                .filter(t => `${t.id} ${t.name} ${t.email || ''}`.toLowerCase().includes(searchQuery))
-                .sort((a, b) => {
-                    const valueA = String(a[sortField] || '').toLowerCase();
-                    const valueB = String(b[sortField] || '').toLowerCase();
-                    return sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+// Spotlight tab logic
+function populateSpotlightDropdown() {
+    const dropdown = document.getElementById('spotlight-dropdown');
+    if (!dropdown) return;
+    dropdown.innerHTML = '';
+    state.data.teachers.forEach(t => {
+        const option = document.createElement('option');
+        option.value = t.id;
+        option.textContent = t.name;
+        dropdown.appendChild(option);
+    });
+}
+
+async function setSpotlightTeacher() {
+    const dropdown = document.getElementById('spotlight-dropdown');
+    const message = document.getElementById('spotlight-message');
+    const spotlightName = document.getElementById('spotlight-name');
+    if (!dropdown) return;
+    const teacherId = dropdown.value;
+    try {
+        const res = await fetch(`/api/admin/spotlight/${teacherId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': state.csrfToken,
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+        const response = await res.json();
+        if (res.ok && response && response.success !== false) {
+            if (spotlightName) spotlightName.textContent = dropdown.options[dropdown.selectedIndex].text;
+            message.textContent = 'Spotlight set successfully!';
+            message.className = 'info-message success';
+            showNotification('Spotlight set successfully!', false);
+        } else {
+            message.textContent = 'Failed to set spotlight.';
+            message.className = 'info-message error';
+            showNotification('Failed to set spotlight.', true);
+        }
+    } catch (error) {
+        message.textContent = 'Failed to set spotlight: ' + error.message;
+        message.className = 'info-message error';
+        showNotification('Failed to set spotlight: ' + error.message, true);
+    }
+}
+
+document.getElementById('set-spotlight-btn')?.addEventListener('click', setSpotlightTeacher);
+
+// Tab switching logic for new Spotlight tab
+const tabNav = document.getElementById('tab-nav');
+if (tabNav) {
+    tabNav.addEventListener('click', (e) => {
+        if (e.target.classList.contains('tab-btn')) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            const tab = e.target.getAttribute('data-tab');
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.getElementById(tab)?.classList.add('active');
+            if (tab === 'spotlight') {
+                populateSpotlightDropdown();
+                // Fetch and display current spotlight
+                fetchData('/api/spotlight').then(data => {
+                    const name = data && data.name ? data.name : 'None';
+                    const spotlightName = document.getElementById('spotlight-name');
+                    if (spotlightName) spotlightName.textContent = name;
                 });
+            }
+        }
+    });
+}
 
-            renderTable(
-                table,
-                teachers,
-                ['ID', 'Name', 'Description', 'Schedule', 'Tags', 'Email', 'Phone', 'Actions'],
-                t => `
-                    <tr class="teacher-row" data-id="${t.id}">
-                        <td>${sanitizeInput(t.id)}</td>
-                        <td>${sanitizeInput(t.name)}</td>
-                        <td>${sanitizeInput(t.description)}</td>
-                        <td>${sanitizeInput(t.schedule || '')}</td>
-                        <td>${sanitizeInput(t.tags || '')}</td>
-                        <td>${sanitizeInput(t.email || '')}</td>
-                        <td>${sanitizeInput(t.phone || '')}</td>
-                        <td>
-                            <button class="edit-btn" data-action="edit-teacher" data-id="${t.id}">Edit</button>
-                            <button class="delete-btn" data-action="delete-teacher" data-id="${t.id}" data-name="${sanitizeInput(t.name)}">Delete</button>
-                        </td>
-                    </tr>
-                    <tr id="teacher-details-${t.id}" class="teacher-details">
-                        <td colspan="8">
-                            <div class="teacher-details-content">
-                                <label>ID: <input type="text" id="edit-id-${t.id}" value="${sanitizeInput(t.id)}" data-original="${sanitizeInput(t.id)}"></label><br>
-                                <label>Name: <input type="text" id="edit-name-${t.id}" value="${sanitizeInput(t.name)}" data-original="${sanitizeInput(t.name)}"></label><br>
-                                <label>Description: <input type="text" id="edit-desc-${t.id}" value="${sanitizeInput(t.description)}" data-original="${sanitizeInput(t.description)}"></label><br>
-                                <label>Schedule: <textarea id="edit-schedule-${t.id}" data-original="${sanitizeInput(t.schedule || '')}">${sanitizeInput(t.schedule || '')}</textarea></label><br>
-                                <label>Tags: <input type="text" id="edit-tags-${t.id}" value="${sanitizeInput(t.tags || '')}" data-original="${sanitizeInput(t.tags || '')}"></label><br>
-                                <label>Email: <input type="email" id="edit-email-${t.id}" value="${sanitizeInput(t.email || '')}" data-original="${sanitizeInput(t.email || '')}"></label><br>
-                                <label>Phone: <input type="tel" id="edit-phone-${t.id}" value="${sanitizeInput(t.phone || '')}" data-original="${sanitizeInput(t.phone || '')}"></label><br>
-                                <button class="submit-btn" data-action="update-teacher" data-id="${t.id}">Update</button>
-                                <span class="edit-status" id="edit-status-${t.id}"></span>
-                            </div>
-                        </td>
-                    </tr>
-                `,
-                page,
-                perPage,
-                teachers.length,
-                message,
-                (shown, total) => `Loaded ${shown} of ${total} teachers.`
-            );
+// Update listener
+document.querySelectorAll('.spotlight-toggle').forEach(toggle => {
+    toggle.addEventListener('change', (e) => {
+        const teacherId = e.target.dataset.teacherId;
+        const isSpotlight = e.target.checked;
+        toggleSpotlight(teacherId, isSpotlight);
+    });
+});
 
-            document.querySelectorAll('.teacher-row').forEach(row => {
-                row.addEventListener('click', (e) => {
-                    if (!e.target.closest('button')) {
-                        const teacherId = row.dataset.id;
-                        window.location.href = `/pages/teacher/teacher.html?id=${teacherId}`;
-                    }
-                });
+    // Load teachers
+async function loadTeachers(page = state.pages.teachers) {
+    const table = elements['teachers-table'];
+    const message = elements['teachers-message'];
+    if (!table || !message) return;
+    try {
+        if (!state.data.teachers.length) {
+            const data = await fetchData('/api/admin/teachers', { perPage: 100 });
+            if (!data) return;
+            state.data.teachers = Array.isArray(data) ? data : data.teachers || [];
+        }
+        const searchQuery = elements['teacher-search']?.value.toLowerCase() || '';
+        const sortField = elements['teacher-sort']?.value || 'id';
+        const sortDirection = elements['teacher-sort-direction']?.value || 'asc';
+        const perPage = parseInt(elements['teachers-per-page']?.value) || 10;
+        state.pages.teachers = page;
+
+        const teachers = state.data.teachers
+            .filter(t => `${t.id} ${t.name}`.toLowerCase().includes(searchQuery))
+            .sort((a, b) => {
+                const valueA = String(a[sortField] || '').toLowerCase();
+                const valueB = String(b[sortField] || '').toLowerCase();
+                return sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
             });
 
-            addButtonListeners();
-        } catch (error) {
-            console.error('Client - Error loading teachers:', error);
-            table.innerHTML = '<p class="error-message">Error loading teachers.</p>';
-            message.textContent = `Error: ${error.message}`;
-            message.className = 'error-message';
-        }
+        renderTable(
+            table,
+            teachers,
+            ['ID', 'Name', 'Description', 'Schedule', 'Tags', 'Actions'],
+            t => `
+                <tr class="teacher-row" data-id="${t.id}">
+                    <td>${sanitizeInput(t.id)}</td>
+                    <td>${sanitizeInput(t.name)}</td>
+                    <td>${sanitizeInput(t.description)}</td>
+                    <td>${sanitizeInput(t.schedule || '')}</td>
+                    <td>${sanitizeInput(t.tags || '')}</td>
+                    <td>
+                        <button class="edit-btn" data-action="edit-teacher" data-id="${t.id}">View</button>
+                        <button class="delete-btn" data-action="delete-teacher" data-id="${t.id}" data-name="${sanitizeInput(t.name)}">Delete</button>
+                    </td>
+                </tr>
+                <tr id="teacher-details-${t.id}" class="teacher-details">
+                    <td colspan="7">
+                        <div class="teacher-details-content">
+                            <label>ID: <input type="text" id="edit-id-${t.id}" value="${sanitizeInput(t.id)}" data-original="${sanitizeInput(t.id)}"></label><br>
+                            <label>Name: <input type="text" id="edit-name-${t.id}" value="${sanitizeInput(t.name)}" data-original="${sanitizeInput(t.name)}"></label><br>
+                            <label>Description: <input type="text" id="edit-desc-${t.id}" value="${sanitizeInput(t.description)}" data-original="${sanitizeInput(t.description)}"></label><br>
+                            <label>Schedule: <textarea id="edit-schedule-${t.id}" data-original="${sanitizeInput(t.schedule || '')}">${sanitizeInput(t.schedule || '')}</textarea></label><br>
+                            <label>Tags: <input type="text" id="edit-tags-${t.id}" value="${sanitizeInput(t.tags || '')}" data-original="${sanitizeInput(t.tags || '')}"></label><br>
+                            <button class="submit-btn" data-action="update-teacher" data-id="${t.id}">Update</button>
+                            <span class="edit-status" id="edit-status-${t.id}"></span>
+                        </div>
+                    </td>
+                </tr>
+            `,
+            page,
+            perPage,
+            teachers.length,
+            message,
+            (shown, total) => `Loaded ${shown} of ${total} teachers.`
+        );
+
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const teacherId = btn.dataset.id;
+                window.location.href = `/pages/teacher/teacher.html?id=${teacherId}`;
+            });
+        });
+
+        addButtonListeners();
+    } catch (error) {
+        console.error('Client - Error loading teachers:', error);
+        table.innerHTML = '<p class="error-message">Error loading teachers.</p>';
+        message.textContent = `Error: ${error.message}`;
+        message.className = 'error-message';
     }
+}
+
+window.toggleSpotlight = async (teacherId, setSpotlight) => {
+    try {
+        const response = await fetch(`${BASE_URL}/api/admin/spotlight`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.token}`,
+                'X-CSRF-Token': state.csrfToken,
+            },
+            credentials: 'include',
+            body: JSON.stringify({ teacherId, isSpotlight: setSpotlight }),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        const data = await response.json();
+        showNotification(data.message);
+        state.data.teachers = state.data.teachers.map(t => ({
+            ...t,
+            is_spotlight: t.id === teacherId ? setSpotlight : false,
+        }));
+        await loadTeachers();
+        await loadSpotlight();
+    } catch (error) {
+        console.error('Client - Error toggling spotlight:', error);
+        showNotification(`Error toggling spotlight: ${error.message}`, true);
+    }
+};
 
     // Load votes
     async function loadVotes(page = state.pages.votes) {
@@ -600,6 +745,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             message.className = 'error-message';
         }
     }
+
+async function loadSpotlight() {
+    try {
+        const data = await fetchData('/api/admin/spotlight');
+        if (!data) {
+            console.warn('Client - No spotlight data returned');
+            return;
+        }
+        state.data.spotlight = { teacherId: data.teacherId, name: data.name };
+        const spotlightNameEl = elements['spotlight-name'];
+        if (spotlightNameEl) {
+            spotlightNameEl.textContent = data.name || 'None';
+        }
+        console.log('Client - Spotlight loaded:', state.data.spotlight);
+    } catch (error) {
+        console.error('Client - Error loading spotlight:', error);
+        const spotlightNameEl = elements['spotlight-name'];
+        if (spotlightNameEl) {
+            spotlightNameEl.textContent = 'Error loading';
+        }
+        showNotification('Error loading spotlight teacher.', true);
+    }
+}
 
     // Load accounts with pagination
 async function loadAccounts(page = state.pages.accounts) {
@@ -1089,6 +1257,7 @@ function handleButtonAction(e) {
     const page = parseInt(this.dataset.page);
     const lock = this.dataset.lock === 'true';
     const role = this.dataset.role;
+    const spotlight = this.dataset.spotlight === 'true';
 
     switch (action) {
         case 'edit-teacher': window.toggleTeacherDetails(id); break;
@@ -1108,6 +1277,7 @@ function handleButtonAction(e) {
         case 'update-points': window.updatePoints(id, role); break;
         case 'view-points-history': window.viewPointsHistory(id); break;
         case 'delete-account': window.showDeleteAccountModal(id, role); break;
+        case 'toggle-spotlight': window.toggleSpotlight(id, spotlight); break; // Added
     }
 
     if (!isNaN(page)) {
@@ -1132,7 +1302,8 @@ function handleButtonAction(e) {
             state.activeTab = tabName;
             updateDropdownVisibility(tabName);
             switch (tabName) {
-                case 'teachers': loadTeachers(); break;
+                case 'teachers': loadTeachers(); loadSpotlight();
+    break;
                 case 'votes': loadVotes(); break;
                 case 'proposals': loadTeacherProposals(); break;
                 case 'corrections': loadCorrections(); break;

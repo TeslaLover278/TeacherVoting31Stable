@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>User Dashboard - Teacher Tally</title>
+    <link rel="stylesheet" id="theme-stylesheet" href="/public/styles.css">
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root[data-theme="light"] {
+            --background: #d3d3d3;
+            --text: #2d3748;
+            --heading: #2d3748;
+            --text-secondary: #6b7280;
+            --link: #00B7D1;
+            --link-hover: #009bb5;
+            --card-bg: #fff;
+            --card-border: #eeeeee;
+            --button-bg: #00B7D1;
+            --button-hover: #03a4bb;
+            --button-disabled: #cbd5e0;
+            --footer-bg: #333;
+            --footer-text: #fff;
+            --footer-link: #fff;
+            --footer-link-hover: #f0f8ff;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --shadow-hover: rgba(0, 0, 0, 0.25);
+            --notification-success-bg: #28a745;
+            --notification-error-bg: #dc3545;
+            --notification-text: #fff;
+            --streak-bg-start: #ffeb3b;
+            --streak-bg-end: #ff9800;
+            --points-bg-start: #007a8f;
+            --points-bg-end: #00b7d1;
+            --badge-bg: #e9ecef;
+            --highlight-bg: #f0f0f0;
+            --modal-bg-start: #d1d5db;
+            --modal-bg-end: #e5e7eb;
+            --modal-border: #d1d5db;
+            --modal-bar: #00B7D1;
+        }
+        :root[data-theme="dark"] {
+            --background: #1a1a1a;
+            --text: #ddd;
+            --heading: #fff;
+            --text-secondary: #999;
+            --link: #4ECDC4;
+            --link-hover: #45B7AF;
+            --card-bg: #2a2a2a;
+            --card-border: #444;
+            --button-bg: #4ECDC4;
+            --button-hover: #3BA8A1;
+            --button-disabled: #444;
+            --footer-bg: #2a2a2a;
+            --footer-text: #bbb;
+            --footer-link: #4ECDC4;
+            --footer-link-hover: #66e0d8;
+            --shadow: rgba(255, 255, 255, 0.1);
+            --shadow-hover: rgba(255, 255, 255, 0.25);
+            --notification-success-bg: #34c759;
+            --notification-error-bg: #e63946;
+            --notification-text: #fff;
+            --streak-bg-start: #ffd700;
+            --streak-bg-end: #ff4500;
+            --points-bg-start: #2a8c87;
+            --points-bg-end: #4ECDC4;
+            --badge-bg: #3a3a3a;
+            --highlight-bg: #333;
+            --modal-bg-start: #2a2a2a;
+            --modal-bg-end: #3a3a3a;
+            --modal-border: #444;
+            --modal-bar: #4ECDC4;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            background: var(--background);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #header-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 50;
+        }
+
+        main {
+            flex: 1;
+            margin-top: 150px;
+            margin-bottom: 150px;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            grid-template-areas:
+                "welcome welcome points"
+                "spotlight badges badges"
+                "history votes votes";
+        }
+
+        .dashboard-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 6px 16px var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 24px var(--shadow-hover);
+        }
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--button-bg);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .welcome-card { grid-area: welcome; }
+        .points-card { grid-area: points; }
+        .spotlight-card { grid-area: spotlight; }
+        .badges-card { grid-area: badges; }
+        .history-card { grid-area: history; }
+        .votes-card { grid-area: votes; }
+
+        h2 {
+            color: var(--heading);
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        h3 {
+            color: var(--text);
+            font-size: 1.4rem;
+            margin-bottom: 0.75rem;
+            text-align: center;
+        }
+        p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .welcome-card {
+            background: linear-gradient(135deg, var(--points-bg-start), var(--points-bg-end));
+            color: #fff;
+            padding: 2rem;
+        }
+        .welcome-card h2, .welcome-card p, .welcome-card .toggle-status {
+            color: #fff;
+        }
+        .welcome-card .theme-toggle {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--button-disabled);
+            border-radius: 20px;
+            transition: 0.4s;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.4s;
+        }
+        input:checked + .slider {
+            background: var(--button-bg);
+        }
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .points-card .points-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--link);
+            margin: 0.5rem 0;
+            animation: bounceIn 1s ease;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        .history-card .history-preview {
+            height: calc(100% - 4.5rem); /* Subtract space for header and hint text */
+            overflow-y: auto;
+            background: var(--highlight-bg);
+            border-radius: 8px;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            scrollbar-width: thin;
+        }
+        
+        .history-card .history-preview::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .history-card .history-preview::-webkit-scrollbar-thumb {
+            background-color: var(--card-border);
+            border-radius: 3px;
+        }
+        
+        .history-card .history-hint {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+        .history-card .history-preview:hover {
+            background: var(--card-border);
+            transform: scale(1.02);
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 0.25rem;
+        }
+        .history-item .points-gain { color: #28a745; }
+        .history-item .points-loss { color: #dc3545; }
+
+        .votes-card .vote-list {
+            /* Set fixed height to show exactly 2 vote cards plus a bit of the third */
+            max-height: calc(2 * (1.5rem + 1.5rem + 1rem + 2.5rem)); /* Approx height for 2 cards */
+            overflow-y: auto;
+            background: var(--highlight-bg);
+            border-radius: 8px;
+            padding: 0.75rem;
+            border: 1px solid var(--card-border);
+            scrollbar-width: thin;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .votes-card .vote-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .votes-card .vote-list::-webkit-scrollbar-thumb {
+            background-color: var(--card-border);
+            border-radius: 3px;
+        }
+        
+        .votes-card .votes-hint {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 0.5rem;
+            font-style: italic;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+        
+        .votes-card .votes-hint::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 4px;
+            background: var(--card-border);
+            border-radius: 2px;
+            opacity: 0.7;
+        }
+        .vote-card {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border-left: 3px solid var(--link);
+            transition: all 0.2s ease;
+            background: var(--card-bg);
+            box-shadow: 0 1px 3px var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+        .vote-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px var(--shadow-hover);
+        }
+        .vote-card h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--heading);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .vote-card h4 .teacher-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .vote-card h4 .rating-badge {
+            background: var(--link);
+            color: white;
+            border-radius: 8px;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+            min-width: 2rem;
+            text-align: center;
+        }
+        .vote-display {
+            margin-top: 0.75rem;
+            color: var(--text);
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .vote-comment {
+            background: var(--highlight-bg);
+            border-radius: 8px;
+            padding: 0.5rem;
+            font-style: italic;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+        .edit-toggle-btn {
+            padding: 0.4rem 0.8rem;
+            border: none;
+            border-radius: 8px;
+            background: var(--button-bg);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            align-self: flex-end;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .edit-toggle-btn:hover {
+            background: var(--button-hover);
+        }
+
+        .spotlight-card img {
+            max-width: 100px; /* Reduced by 35% from 150px */
+            border-radius: 50%;
+            margin: 0.75rem auto; /* Reduced by 35% from 1rem */
+            display: block;
+            box-shadow: 0 3px 5px var(--shadow); /* Slightly reduced shadow */
+            transition: transform 0.3s ease;
+        }
+        
+        .spotlight-link {
+            display: block;
+            text-decoration: none;
+            color: var(--text);
+            text-align: center;
+            padding: 0.4rem; /* Reduced by 35% from 0.5rem */
+            border-radius: 6.5px; /* Reduced from 8px */
+            transition: all 0.3s ease;
+        }
+        
+        .spotlight-link:hover {
+            background-color: var(--card-bg);
+        }
+        
+        .spotlight-link:hover img {
+            transform: scale(1.05);
+        }
+        
+        .teacher-name {
+            font-size: 0.78rem; /* Reduced by 35% from 1.2rem */
+            font-weight: bold;
+            margin: 0.325rem 0; /* Reduced by 35% from 0.5rem */
+            color: var(--link);
+        }
+        
+        .view-profile {
+            font-size: 0.585rem; /* Reduced by 35% from 0.9rem */
+            color: var(--text-secondary);
+            margin-top: 0.16rem; /* Reduced by 35% from 0.25rem */
+        }
+
+        .badges-card .badges-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+        .badge-item {
+            background: var(--badge-bg);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1 1 120px;
+            max-width: 150px;
+            box-shadow: 0 2px 4px var(--shadow);
+            transition: transform 0.3s ease;
+        }
+        .badge-item:hover {
+            transform: scale(1.1);
+        }
+        .badge-item span {
+            display: block;
+            font-weight: bold;
+            color: var(--link);
+            margin-top: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+        }
+        #vote-edit-modal.modal,
+        #history-modal.modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, var(--modal-bg-start), var(--modal-bg-end));
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px var(--shadow);
+            z-index: 1001;
+            min-width: 300px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: var(--text);
+            border: 1px solid var(--modal-border);
+        }
+
+        #vote-edit-modal.modal.active,
+        #history-modal.modal.active {
+            display: block;
+        }
+        .modal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--modal-bar);
+            border-radius: 12px 12px 0 0;
+        }
+        .modal h3 {
+            margin-bottom: 0.75rem; /* Slightly reduced */
+            color: var(--heading);
+            font-size: 1.2rem; /* Smaller heading */
+        }
+        .modal-content {
+            padding: 0.25rem; /* Reduced padding */
+            text-align: left;
+        }
+        .close-modal {
+            position: absolute;
+            top: 5px; /* Adjusted for smaller modal */
+            right: 5px;
+            background: none; /* Remove box */
+            border: none;
+            font-size: 18px; /* Base size */
+            font-weight: bold;
+            color: var(--text);
+            cursor: pointer;
+            transition: color 0.3s ease, transform 0.3s ease; /* Transition for color and size */
+        }
+        .close-modal:hover {
+            color: var(--link); /* Change color on hover */
+        }
+        .modal select, .modal textarea {
+            width: 100%;
+            padding: 0.5rem; /* Reduced padding */
+            margin-bottom: 0.75rem; /* Reduced margin */
+            border: 2px solid var(--button-bg);
+            border-radius: 8px;
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 0.9rem; /* Smaller text */
+        }
+        .modal textarea {
+            resize: vertical;
+            min-height: 80px; /* Reduced height */
+        }
+        .modal .edit-actions {
+            display: flex;
+            gap: 0.75rem; /* Reduced gap */
+            justify-content: center;
+            margin-top: 0.5rem; /* Add some space */
+        }
+        .modal button {
+            padding: 0.5rem 1rem; /* Smaller buttons */
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem; /* Smaller text */
+        }
+        .modal .save-vote-btn {
+            background: var(--button-bg);
+            color: #fff;
+        }
+        .modal .save-vote-btn:hover {
+            background: var(--button-hover);
+            transform: scale(1.1);
+        }
+        .modal .cancel-vote-btn {
+            background: var(--button-disabled);
+            color: var(--text);
+        }
+        .modal .cancel-vote-btn:hover {
+            background: #b0b7c2;
+            transform: scale(1.1);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: var(--notification-text);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            z-index: 2000;
+            transform: translateY(-10px);
+            opacity: 0;
+        }
+        .notification.success {
+            background: var(--notification-success-bg);
+        }
+        .notification.error {
+            background: var(--notification-error-bg);
+        }
+        .notification.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .site-footer {
+            flex-shrink: 0;
+            width: 100%;
+            text-align: center;
+            padding: 1rem;
+            background: var(--footer-bg);
+            color: var(--footer-text);
+        }
+        .footer-email, .footer-message {
+            margin: 0.75rem 0;
+            font-size: 1rem;
+        }
+        .footer-email a {
+            color: var(--footer-link);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .footer-email a:hover {
+            color: var(--footer-link-hover);
+            text-decoration: underline;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-container {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-areas:
+                    "welcome welcome"
+                    "points spotlight"
+                    "badges badges"
+                    "history votes"
+                    "votes votes";
+            }
+        }
+        @media (max-width: 600px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "welcome"
+                    "points"
+                    "spotlight"
+                    "badges"
+                    "history"
+                    "votes";
+            }
+            main {
+                padding: 1rem;
+            }
+            #vote-edit-modal.modal,
+            #history-modal.modal {
+                max-width: 90%; /* Adjust for smaller screens */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+
+    <main>
+        <div class="dashboard-container">
+            <div class="dashboard-card welcome-card">
+                <h2>Welcome Back, <span id="username">User</span>!</h2>
+                <p>Your journey continues...</p>
+                <div class="theme-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="dark-mode-toggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-status">Light</span>
+                </div>
+            </div>
+            <div class="dashboard-card points-card">
+                <h2>Total Points</h2>
+                <p class="points-value" id="points-value">0</p>
+            </div>
+            <div class="dashboard-card spotlight-card">
+                <h2>Teacher Spotlight</h2>
+                <div id="spotlight-content">
+                    <p>Feature coming in later update!</p>
+                </div>
+            </div>
+            <div class="dashboard-card badges-card">
+                <h2>Your Badges</h2>
+                <div id="badges-container" class="badges-list">
+                    <p class="no-badges">Loading badges...</p>
+                </div>
+                <div id="badges-list" class="badges-list"></div>
+            </div>
+
+            <div class="dashboard-card history-card">
+                <h3>Points History</h3>
+                <div id="history-preview" class="history-preview"></div>
+            </div>
+
+            <div class="dashboard-card votes-card">
+                <h3>Your Votes</h3>
+                <div id="votes-list" class="vote-list"></div>
+            </div>
+        </div>
+        <div id="notification" class="notification"></div>
+        <div id="modal-overlay" class="modal-overlay"></div>
+        <div id="vote-edit-modal" class="modal">
+            <button class="close-modal" aria-label="Close modal">×</button>
+            <div class="modal-content" id="vote-edit-content"></div>
+        </div>
+        <div id="history-modal" class="modal">
+            <button class="close-modal" aria-label="Close modal">×</button>
+            <h3>Points History</h3>
+            <div class="modal-content" id="history-modal-content"></div>
+        </div>
+    </main>
+
+    <footer class="site-footer" id="footer-placeholder">
+        <p id="footer-email" class="footer-email"><a href="mailto:support@teachertally.com">support@teachertally.com</a></p>
+        <p id="footer-message" class="footer-message">Welcome to Teacher Tally!</p>
+    </footer>
+
+    <script src="/pages/user/user-dashboard.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/pages/components/header.html')
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to load header HTML');
+                    return response.text();
+                })
+                .then(html => {
+                    document.getElementById('header-placeholder').innerHTML = html;
+                    if (!window.headerInitialized) {
+                        const script = document.createElement('script');
+                        script.src = '/public/header.js';
+                        script.onload = () => {
+                            if (typeof initializeHeader === 'function') {
+                                initializeHeader();
+                            } else {
+                                console.error('initializeHeader not found');
+                            }
+                        };
+                        script.onerror = () => console.error('Failed to load header.js');
+                        document.body.appendChild(script);
+                    }
+                })
+                .catch(err => console.error('Error loading header:', err));
+        });
+    </script>
+</body>
+</html>

@@ -14,7 +14,7 @@ const saltRounds = 10;
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+let port = process.env.PORT || 3000;
 
 console.log('Server - Initializing...');
 
@@ -142,7 +142,7 @@ const uploadCorrection = multer({
         const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'text/plain'];
         cb(null, allowedTypes.includes(file.mimetype));
     },
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 5 * 1024 * 1020 },
 }).single('file');
 
 app.use((req, res, next) => {
@@ -161,63 +161,841 @@ app.use((req, res, next) => {
 });
 
 const db = new sqlite3.Database('./database.sqlite', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-    if (err) console.error('Server - Database connection error:', err.message);
-    else console.log('Server - Connected to SQLite database');
+    if (err) {
+        console.error('Server - Database connection error:', err.message);
+        console.log('Server - Retrying database connection in 5 seconds...');
+        setTimeout(() => {
+            const retryDb = new sqlite3.Database('./database.sqlite', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (retryErr) => {
+                if (retryErr) {
+                    console.error('Server - Database retry failed:', retryErr.message);
+                    process.exit(1);
+                } else {
+                    console.log('Server - Connected to SQLite database after retry');
+                }
+            });
+        }, 5000);
+    } else {
+        console.log('Server - Connected to SQLite database');
+    }
 });
 
 function generateTempId() {
     return `TEMP-${uuidv4().slice(0, 8)}`;
 }
 
+// Badge definitions
+const BADGES = {
+    // Voting Badges
+    BRONZE_VOTER: { name: 'Bronze Voter', description: 'Cast 1 vote', icon: '⭐', level: 1, type: 'voting' },
+    SILVER_VOTER: { name: 'Silver Voter', description: 'Cast 10 votes', icon: '⭐⭐', level: 2, type: 'voting' },
+    GOLD_VOTER: { name: 'Gold Voter', description: 'Cast 50 votes', icon: '⭐⭐⭐', level: 3, type: 'voting' },
+    PLATINUM_VOTER: { name: 'Platinum Voter', description: 'Cast 100 votes', icon: '⭐⭐⭐⭐', level: 4, type: 'voting' },
+    DIAMOND_VOTER: { name: 'Diamond Voter', description: 'Cast 250 votes', icon: '💎', level: 5, type: 'voting' },
+    
+    // Teacher Submission Badges
+    TEACHER_SCOUT: { name: 'Teacher Scout', description: 'Submitted 1 teacher', icon: '🔍', level: 1, type: 'teacher' },
+    TEACHER_GUIDE: { name: 'Teacher Guide', description: 'Submitted 5 teachers', icon: '🗺️', level: 2, type: 'teacher' },
+    TEACHER_MASTER: { name: 'Teacher Master', description: 'Submitted 7 teachers', icon: '👑', level: 3, type: 'teacher' },
+    TEACHER_LEGEND: { name: 'Teacher Legend', description: 'Submitted 15 teachers', icon: '🔥', level: 4, type: 'teacher' },
+    TEACHER_HALL_OF_FAME: { name: 'Teacher Hall of Fame', description: 'Submitted 50 teachers', icon: '🏆', level: 5, type: 'teacher' },
+
+    // Streak Badges
+    DAILY_VOTER: { name: 'Daily Voter', description: 'Voted every day for 7 days', icon: '📅', level: 1, type: 'streak' },
+    WEEKLY_VOTER: { name: 'Weekly Voter', description: 'Voted every week for 4 weeks', icon: '📅📅', level: 2, type: 'streak' },
+    MONTHLY_VOTER: { name: 'Monthly Voter', description: 'Voted every month for 3 months', icon: '📅📅📅', level: 3, type: 'streak' },
+
+    // Engagement Badges
+    COMMENTATOR: { name: 'Commentator', description: 'Left 5 comments', icon: '💬', level: 1, type: 'engagement' },
+    REVIEWER: { name: 'Reviewer', description: 'Left 20 comments', icon: '📝', level: 2, type: 'engagement' },
+    CRITIC: { name: 'Critic', description: 'Left 50 comments', icon: '⭐📝', level: 3, type: 'engagement' },
+
+    // Community Badges
+    HELPFUL: { name: 'Helpful', description: 'Reported 3 inappropriate comments', icon: '🛡️', level: 1, type: 'community' },
+    PROTECTOR: { name: 'Protector', description: 'Reported 10 inappropriate comments', icon: '🛡️🛡️', level: 2, type: 'community' },
+    GUARDIAN: { name: 'Guardian', description: 'Reported 25 inappropriate comments', icon: '🛡️🛡️🛡️', level: 3, type: 'community' },
+
+    // Spotlight Badges
+    SPOTLIGHT_SEEKER: { name: 'Spotlight Seeker', description: 'Voted on spotlight teacher', icon: '✨', level: 1, type: 'spotlight' },
+    SPOTLIGHT_SUPPORTER: { name: 'Spotlight Supporter', description: 'Voted on spotlight teacher 5 times', icon: '✨✨', level: 2, type: 'spotlight' },
+    SPOTLIGHT_CHAMPION: { name: 'Spotlight Champion', description: 'Voted on spotlight teacher 20 times', icon: '✨✨✨', level: 3, type: 'spotlight' }
+};
+
+// Badge thresholds
+const VOTING_THRESHOLDS = {
+    BRONZE_VOTER: 1,
+    SILVER_VOTER: 5,
+    GOLD_VOTER: 10,
+    PLATINUM_VOTER: 25,
+    DIAMOND_VOTER: 50
+};
+
+const TEACHER_THRESHOLDS = {
+    TEACHER_SCOUT: 1,
+    TEACHER_GUIDE: 3,
+    TEACHER_MASTER: 5,
+    TEACHER_LEGEND: 10,
+    TEACHER_HALL_OF_FAME: 15
+};
+
+// Define all database tables
+const tables = [
+    {
+        name: 'users',
+        sql: `CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            name TEXT,
+            role TEXT DEFAULT 'user',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+    },
+    {
+        name: 'teachers',
+        sql: `CREATE TABLE IF NOT EXISTS teachers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            bio TEXT,
+            description TEXT,
+            department TEXT,
+            classes TEXT,
+            tags TEXT,
+            room_number TEXT,
+            schedule TEXT,
+            image_link TEXT,
+            avg_rating REAL DEFAULT 0,
+            rating_count INTEGER DEFAULT 0,
+            is_spotlight BOOLEAN DEFAULT FALSE,
+            created_by TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+    },
+    {
+        name: 'badges',
+        sql: `CREATE TABLE IF NOT EXISTS badges (
+            name TEXT PRIMARY KEY,
+            icon TEXT NOT NULL,
+            description TEXT NOT NULL,
+            type TEXT NOT NULL,
+            level INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+    },
+    {
+        name: 'user_badges',
+        sql: `CREATE TABLE IF NOT EXISTS user_badges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            badge_name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (badge_name) REFERENCES badges(name)
+        )`
+    },
+    {
+        name: 'votes',
+        sql: `CREATE TABLE IF NOT EXISTS votes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacher_id TEXT NOT NULL,
+            user_id INTEGER,
+            anon_vote_id TEXT,
+            rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+            comment TEXT,
+            is_explicit INTEGER DEFAULT 0,
+            timestamp TIMESTAMP,
+            FOREIGN KEY (teacher_id) REFERENCES teachers(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )`
+    }
+];
+
+// Function to initialize badges in the database
+function initializeBadges() {
+    console.log('Server - Initializing badges...');
+    
+    // Insert all badges from the BADGES object
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+        
+        // First check if there are any badges
+        db.get('SELECT COUNT(*) as count FROM badges', (err, row) => {
+            if (err) {
+                console.error('Server - Error committing transaction:', err);
+                db.run('ROLLBACK');
+                return;
+            }
+            console.log('Server - Badges initialized successfully');
+        });
+    });
+}
+
+// Function to migrate existing tables
+function migrateTable(tableName, newColumns) {
+    console.log(`Server - Migrating table ${tableName}`);
+    
+    // Get existing columns
+    db.all(`PRAGMA table_info(${tableName})`, (err, columns) => {
+        if (err) {
+            console.error(`Server - Error getting table info for ${tableName}:`, err);
+            return;
+        }
+        
+        const existingColumns = columns.map(col => col.name);
+        const columnsToAdd = newColumns.filter(col => !existingColumns.includes(col.name));
+        
+        if (columnsToAdd.length === 0) {
+            console.log(`Server - No columns to add for ${tableName}`);
+            return;
+        }
+        
+        // Create temporary table
+        const tempTableName = `${tableName}_temp`;
+        const createTempSql = `CREATE TABLE ${tempTableName} (
+            ${existingColumns.map(col => `${col} ${col.type}`).join(', ')}
+        )`;
+        
+        db.run(createTempSql, (err) => {
+            if (err) {
+                console.error(`Server - Error creating temp table:`, err);
+                return;
+            }
+            
+            // Copy data
+            const copyDataSql = `INSERT INTO ${tempTableName} SELECT * FROM ${tableName}`;
+            db.run(copyDataSql, (err) => {
+                if (err) {
+                    console.error(`Server - Error copying data:`, err);
+                    return;
+                }
+                
+                // Drop original table
+                db.run(`DROP TABLE ${tableName}`, (err) => {
+                    if (err) {
+                        console.error(`Server - Error dropping table:`, err);
+                        return;
+                    }
+                    
+                    // Create new table with all columns
+                    db.run(`CREATE TABLE ${tableName} (
+                        ${existingColumns.map(col => `${col} ${col.type}`).join(', ')},
+                        ${columnsToAdd.map(col => `${col.name} ${col.type}`).join(', ')}
+                    )`, (err) => {
+                        if (err) {
+                            console.error(`Server - Error creating new table:`, err);
+                            return;
+                        }
+                        
+                        // Copy data back
+                        db.run(`INSERT INTO ${tableName} SELECT * FROM ${tempTableName}`, (err) => {
+                            if (err) {
+                                console.error(`Server - Error copying data back:`, err);
+                                return;
+                            }
+                            
+                            // Drop temp table
+                            db.run(`DROP TABLE ${tempTableName}`, (err) => {
+                                if (err) {
+                                    console.error(`Server - Error dropping temp table:`, err);
+                                    return;
+                                }
+                                console.log(`Server - Successfully migrated table ${tableName}`);
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+}
+
+// Function to initialize tables in order
+const initializeNextTable = (index = 0) => {
+    if (index >= tables.length) {
+        console.log('Server - Database initialization completed');
+        // After all tables are created, initialize badges and run retroactive badge awarding
+        db.serialize(() => {
+            initializeBadges();
+            retroactiveBadgeAwarding().catch(err => {
+                console.error('Server - Error during retroactive badge awarding:', err);
+            });
+        });
+        return;
+    }
+
+    const table = tables[index];
+    
+    // Drop the table if it exists
+    db.run(`DROP TABLE IF EXISTS ${table.name}`, (err) => {
+        if (err) {
+            console.error(`Server - Error dropping table ${table.name}:`, err);
+            return;
+        }
+        
+        // Create the table
+        db.run(table.sql, (err) => {
+            if (err) {
+                console.error(`Server - Error creating table ${table.name}:`, err);
+                return;
+            }
+            console.log(`Server - Table ${table.name} created`);
+            initializeNextTable(index + 1);
+        });
+    });
+};
+
+// Function to award badges based on user activity
+async function retroactiveBadgeAwarding() {
+    console.log('Server - Starting retroactive badge awarding');
+    
+    // Get all users
+    const users = await new Promise((resolve, reject) => {
+        db.all('SELECT id FROM users WHERE role = ?', ['user'], (err, rows) => {
+            if (err) reject(err);
+            resolve(rows);
+        });
+    });
+
+    if (!users.length) {
+        console.log('Server - No users found for badge awarding');
+        return;
+    }
+
+    console.log(`Server - Checking badges for ${users.length} users`);
+
+    for (const user of users) {
+        const userId = user.id;
+        
+        // Check voting badges
+        const votes = await new Promise((resolve, reject) => {
+            db.all('SELECT COUNT(*) as count FROM votes WHERE user_id = ?', [userId], (err, rows) => {
+                if (err) reject(err);
+                resolve(rows[0].count);
+            });
+        });
+
+        console.log(`Server - User ${userId} has ${votes} votes`);
+
+        // Award voting badges
+        const votingBadges = ['BRONZE_VOTER', 'SILVER_VOTER', 'GOLD_VOTER', 'PLATINUM_VOTER', 'DIAMOND_VOTER'];
+        for (const badgeName of votingBadges) {
+            if (votes >= VOTING_THRESHOLDS[badgeName]) {
+                await awardBadge(userId, badgeName);
+            }
+        }
+
+        // Check teacher submission badges
+        const teacherCount = await new Promise((resolve, reject) => {
+            db.all('SELECT COUNT(*) as count FROM teachers WHERE created_by = ?', [userId], (err, rows) => {
+                if (err) reject(err);
+                resolve(rows[0].count);
+            });
+        });
+
+        const teacherBadges = ['TEACHER_SCOUT', 'TEACHER_GUIDE', 'TEACHER_MASTER', 'TEACHER_LEGEND', 'TEACHER_HALL_OF_FAME'];
+        for (const badgeName of teacherBadges) {
+            if (teacherCount >= TEACHER_THRESHOLDS[badgeName]) {
+                await awardBadge(userId, badgeName);
+            }
+        }
+    }
+}
+
+// Function to award a specific badge to a user
+async function awardBadge(userId, badgeName) {
+    return new Promise((resolve, reject) => {
+        // Check if user already has this badge
+        db.get('SELECT id FROM user_badges WHERE user_id = ? AND badge_name = ?', [userId, badgeName], (err, row) => {
+            if (err) return reject(err);
+            if (row) {
+                console.log(`Server - User ${userId} already has badge ${badgeName}`);
+                return resolve();
+            }
+
+            // Award new badge
+            db.run('INSERT INTO user_badges (user_id, badge_name) VALUES (?, ?)', [userId, badgeName], function(err) {
+                if (err) return reject(err);
+                console.log(`Server - Awarded badge ${badgeName} to user ${userId}`);
+                resolve();
+            });
+        });
+    });
+}
+
+// Function to check and award badges
+async function checkAndAwardBadges(userId) {
+    return new Promise((resolve, reject) => {
+        // Get user's vote count
+        db.get('SELECT COUNT(*) as vote_count FROM votes WHERE user_id = ?', [userId], (err, voteResult) => {
+            if (err) return reject(err);
+
+            // Get user's teacher count (counting only approved submissions)
+            db.get('SELECT COUNT(*) as teacher_count FROM teacher_proposals WHERE user_id = ? AND status = ?', [userId, 'approved'], (err, teacherResult) => {
+                if (err) return reject(err);
+
+                // Get existing badges for this user
+                db.all('SELECT badge_name, level FROM user_badges ub JOIN badges b ON ub.badge_name = b.name WHERE user_id = ?', [userId], (err, existingBadges) => {
+                    if (err) return reject(err);
+
+                    const existingBadgeLevels = {};
+                    existingBadges.forEach(badge => {
+                        existingBadgeLevels[badge.badge_name] = badge.level;
+                    });
+
+                    const badgesToAward = [];
+
+                    // Check voting badges
+                    if (!existingBadgeLevels['Bronze Voter'] && voteResult.vote_count >= 1) {
+                        badgesToAward.push({ name: 'Bronze Voter', level: 1 });
+                    }
+                    if (!existingBadgeLevels['Silver Voter'] && voteResult.vote_count >= 10) {
+                        badgesToAward.push({ name: 'Silver Voter', level: 2 });
+                    }
+                    if (!existingBadgeLevels['Gold Voter'] && voteResult.vote_count >= 25) {
+                        badgesToAward.push({ name: 'Gold Voter', level: 3 });
+                    }
+                    if (!existingBadgeLevels['Platinum Voter'] && voteResult.vote_count >= 50) {
+                        badgesToAward.push({ name: 'Platinum Voter', level: 4 });
+                    }
+                    if (!existingBadgeLevels['Diamond Voter'] && voteResult.vote_count >= 100) {
+                        badgesToAward.push({ name: 'Diamond Voter', level: 5 });
+                    }
+
+                    // Check teacher badges
+                    if (!existingBadgeLevels['Teacher Scout'] && teacherResult.teacher_count >= 1) {
+                        badgesToAward.push({ name: 'Teacher Scout', level: 1 });
+                    }
+                    if (!existingBadgeLevels['Teacher Guide'] && teacherResult.teacher_count >= 5) {
+                        badgesToAward.push({ name: 'Teacher Guide', level: 2 });
+                    }
+                    if (!existingBadgeLevels['Teacher Master'] && teacherResult.teacher_count >= 7) {
+                        badgesToAward.push({ name: 'Teacher Master', level: 3 });
+                    }
+                    if (!existingBadgeLevels['Teacher Legend'] && teacherResult.teacher_count >= 10) {
+                        badgesToAward.push({ name: 'Teacher Legend', level: 4 });
+                    }
+                    if (!existingBadgeLevels['Teacher Hall of Fame'] && teacherResult.teacher_count >= 15) {
+                        badgesToAward.push({ name: 'Teacher Hall of Fame', level: 5 });
+                    }
+
+                    const insertBadge = (index) => {
+                        if (index >= badgesToAward.length) {
+                            resolve();
+                            return;
+                        }
+
+                        const { name, level } = badgesToAward[index];
+                        db.run('INSERT OR IGNORE INTO user_badges (user_id, badge_name) VALUES (?, ?)',
+                            [userId, name], (err) => {
+                                if (err) {
+                                    console.error('Server - Error inserting badge:', err);
+                                    reject(err);
+                                }
+                                console.log('Server - Awarded badge:', name);
+                                insertBadge(index + 1);
+                            }
+                        );
+                    };
+
+                    insertBadge(0);
+                });
+            });
+        });
+    });
+}
+
+function initializeBadges() {
+    console.log('Server - Initializing badges');
+    
+    // First check if badges table exists
+    db.get('SELECT name FROM sqlite_master WHERE type="table" AND name="badges"', (err, table) => {
+        if (err) {
+            console.error('Server - Error checking badges table:', err);
+            return;
+        }
+
+        if (!table) {
+            console.log('Server - Creating badges table');
+            db.run(`CREATE TABLE badges (
+                name TEXT PRIMARY KEY,
+                icon TEXT NOT NULL,
+                description TEXT NOT NULL,
+                type TEXT NOT NULL,
+                level INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`, (err) => {
+                if (err) {
+                    console.error('Server - Error creating badges table:', err);
+                    return;
+                }
+                console.log('Server - Badges table created');
+                initializeBadgesData();
+            });
+        } else {
+            console.log('Server - Badges table exists, checking data');
+            initializeBadgesData();
+        }
+    });
+}
+
+function initializeBadgesData() {
+    // Start transaction
+    db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+            console.error('Server - Error starting transaction:', err);
+            return;
+        }
+
+        // Insert all badges
+        Object.values(BADGES).forEach(badge => {
+            const level = badge.level || 1; // Get level directly from the badge object
+            db.run('INSERT OR REPLACE INTO badges (name, icon, description, type, level) VALUES (?, ?, ?, ?, ?)',
+                [badge.name, badge.icon, badge.description, badge.type, level],
+                (err) => {
+                    if (err) {
+                        console.error('Server - Error inserting badge:', badge.name, err);
+                        db.run('ROLLBACK');
+                        return;
+                    }
+                    console.log('Server - Badge inserted:', badge.name);
+                }
+            );
+        });
+
+        // Commit transaction
+        db.run('COMMIT', (err) => {
+            if (err) {
+                console.error('Server - Error committing transaction:', err);
+                db.run('ROLLBACK');
+                return;
+            }
+            console.log('Server - Badges initialized successfully');
+        });
+    });
+}
+
+// Database Initialization with Migration Support
 db.serialize(() => {
-    const checkTable = (tableName, expectedColumns, sql, callback) => {
-        db.all(`PRAGMA table_info(${tableName})`, (err, columns) => {
+    // Drop and recreate badges table to ensure proper schema
+    db.run('DROP TABLE IF EXISTS badges', (err) => {
+        if (err) {
+            console.error('Server - Error dropping badges table:', err);
+        } else {
+            console.log('Server - Dropped existing badges table');
+            
+            // Create badges table with level column
+            db.run(`CREATE TABLE badges (
+                name TEXT PRIMARY KEY,
+                icon TEXT NOT NULL,
+                description TEXT NOT NULL,
+                type TEXT NOT NULL,
+                level INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`, (err) => {
+                if (err) {
+                    console.error('Server - Error creating badges table:', err);
+                } else {
+                    console.log('Server - Created badges table');
+                    
+                    // Initialize badges data
+                    initializeBadges();
+                }
+            });
+        }
+    });
+
+    // Create user_badges table
+    db.run(`CREATE TABLE IF NOT EXISTS user_badges (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        badge_name TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (badge_name) REFERENCES badges(name),
+        UNIQUE(user_id, badge_name)
+    )`, (err) => {
+        if (err) {
+            console.error('Server - Error creating user_badges table:', err);
+        } else {
+            console.log('Server - Created user_badges table');
+        }
+    });
+
+    // Helper function to check if table exists
+    const tableExists = (tableName, callback) => {
+        db.get(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, [tableName], (err, row) => {
             if (err) {
                 console.error(`Server - Error checking table ${tableName}:`, err.message);
                 callback(false);
-                return;
-            }
-            if (columns.length === 0) {
-                console.log(`Server - Table ${tableName} does not exist`);
-                callback(false);
             } else {
-                const columnNames = columns.map(col => col.name);
-                const missingColumns = expectedColumns.filter(col => !columnNames.includes(col));
-                if (missingColumns.length > 0) {
-                    console.warn(`Server - Table ${tableName} missing columns: ${missingColumns.join(', ')}`);
-                    callback(false);
-                } else {
-                    db.get(`PRAGMA foreign_key_check(${tableName})`, (err, result) => {
-                        if (err) console.error(`Server - Error checking foreign keys for ${tableName}:`, err.message);
-                        if (result && result.length > 0) {
-                            console.warn(`Server - Foreign key issues in ${tableName}:`, result);
-                            callback(false);
-                        } else {
-                            console.log(`Server - Table ${tableName} exists and is valid`);
-                            callback(true);
-                        }
-                    });
-                }
+                callback(!!row);
             }
         });
     };
 
+    // Helper function to check if a column exists in a table
+    const columnExists = (tableName, columnName, callback) => {
+        db.all(`PRAGMA table_info(${tableName})`, (err, columns) => {
+            if (err) {
+                console.error(`Server - Error checking columns for ${tableName}:`, err.message);
+                callback(false);
+            } else {
+                callback(columns.some(col => col.name === columnName));
+            }
+        });
+    };
+
+    // Helper function to add a column if it doesn't exist
+    const addColumn = (tableName, columnDef, callback) => {
+        columnExists(tableName, columnDef.split(' ')[0], (exists) => {
+            if (!exists) {
+                db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnDef}`, (err) => {
+                    if (err) {
+                        console.error(`Server - Error adding column to ${tableName}:`, err.message);
+                    } else {
+                        console.log(`Server - Added column ${columnDef.split(' ')[0]} to ${tableName}`);
+                    }
+                    callback(err);
+                });
+            } else {
+                callback(null);
+            }
+        });
+    };
+
+    // Function to create table if it doesn't exist
+    const createTableIfNotExists = (tableName, sql, callback) => {
+        tableExists(tableName, (exists) => {
+            if (!exists) {
+                db.run(sql, (err) => {
+                    if (err) {
+                        console.error(`Server - Error creating table ${tableName}:`, err.message);
+                        callback(err);
+                    } else {
+                        console.log(`Server - Created table ${tableName}`);
+                        callback(null);
+                    }
+                });
+            } else {
+                callback(null);
+            }
+        });
+    };
+
+    // Create user_badges table if it doesn't exist
+    createTableIfNotExists('user_badges', `CREATE TABLE IF NOT EXISTS user_badges (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        badge_name TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`, (err) => {
+        if (err) {
+            console.error('Server - Error creating user_badges table:', err);
+            return;
+        }
+
+        // Check for and remove badge_id column if it exists
+        columnExists('user_badges', 'badge_id', (exists) => {
+            if (exists) {
+                // Create a temporary table to preserve data
+                db.run('CREATE TEMPORARY TABLE temp_user_badges AS SELECT * FROM user_badges', (err) => {
+                    if (err) {
+                        console.error('Server - Error creating temporary table:', err);
+                        return;
+                    }
+
+                    // Drop the original table
+                    db.run('DROP TABLE user_badges', (err) => {
+                        if (err) {
+                            console.error('Server - Error dropping original table:', err);
+                            return;
+                        }
+
+                        // Recreate the table with badge_name
+                        db.run(`CREATE TABLE user_badges (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id TEXT NOT NULL,
+                            badge_name TEXT NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        )`, (err) => {
+                            if (err) {
+                                console.error('Server - Error recreating table:', err);
+                                return;
+                            }
+
+                            // Copy data back from temporary table
+                            db.run('INSERT INTO user_badges SELECT id, user_id, badge_name, created_at FROM temp_user_badges', (err) => {
+                                if (err) {
+                                    console.error('Server - Error copying data back:', err);
+                                    return;
+                                }
+                                console.log('Server - Successfully migrated from badge_id to badge_name');
+                            });
+                            console.log('Server - Made badge_name column NOT NULL');
+                        });
+                    });
+                });
+            } else {
+                // If badge_id doesn't exist, just add badge_name if needed
+                columnExists('user_badges', 'badge_name', (exists) => {
+                    if (!exists) {
+                        db.run('ALTER TABLE user_badges ADD COLUMN badge_name TEXT', (err) => {
+                            if (err) {
+                                console.error('Server - Error adding badge_name column:', err);
+                                return;
+                            }
+                            console.log('Server - Added badge_name column to user_badges table');
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // Run retroactive badge awarding only once after all tables are created
+    const runRetroactiveBadges = () => {
+        console.log('Server - Starting retroactive badge awarding...');
+        
+        // Get all users
+        db.all('SELECT id FROM users', [], (err, users) => {
+            if (err) {
+                console.error('Server - Error getting users:', err);
+                return;
+            }
+
+            // Process users one by one
+            const processUser = (index) => {
+                if (index >= users.length) {
+                    console.log('Server - Completed retroactive badge awarding');
+                    return;
+                }
+
+                const userId = users[index].id;
+                console.log(`Server - Processing user ${userId} for retroactive badges`);
+
+                // Get user's existing badges
+                db.all('SELECT badge_name FROM user_badges WHERE user_id = ?', [userId], (err, existingBadges) => {
+                    if (err) {
+                        console.error(`Server - Error getting badges for user ${userId}:`, err);
+                        processUser(index + 1);
+                        return;
+                    }
+
+                    // Get user's vote count
+                    db.get('SELECT COUNT(*) as vote_count FROM votes WHERE user_id = ?', [userId], (err, voteResult) => {
+                        if (err) {
+                            console.error(`Server - Error getting vote count for user ${userId}:`, err);
+                            processUser(index + 1);
+                            return;
+                        }
+
+                        // Get user's teacher count
+                        db.get('SELECT COUNT(DISTINCT teacher_id) as teacher_count FROM votes WHERE user_id = ?', [userId], (err, teacherResult) => {
+                            if (err) {
+                                console.error(`Server - Error getting teacher count for user ${userId}:`, err);
+                                processUser(index + 1);
+                                return;
+                            }
+
+                            // Determine new badges to award
+                            const badgesToAward = [];
+                            const existingBadgeNames = existingBadges.map(b => b.badge_name);
+
+                            // Check voting badges
+                            Object.entries(VOTING_THRESHOLDS).forEach(([badgeName, threshold]) => {
+                                if (voteResult.vote_count >= threshold && 
+                                    !existingBadgeNames.includes(badgeName)) {
+                                    badgesToAward.push(badgeName);
+                                }
+                            });
+
+                            // Check teacher badges
+                            Object.entries(TEACHER_THRESHOLDS).forEach(([badgeName, threshold]) => {
+                                if (teacherResult.teacher_count >= threshold && 
+                                    !existingBadgeNames.includes(badgeName)) {
+                                    badgesToAward.push(badgeName);
+                                }
+                            });
+
+                            // Award new badges
+                            if (badgesToAward.length > 0) {
+                                console.log(`Server - Awarding ${badgesToAward.length} retroactive badges to user ${userId}`);
+                                
+                                const insertBadge = (index) => {
+                                    if (index >= badgesToAward.length) {
+                                        processUser(index + 1);
+                                        return;
+                                    }
+
+                                    db.run('INSERT INTO user_badges (user_id, badge_name) VALUES (?, ?)', 
+                                        [userId, badgesToAward[index]],
+                                        (err) => {
+                                            if (err) {
+                                                console.error(`Server - Error inserting badge ${badgesToAward[index]} for user ${userId}:`, err);
+                                                insertBadge(index + 1);
+                                                return;
+                                            }
+                                            console.log(`Server - Awarded badge ${badgesToAward[index]} to user ${userId}`);
+                                            insertBadge(index + 1);
+                                        }
+                                    );
+                                };
+
+                                insertBadge(0);
+                            } else {
+                                console.log(`Server - No new badges to award for user ${userId}`);
+                                processUser(index + 1);
+                            }
+                        });
+                    });
+                });
+            };
+
+            processUser(0);
+        });
+    };
+
+    // Run retroactive badge awarding only once at startup
+    db.get('SELECT COUNT(*) as count FROM user_badges', [], (err, row) => {
+        if (err) {
+            console.error('Server - Error checking user_badges:', err);
+            return;
+        }
+        
+        if (row.count === 0) {
+            // Only run if there are no badges in the database
+            runRetroactiveBadges();
+        } else {
+            console.log('Server - Skipping retroactive badge awarding - badges already exist');
+        }
+    });
+
+    // Define table structures (only create if they don’t exist)
     const tables = [
         {
             name: 'teachers',
             sql: `CREATE TABLE IF NOT EXISTS teachers (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                bio TEXT NOT NULL,
-                description TEXT NOT NULL,
-                classes TEXT NOT NULL,
-                tags TEXT NOT NULL,
-                room_number TEXT NOT NULL,
-                schedule TEXT NOT NULL,
-                image_link TEXT,
-                avg_rating REAL DEFAULT 0,
-                rating_count INTEGER DEFAULT 0)`,
-            columns: ['id', 'name', 'bio', 'description', 'classes', 'tags', 'room_number', 'schedule', 'image_link', 'avg_rating', 'rating_count'],
+                department TEXT,
+                classes TEXT,
+                tags TEXT,
+                schedule TEXT,
+                is_spotlight BOOLEAN DEFAULT FALSE,
+                created_by TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`
+        },
+        {
+            name: 'user_badges',
+            sql: `CREATE TABLE IF NOT EXISTS user_badges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                badge_name TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )`
         },
         {
             name: 'votes',
@@ -229,9 +1007,9 @@ db.serialize(() => {
                 rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
                 comment TEXT,
                 is_explicit INTEGER DEFAULT 0,
+                timestamp TIMESTAMP,
                 FOREIGN KEY (teacher_id) REFERENCES teachers(id),
                 FOREIGN KEY (user_id) REFERENCES users(id))`,
-            columns: ['id', 'teacher_id', 'user_id', 'anon_vote_id', 'rating', 'comment', 'is_explicit'],
         },
         {
             name: 'teacher_proposals',
@@ -248,7 +1026,6 @@ db.serialize(() => {
                 schedule TEXT NOT NULL,
                 image_link TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(id))`,
-            columns: ['id', 'name', 'bio', 'description', 'classes', 'tags', 'room_number', 'email', 'user_id', 'schedule', 'image_link'],
         },
         {
             name: 'corrections',
@@ -259,7 +1036,6 @@ db.serialize(() => {
                 file_path TEXT,
                 submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (teacher_id) REFERENCES teachers(id))`,
-            columns: ['id', 'teacher_id', 'suggestion', 'file_path', 'submitted_at'],
         },
         {
             name: 'admin_requests',
@@ -270,7 +1046,6 @@ db.serialize(() => {
                 reason TEXT NOT NULL,
                 visitor_id TEXT NOT NULL,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-            columns: ['id', 'name', 'email', 'reason', 'visitor_id', 'timestamp'],
         },
         {
             name: 'notifications',
@@ -281,14 +1056,12 @@ db.serialize(() => {
                 type TEXT NOT NULL DEFAULT 'info',
                 read INTEGER DEFAULT 0,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-            columns: ['id', 'visitor_id', 'message', 'type', 'read', 'timestamp'],
         },
         {
             name: 'settings',
             sql: `CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL)`,
-            columns: ['key', 'value'],
         },
         {
             name: 'stats',
@@ -296,14 +1069,12 @@ db.serialize(() => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 visitor_id TEXT NOT NULL,
                 timestamp TEXT NOT NULL)`,
-            columns: ['id', 'visitor_id', 'timestamp'],
         },
         {
             name: 'admins',
             sql: `CREATE TABLE IF NOT EXISTS admins (
                 username TEXT PRIMARY KEY,
                 password_hash TEXT NOT NULL)`,
-            columns: ['username', 'password_hash'],
         },
         {
             name: 'suggestions',
@@ -312,7 +1083,6 @@ db.serialize(() => {
                 email TEXT NOT NULL,
                 suggestion TEXT NOT NULL,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-            columns: ['id', 'email', 'suggestion', 'timestamp'],
         },
         {
             name: 'users',
@@ -324,8 +1094,8 @@ db.serialize(() => {
                 points INTEGER DEFAULT 0,
                 last_login DATE,
                 is_locked INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-            columns: ['id', 'username', 'email', 'password_hash', 'points', 'last_login', 'is_locked', 'created_at'],
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                theme TEXT DEFAULT 'light')`,
         },
         {
             name: 'point_transactions',
@@ -336,7 +1106,22 @@ db.serialize(() => {
                 reason TEXT,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id))`,
-            columns: ['id', 'user_id', 'points', 'reason', 'timestamp'],
+        },
+        {
+            name: 'badges',
+            sql: `CREATE TABLE IF NOT EXISTS badges (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT)`,
+        },
+        {
+            name: 'user_badges',
+            sql: `CREATE TABLE IF NOT EXISTS user_badges (
+                user_id INTEGER NOT NULL,
+                badge_name TEXT NOT NULL,
+                awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                PRIMARY KEY (user_id, badge_name))`,
         },
     ];
 
@@ -348,40 +1133,94 @@ db.serialize(() => {
         `CREATE INDEX IF NOT EXISTS idx_admin_requests_timestamp ON admin_requests (timestamp)`,
         `CREATE INDEX IF NOT EXISTS idx_notifications_visitor_id ON notifications (visitor_id)`,
         `CREATE INDEX IF NOT EXISTS idx_suggestions_timestamp ON suggestions (timestamp)`,
-        `CREATE INDEX IF NOT EXISTS idx_users_username ON users (username)`,
+        `CREATE INDEX IF NOT EXISTS idx_users_email ON users (email)`,
         `CREATE INDEX IF NOT EXISTS idx_point_transactions_user_id ON point_transactions (user_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_user_badges_user_id ON user_badges (user_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_teachers_spotlight ON teachers (is_spotlight)`,
     ];
 
+    // Initialize tables and apply migrations
     let tableIndex = 0;
-    function createNextTable() {
+    function initializeNextTable() {
         if (tableIndex >= tables.length) {
-            createIndexes();
-            insertInitialData();
+            applyMigrations();
             return;
         }
         const table = tables[tableIndex];
-        checkTable(table.name, table.columns, table.sql, (isValid) => {
-            if (!isValid) {
-                console.log(`Server - Dropping and recreating table ${table.name}`);
-                db.run(`DROP TABLE IF EXISTS ${table.name}`, (dropErr) => {
-                    if (dropErr) {
-                        console.error(`Server - Error dropping table ${table.name}:`, dropErr.message);
+        tableExists(table.name, (exists) => {
+            if (!exists) {
+                db.run(table.sql, (err) => {
+                    if (err) {
+                        console.error(`Server - Error creating table ${table.name}:`, err.message);
+                    } else {
+                        console.log(`Server - Created table ${table.name}`);
                     }
-                    db.run(table.sql, (createErr) => {
-                        if (createErr) {
-                            console.error(`Server - Error creating table ${table.name}:`, createErr.message);
-                        } else {
-                            console.log(`Server - Table ${table.name} created successfully`);
-                        }
-                        tableIndex++;
-                        createNextTable();
-                    });
+                    tableIndex++;
+                    initializeNextTable();
                 });
             } else {
+                console.log(`Server - Table ${table.name} already exists`);
                 tableIndex++;
-                createNextTable();
+                initializeNextTable();
             }
         });
+    }
+
+    function applyMigrations() {
+        // Add missing columns to existing tables
+        const migrations = [
+            // Ensure users table has necessary columns
+            () => addColumn('users', 'points INTEGER DEFAULT 0', (err) => {
+                if (err) return console.error('Server - Failed to migrate users.points:', err.message);
+                addColumn('users', 'last_login DATE', (err) => {
+                    if (err) return console.error('Server - Failed to migrate users.last_login:', err.message);
+                    addColumn('users', 'is_locked INTEGER DEFAULT 0', (err) => {
+                        if (err) return console.error('Server - Failed to migrate users.is_locked:', err.message);
+                        addColumn('users', 'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP', (err) => {
+                            if (err) return console.error('Server - Failed to migrate users.created_at:', err.message);
+                            addColumn('users', 'theme TEXT DEFAULT "light"', (err) => {
+                                if (err) return console.error('Server - Failed to migrate users.theme:', err.message);
+                                // Add is_spotlight to teachers table
+                                addColumn('teachers', 'is_spotlight INTEGER DEFAULT 0', (err) => {
+                                    if (err) return console.error('Server - Failed to migrate teachers.is_spotlight:', err.message);
+                                    console.log('Server - Added is_spotlight column to teachers table');
+                                    // Add timestamp to votes table
+                                    addColumn('votes', 'timestamp TIMESTAMP', (err) => {
+                                        if (err) return console.error('Server - Failed to migrate votes.timestamp:', err.message);
+                                        db.run('UPDATE votes SET timestamp = CURRENT_TIMESTAMP WHERE timestamp IS NULL', (err) => {
+                                            if (err) {
+                                                console.error('Server - Error backfilling votes.timestamp:', err.message);
+                                            } else {
+                                                console.log('Server - Backfilled timestamp for existing votes');
+                                            }
+                                            // Add user_id to notifications table
+                                            addColumn('notifications', 'user_id INTEGER', (err) => {
+                                                if (err) return console.error('Server - Failed to migrate notifications.user_id:', err.message);
+                                                console.log('Server - Migrated notifications.user_id');
+                                                createIndexes();
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            }),
+        ];
+
+        let migrationIndex = 0;
+        function runNextMigration() {
+            if (migrationIndex >= migrations.length) {
+                insertInitialData();
+                return;
+            }
+            migrations[migrationIndex]();
+            migrationIndex++;
+            runNextMigration();
+        }
+
+        runNextMigration();
     }
 
     function createIndexes() {
@@ -397,6 +1236,7 @@ db.serialize(() => {
     }
 
     function insertInitialData() {
+        // Initial settings
         const initialSettings = [
             ['footer', JSON.stringify({ email: 'admin@example.com', message: 'Welcome to Teacher Tally!', showMessage: true })],
             ['message', JSON.stringify({ message: 'Welcome!', showMessage: false })],
@@ -418,6 +1258,7 @@ db.serialize(() => {
             db.run('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', [key, value],
                 err => err && console.error('Server - Error initializing setting:', err.message)));
 
+        // Default admin
         const adminUsername = process.env.ADMIN_USERNAME || 'admin';
         const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
         bcrypt.hash(adminPassword, 10, (err, hash) => {
@@ -426,22 +1267,158 @@ db.serialize(() => {
                 err => err ? console.error('Server - Error inserting admin:', err.message) : console.log('Server - Default admin initialized:', adminUsername));
         });
 
-        db.get('SELECT id FROM teachers WHERE id = "T001"', (err, row) => {
-            if (err) return console.error('Server - Error checking teacher T001:', err.message);
-            if (!row) {
-                db.run(`INSERT INTO teachers (id, name, bio, description, classes, tags, room_number, schedule, image_link) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
-                    'T001', 'Mr. Kalder', 'Experienced educator', 'Math Teacher',
-                    JSON.stringify(['Algebra', 'Calculus']), JSON.stringify(['math', 'stem']),
-                    'Room 101', JSON.stringify([{ block: 'A', subject: 'Algebra', grade: '9' }, { block: 'B', subject: 'Calculus', grade: '11' }]),
-                    '/public/images/default-teacher.jpg',
-                ], err => err ? console.error('Server - Error inserting teacher:', err.message) : console.log('Server - Inserted default teacher T001'));
-            }
+
+        // Insert initial badges with specific IDs
+        const initialBadges = [
+            [1, 'First Vote', 'Awarded for casting your first vote'],
+            [2, 'Streak Master', 'Achieved a 5-day login streak'],
+            [3, 'Teacher Contributor', 'Submitted a teacher proposal that was approved'],
+            [4, 'Frequent Voter', 'Cast 5 votes'],
+            [5, 'Voting Veteran', 'Cast 10 votes'],
+            [6, 'Point Dictator', 'Top of the leaderboard'],
+            [7, 'Half-Century Club', 'Earned 50 points'],
+            [8, 'Century Master', 'Earned 100 points'],
+            [9, 'Engaged Contributor', 'Voted 3 times and submitted a teacher'],
+        ];
+        initialBadges.forEach(([id, name, description]) => {
+            db.run('INSERT OR IGNORE INTO badges (name, description) VALUES (?, ?)', [name, description], err => {
+                if (err) console.error('Server - Error inserting badge:', err.message);
+                else console.log('Server - Inserted badge:', name);
+            });
         });
     }
 
-    console.log('Server - Starting table creation process');
-    createNextTable();
+    // Function to retroactively award badges to all users
+    async function retroactiveBadgeAwarding() {
+        return new Promise((resolve, reject) => {
+            // Get all users
+            db.all('SELECT id FROM users', [], (err, users) => {
+                if (err) return reject(err);
+
+                // Process users one by one
+                const processUser = (index) => {
+                    if (index >= users.length) {
+                        console.log('Server - Completed retroactive badge awarding');
+                        resolve();
+                        return;
+                    }
+
+                    const userId = users[index].id;
+                    console.log(`Server - Processing user ${userId} for retroactive badges`);
+
+                    // Get user's vote count
+                    db.get('SELECT COUNT(*) as vote_count FROM votes WHERE user_id = ?', [userId], (err, voteResult) => {
+                        if (err) return reject(err);
+
+                        // Get user's teacher count (using votes table)
+                        db.get('SELECT COUNT(DISTINCT teacher_id) as teacher_count FROM votes WHERE user_id = ?', [userId], (err, teacherResult) => {
+                            if (err) return reject(err);
+
+                            // Check existing badges for this user
+                            db.all('SELECT badge_name FROM user_badges WHERE user_id = ?', [userId], (err, existingBadges) => {
+                                if (err) return reject(err);
+
+                                // Get all possible badges
+                                const allBadges = [...Object.values(VOTING_THRESHOLDS), ...Object.values(TEACHER_THRESHOLDS)];
+                                const badgesToAward = [];
+
+                                // Check voting badges
+                                Object.entries(VOTING_THRESHOLDS).forEach(([badgeKey, threshold]) => {
+                                    if (voteResult.vote_count >= threshold && 
+                                        !existingBadges.find(b => b.badge_name === badgeKey)) {
+                                        badgesToAward.push(BADGES[badgeKey]);
+                                    }
+                                });
+
+                                // Check teacher badges
+                                Object.entries(TEACHER_THRESHOLDS).forEach(([badgeKey, threshold]) => {
+                                    if (teacherResult.teacher_count >= threshold && 
+                                        !existingBadges.find(b => b.badge_name === badgeKey)) {
+                                        badgesToAward.push(BADGES[badgeKey]);
+                                    }
+                                });
+
+                                // Award new badges
+                                if (badgesToAward.length > 0) {
+                                    console.log(`Server - Awarding ${badgesToAward.length} retroactive badges to user ${userId}`);
+                                    const badgeNames = badgesToAward.map(badge => badge.name);
+                                    const badgeInserts = badgeNames.map(badgeName => [userId, badgeName]);
+
+                                    const insertBadge = (index) => {
+                                        if (index >= badgeInserts.length) {
+                                            processUser(index + 1);
+                                            return;
+                                        }
+                                        
+                                        const [userId, badgeName] = badgeInserts[index];
+                                        db.run('INSERT INTO user_badges (user_id, badge_name) VALUES (?, ?)', 
+                                            [userId, badgeName],
+                                            function(err) {
+                                                if (err) {
+                                                    console.error('Server - Error inserting retroactive badge:', err);
+                                                    reject(err);
+                                                    return;
+                                                }
+                                                insertBadge(index + 1);
+                                            }
+                                        );
+                                    };
+
+                                    insertBadge(0);
+                                } else {
+                                    processUser(index + 1);
+                                }
+                            });
+                        });
+                    });
+                };
+
+                processUser(0);
+            });
+        });
+    }
+
+    console.log('Server - Starting database initialization');
+    initializeNextTable();
+
+    // Initialize tables using the function defined at the top
+    console.log('Server - Starting database initialization');
+    initializeNextTable();
+});
+
+// Function to check if a port is in use and find an available one
+let server; // Declare server at the top level
+
+function findAvailablePort(startPort, callback) {
+    const net = require('net');
+    server = net.createServer(); // Assign to the global server variable
+
+    server.listen(startPort, '0.0.0.0', () => {
+        server.close(() => {
+            callback(startPort);
+        });
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            findAvailablePort(startPort + 1, callback);
+        } else {
+            callback(startPort);
+        }
+    });
+}
+
+findAvailablePort(port, (availablePort) => {
+    port = availablePort; // Update port to the available one
+    const server = app.listen(port, () => {
+        console.log(`Server running on port ${port} - Version 1.25 - Started at ${new Date().toISOString()}`);
+    }).on('error', (err) => {
+        console.error(`Server - Failed to start on port ${port}:`, err.message);
+        if (err.code === 'EADDRINUSE') {
+            console.log(`Server - Port ${port} is in use, try a different port or free up port ${port}.`);
+        }
+        process.exit(1);
+    });
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -449,7 +1426,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 function validateFields(fields, required) {
     return required.every(field => fields[field] && typeof fields[field] === 'string' && fields[field].trim().length > 0);
 }
-
 function authenticateAdmin(req, res, next) {
     const token = req.cookies.adminToken || req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'Unauthorized: No token' });
@@ -494,26 +1470,403 @@ function authenticateUser(req, res, next) {
     }
 }
 
-// Points Helper Function
-function updateUserPoints(userId, pointsToAdd, reason, callback) {
-    db.serialize(() => {
-        db.run('UPDATE users SET points = points + ? WHERE id = ?', [pointsToAdd, userId], (err) => {
+// Login endpoint
+app.post('/api/users/login', publicLimiter, csrfProtection, async (req, res) => {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    try {
+        db.get('SELECT id, username, password_hash, is_locked FROM users WHERE username = ?', [username], async (err, user) => {
             if (err) {
-                console.error('Server - Error updating points:', err.message);
-                return callback(err);
+                console.error('Server - Database error in login:', err.message);
+                return res.status(500).json({ error: 'Database error' });
             }
-            db.run('INSERT INTO point_transactions (user_id, points, reason) VALUES (?, ?, ?)',
-                [userId, pointsToAdd, reason], (err) => {
-                    if (err) {
-                        console.error('Server - Error logging point transaction:', err.message);
-                        return callback(err);
-                    }
-                    console.log('Server - Points updated and transaction logged:', { userId, pointsToAdd, reason });
-                    callback(null);
-                });
+
+            if (!user) {
+                return res.status(401).json({ error: 'Invalid username or password' });
+            }
+
+            if (user.is_locked) {
+                return res.status(403).json({ error: 'Account is locked. Please contact accounts@teachertally.com.' });
+            }
+
+            const validPassword = await bcrypt.compare(password, user.password_hash);
+            if (!validPassword) {
+                return res.status(401).json({ error: 'Invalid username or password' });
+            }
+
+            const token = jwt.sign({ id: user.id, role: 'user' }, JWT_SECRET, { expiresIn: '1d' });
+            req.session.user = { id: user.id, username: user.username, isAdmin: false };
+
+            // Set the cookie with proper options
+            res.cookie('userToken', token, {
+                httpOnly: true,
+                sameSite: 'Strict',
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: 24 * 60 * 60 * 1000,
+                path: '/',
+                domain: process.env.NODE_ENV === 'production' ? '.teachertally.com' : undefined
+            });
+
+            // Update last login timestamp
+            db.run('UPDATE users SET last_login = ? WHERE id = ?', [Date.now(), user.id], (err) => {
+                if (err) {
+                    console.error('Server - Error updating last login:', err.message);
+                }
+            });
+
+            console.log('Server - Login successful for user:', user.username);
+            res.json({ message: 'Login successful' });
         });
+    } catch (err) {
+        console.error('Server - Error during login:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Points Helper Function
+function updateUserPoints(userId, points, reason, db, callback) {
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+        db.run(
+            'UPDATE users SET points = points + ? WHERE id = ?',
+            [points, userId],
+            (err) => {
+                if (err) {
+                    db.run('ROLLBACK');
+                    return callback(err);
+                }
+                db.run(
+                    'INSERT INTO point_transactions (user_id, points, reason, timestamp) VALUES (?, ?, ?, ?)',
+                    [userId, points, reason, Date.now()],
+                    (err) => {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            return callback(err);
+                        }
+                        db.run('COMMIT', (commitErr) => {
+                            if (commitErr) {
+                                db.run('ROLLBACK');
+                                return callback(commitErr);
+                            }
+                            callback(null);
+                        });
+                    }
+                );
+            }
+        );
     });
 }
+
+function awardBadge(userId, badgeName, bonusPoints = 0, callback = () => {}) {
+    db.run('INSERT OR IGNORE INTO user_badges (user_id, badge_name) VALUES (?, ?)', [userId, badgeName], (err) => {
+        if (err) {
+            console.error('Server - Error awarding badge:', err.message);
+            return callback(err);
+        }
+
+        // Send notification
+        db.run('INSERT INTO notifications (visitor_id, message, type) VALUES (?, ?, ?)',
+            [userId, `You earned the "${badgeName}" badge!`, 'success'], (err) => {
+                if (err) console.error('Server - Error sending badge notification:', err.message);
+            });
+
+        if (bonusPoints > 0) {
+            updateUserPoints(userId, bonusPoints, `Bonus for earning "${badgeName}" badge`, db, (err) => {
+                if (err) {
+                    console.error('Server - Error awarding bonus points:', err.message);
+                    return callback(err);
+                }
+                callback(null);
+            });
+        } else {
+            callback(null);
+        }
+    });
+}
+
+function checkPointDictator(userId, userPoints) {
+    db.get('SELECT id, points FROM users WHERE points > ? ORDER BY points DESC LIMIT 1', [userPoints], (err, topUser) => {
+        if (err) return console.error('Server - Error checking Point Dictator:', err.message);
+        if (!topUser || topUser.id === userId) {
+            db.run('SELECT user_id FROM user_badges WHERE badge_name = ?', ['Point Dictator'], (err, currentDictator) => {
+                if (err) return;
+                if (!currentDictator || currentDictator.user_id !== userId) {
+                    if (currentDictator) {
+                        db.run('DELETE FROM user_badges WHERE user_id = ? AND badge_name = ?', [currentDictator.user_id, 'Point Dictator']);
+                    }
+                    awardBadge(userId, 'Point Dictator', 20);
+                    awardBadge(userId, 6, 'Point Dictator', 20);
+                }
+            });
+        }
+    });
+}
+
+function handleLoginStreak(userId, callback) {
+    const today = new Date().toISOString().split('T')[0];
+    db.get('SELECT last_login, points FROM users WHERE id = ?', [userId], (err, user) => {
+        if (err) {
+            console.error('Server - Error fetching user for streak:', err.message);
+            return callback(err);
+        }
+        const lastLogin = user.last_login ? new Date(user.last_login) : null;
+        let streakPoints = 0;
+        if (lastLogin) {
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (lastLogin.toISOString().split('T')[0] === yesterday.toISOString().split('T')[0]) {
+                streakPoints = 5;
+            }
+        }
+        db.run('UPDATE users SET last_login = ?, points = points + ? WHERE id = ?', 
+            [today, streakPoints, userId], (err) => {
+                if (err) return callback(err);
+                if (streakPoints > 0) {
+                    db.run('INSERT INTO point_transactions (user_id, points, reason) VALUES (?, ?, ?)',
+                        [userId, streakPoints, 'Login streak bonus'], (err) => {
+                            if (err) {
+                                console.error('Server - Error logging streak points:', err.message);
+                                return callback(err);
+                            }
+                            console.log('Server - Login streak points logged:', { userId, streakPoints });
+                        });
+                }
+                db.get('SELECT id, username, email, points FROM users WHERE id = ?', [userId], (err, updatedUser) => {
+                    if (err) return callback(err);
+                    callback(null, updatedUser);
+                });
+            });
+    });
+}
+
+app.get('/api/vote/check/:teacherId', authenticateUser, (req, res) => {
+    const teacherId = req.params.teacherId;
+    const userId = req.user.id; // From JWT via authenticateUser middleware
+
+    // Validate teacherId
+    if (!teacherId) {
+        return res.status(400).json({ error: 'Teacher ID is required' });
+    }
+
+    // Query the votes table to check if a vote exists for this user and teacher
+    const query = `
+        SELECT COUNT(*) as voteCount 
+        FROM votes 
+        WHERE user_id = ? AND teacher_id = ?
+    `;
+    
+    db.get(query, [userId, teacherId], (err, row) => {
+        if (err) {
+            console.error('Database error checking vote status:', err.message);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+
+        const hasVoted = row.voteCount > 0;
+        res.status(200).json({ hasVoted });
+    });
+});
+
+function checkEngagedContributor(userId, voteCount) {
+    db.get('SELECT COUNT(*) as count FROM teacher_proposals WHERE user_id = ?', [userId], (err, row) => {
+        if (err) return console.error('Server - Error checking Engaged Contributor:', err.message);
+        const proposalCount = row.count;
+        if (voteCount >= 3 && proposalCount >= 1) {
+            awardBadge(userId, 9, 'Engaged Contributor', 5);
+        }
+    });
+}
+
+app.get('/api/badges', (req, res) => {
+    res.json(BADGES);
+});
+
+// Get user's badges with full badge info
+app.get('/api/user/badges', authenticateUser, (req, res) => {
+    console.log('Server - Badge endpoint called');
+    
+    // Get user ID from token
+    const token = req.headers['x-csrf-token'];
+    console.log('Server - CSRF token:', token);
+    
+    // Get user ID from session
+    const userId = req.user.id;
+    if (!userId) {
+        console.error('Server - No user ID found in session');
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+    console.log('Server - Request: GET /api/user/badges for user:', userId);
+    
+    // First check if the badges table exists
+    db.get('SELECT name FROM sqlite_master WHERE type="table" AND name="badges"', (err, table) => {
+        if (err) {
+            console.error('Server - Error checking badges table:', err.message);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        if (!table) {
+            console.error('Server - Badges table does not exist');
+            return res.status(500).json({ error: 'Badges table missing' });
+        }
+        
+        // Now fetch the badges
+        db.all('SELECT ub.badge_name, ub.created_at, b.description, b.level FROM user_badges ub JOIN badges b ON ub.badge_name = b.name WHERE ub.user_id = ?', [userId], (err, rows) => {
+            if (err) {
+                console.error('Server - Error fetching user badges:', err.message, 'Stack:', err.stack);
+                return res.status(500).json({ error: 'Database error', details: err.message });
+            }
+            
+            console.log('Server - Found badges:', rows.length, 'for user:', userId);
+            if (rows.length > 0) {
+                console.log('Server - First badge:', rows[0]);
+            } else {
+                console.log('Server - No badges found for user:', userId);
+            }
+            
+            // If no badges found, return empty array
+            if (!rows) rows = [];
+            
+            res.json(rows);
+        });
+    });
+});
+
+app.get('/api/user', authenticateUser, async (req, res) => {
+    console.log('Server - Request: GET /api/user');
+    const userId = req.user.id;
+
+    try {
+        // Fetch user data
+        const user = await new Promise((resolve, reject) => {
+            db.get('SELECT id, username, email, points, theme FROM users WHERE id = ?', [userId], (err, row) => {
+                if (err) reject(err);
+                else if (!row) reject(new Error('User not found'));
+                else resolve(row);
+            });
+        });
+
+        // Fetch user badges
+        const badges = await new Promise((resolve, reject) => {
+            db.all('SELECT ub.badge_name, ub.created_at FROM user_badges ub WHERE ub.user_id = ?', [userId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+
+        // Update login streak and points
+        const updatedUser = await new Promise((resolve, reject) => {
+            const today = new Date().toISOString().split('T')[0];
+            db.get('SELECT last_login, points FROM users WHERE id = ?', [userId], (err, user) => {
+                if (err) return reject(err);
+                const lastLogin = user.last_login ? new Date(user.last_login) : null;
+                let streakPoints = 0;
+                if (lastLogin) {
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    if (lastLogin.toISOString().split('T')[0] === yesterday.toISOString().split('T')[0]) {
+                        streakPoints = 5;
+                    }
+                }
+                db.run('UPDATE users SET last_login = ?, points = points + ? WHERE id = ?', [today, streakPoints, userId], (err) => {
+                    if (err) return reject(err);
+                    if (streakPoints > 0) {
+                        db.run('INSERT INTO point_transactions (user_id, points, reason) VALUES (?, ?, ?)', 
+                            [userId, streakPoints, 'Login streak bonus'], (err) => {
+                                if (err) console.error('Server - Error logging streak points:', err.message);
+                            });
+                    }
+                    db.get('SELECT id, username, email, points, theme FROM users WHERE id = ?', [userId], (err, updatedUser) => {
+                        if (err) return reject(err);
+                        resolve(updatedUser);
+                    });
+                });
+            });
+        });
+
+        res.json({ ...updatedUser, badges });
+    } catch (err) {
+        console.error('Server - Error in /api/user:', err.message);
+        if (err.message === 'User not found') {
+            res.status(404).json({ error: 'User not found' });
+        } else {
+            res.status(500).json({ error: 'Server error' });
+        }
+    }
+});
+
+app.post('/api/admin/teacher-proposals/:id/approve', authenticateAdmin, csrfProtection, async (req, res) => {
+    const proposalId = req.params.id;
+
+    try {
+        const proposal = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM teacher_proposals WHERE id = ?', [proposalId], (err, row) => {
+                if (err) reject(err);
+                else if (!row) reject(new Error('Proposal not found'));
+                else resolve(row);
+            });
+        });
+
+        const teacherData = {
+            id: proposal.id.startsWith('TEMP-') ? `T${uuidv4().slice(0, 8)}` : proposal.id,
+            name: proposal.name,
+            bio: proposal.bio,
+            description: proposal.description,
+            classes: proposal.classes,
+            tags: proposal.tags,
+            room_number: proposal.room_number,
+            schedule: proposal.schedule,
+            image_link: proposal.image_link,
+            avg_rating: 0,
+            rating_count: 0,
+            is_spotlight: 0,
+        };
+
+        await new Promise((resolve, reject) => {
+            db.run('INSERT INTO teachers (id, name, bio, description, classes, tags, room_number, schedule, image_link, avg_rating, rating_count, is_spotlight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                Object.values(teacherData), (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+        });
+
+        await new Promise((resolve, reject) => {
+            db.run('DELETE FROM teacher_proposals WHERE id = ?', [proposalId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        if (proposal.user_id) {
+            await new Promise((resolve, reject) => {
+                updateUserPoints(proposal.user_id, 10, `Teacher proposal approved for ${proposal.name}`, (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+            await new Promise((resolve, reject) => {
+                awardBadge(proposal.user_id, 3, 'Teacher Contributor', 5, (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+            const voteCount = await new Promise((resolve, reject) => {
+                db.get('SELECT COUNT(*) as count FROM votes WHERE user_id = ?', [proposal.user_id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row.count);
+                });
+            });
+            checkEngagedContributor(proposal.user_id, voteCount);
+        }
+
+        res.json({ message: 'Teacher proposal approved', teacherId: teacherData.id });
+    } catch (err) {
+        console.error('Server - Error in /api/admin/teacher-proposals/:id/approve:', err.message);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
 
 // Login Streak Handler
 function handleLoginStreak(userId, res) {
@@ -557,6 +1910,127 @@ function handleLoginStreak(userId, res) {
         });
     });
 }
+
+app.get('/api/spotlight', (req, res) => {
+    // First check if the teachers table exists and has the is_spotlight column
+    db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='teachers'", (err, tableExists) => {
+        if (err) {
+            console.error('Server - Error checking teachers table:', err.message);
+            return res.json({ show: false, teacherId: null, name: '', bio: '', image: '/public/images/default-teacher.jpg' });
+        }
+        
+        if (!tableExists) {
+            console.log('Server - Teachers table does not exist yet');
+            return res.json({ show: false, teacherId: null, name: '', bio: '', image: '/public/images/default-teacher.jpg' });
+        }
+        
+        // Check if is_spotlight column exists
+        db.get("PRAGMA table_info(teachers)", (err, tableInfo) => {
+            if (err) {
+                console.error('Server - Error getting teachers table info:', err.message);
+                return res.json({ show: false, teacherId: null, name: '', bio: '', image: '/public/images/default-teacher.jpg' });
+            }
+            
+            // Now try to get a spotlight teacher
+            try {
+                // First try to get a teacher marked as spotlight
+                db.get('SELECT id, name, bio, image_link FROM teachers WHERE is_spotlight = 1', (err, teacher) => {
+                    if (err) {
+                        console.error('Server - Error fetching spotlight teacher:', err.message);
+                        // If there's an error with the query, just return a default response
+                        return res.json({ show: false, teacherId: null, name: '', bio: '', image: '/public/images/default-teacher.jpg' });
+                    }
+                    
+                    // If no spotlight teacher is set, try to get a random teacher with good ratings
+                    if (!teacher) {
+                        console.log('Server - No spotlight teacher found, selecting a random teacher');
+                        // First try to get a teacher with good ratings
+                        db.get('SELECT id, name, bio, image_link FROM teachers WHERE avg_rating >= 3 AND rating_count >= 1 ORDER BY RANDOM() LIMIT 1', (err, randomTeacher) => {
+                            if (err) {
+                                console.error('Server - Error fetching random teacher with good ratings:', err.message);
+                                // If there's an error, try to get any teacher
+                                getAnyTeacher();
+                                return;
+                            }
+                            
+                            if (!randomTeacher) {
+                                console.log('Server - No teachers with good ratings found, selecting any teacher');
+                                // If no teachers with good ratings, try to get any teacher
+                                getAnyTeacher();
+                                return;
+                            }
+                            
+                            res.json({
+                                show: true,
+                                teacherId: randomTeacher.id,
+                                name: randomTeacher.name,
+                                bio: randomTeacher.bio,
+                                image: randomTeacher.image_link || '/public/images/default-teacher.jpg'
+                            });
+                        });
+                    } else {
+                        // Return the spotlight teacher
+                        res.json({
+                            show: true,
+                            teacherId: teacher.id,
+                            name: teacher.name,
+                            bio: teacher.bio,
+                            image: teacher.image_link || '/public/images/default-teacher.jpg'
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error('Server - Unexpected error in spotlight endpoint:', error);
+                return res.json({ show: false, teacherId: null, name: '', bio: '', image: '/public/images/default-teacher.jpg' });
+            }
+        });
+    });
+    
+    // Helper function to get any teacher if there are no teachers with good ratings
+    function getAnyTeacher() {
+        db.get('SELECT id, name, bio, image_link FROM teachers ORDER BY RANDOM() LIMIT 1', (err, anyTeacher) => {
+            if (err) {
+                console.error('Server - Error fetching any teacher:', err.message);
+                return res.json({ show: false, teacherId: null, name: '', bio: '', image: '/public/images/default-teacher.jpg' });
+            }
+            
+            if (!anyTeacher) {
+                return res.json({ show: false, teacherId: null, name: '', bio: '', image: '/public/images/default-teacher.jpg' });
+            }
+            
+            res.json({
+                show: true,
+                teacherId: anyTeacher.id,
+                name: anyTeacher.name,
+                bio: anyTeacher.bio,
+                image: anyTeacher.image_link || '/public/images/default-teacher.jpg'
+            });
+        });
+    }
+});
+
+// Admin endpoint to set a teacher as the spotlight teacher
+app.post('/api/admin/spotlight/:teacherId', authenticateAdmin, (req, res) => {
+    const teacherId = req.params.teacherId;
+    
+    // First, reset all teachers' spotlight status
+    db.run('UPDATE teachers SET is_spotlight = 0', (err) => {
+        if (err) {
+            console.error('Server - Error resetting spotlight status:', err.message);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        // Then set the selected teacher as spotlight
+        db.run('UPDATE teachers SET is_spotlight = 1 WHERE id = ?', [teacherId], (err) => {
+            if (err) {
+                console.error('Server - Error setting spotlight teacher:', err.message);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            res.json({ success: true, message: 'Spotlight teacher updated successfully' });
+        });
+    });
+});
 
 app.get('/api/user/points/history', authenticateUser, (req, res) => {
     const userId = req.user.id;
@@ -610,6 +2084,69 @@ app.post('/api/check-username', publicLimiter, (req, res) => {
             return res.status(500).json({ error: 'Database error' });
         }
         res.json({ available: !row });
+    });
+});
+
+app.get('/api/spotlight', publicLimiter, (req, res) => {
+    db.get('SELECT id, name, bio, image_link FROM teachers WHERE is_spotlight = 1', (err, teacher) => {
+        if (err) {
+            console.error('Server - Error fetching spotlight teacher:', err.message);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (!teacher) {
+            console.log('Server - No spotlight teacher found');
+            return res.json({ teacherId: null, show: false, name: '', bio: '', image: '' });
+        }
+        console.log('Server - Spotlight teacher fetched:', teacher.id);
+        res.json({
+            teacherId: teacher.id,
+            show: true,
+            name: teacher.name,
+            bio: teacher.bio,
+            image: teacher.image_link || '/public/images/default-teacher.jpg',
+        });
+    });
+});
+
+app.get('/api/badges', publicLimiter, (req, res) => {
+    db.all('SELECT id, name, description FROM badges', (err, badges) => {
+        if (err) {
+            console.error('Server - Error fetching badges:', err.message);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        console.log('Server - Badges fetched:', badges.length);
+        res.json(badges);
+    });
+});
+
+app.post('/api/admin/spotlight', authenticateAdmin, csrfProtection, (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); // Force no caching
+    console.log('Server - POST /api/admin/spotlight received:', req.body); // Log request
+    const { teacherId, isSpotlight } = req.body;
+    if (!teacherId || typeof isSpotlight !== 'boolean') {
+        return res.status(400).json({ error: 'teacherId and isSpotlight (boolean) required' });
+    }
+
+    db.serialize(() => {
+        if (isSpotlight) {
+            db.run('UPDATE teachers SET is_spotlight = 0 WHERE is_spotlight = 1', (err) => {
+                if (err) {
+                    console.error('Server - Error clearing spotlight:', err.message);
+                    return res.status(500).json({ error: 'Database error clearing spotlight' });
+                }
+            });
+        }
+        db.run('UPDATE teachers SET is_spotlight = ? WHERE id = ?', [isSpotlight ? 1 : 0, teacherId], function(err) {
+            if (err) {
+                console.error('Server - Error updating spotlight:', err.message);
+                return res.status(500).json({ error: 'Database error updating spotlight' });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Teacher not found' });
+            }
+            console.log('Server - Spotlight updated successfully:', { teacherId, isSpotlight });
+            res.status(200).json({ message: `Teacher ${isSpotlight ? 'set as' : 'unset from'} spotlight`, teacherId });
+        });
     });
 });
 
@@ -685,8 +2222,6 @@ app.get('/api/leaderboard', (req, res) => {
         });
     });
 });
-
-
 
 app.post('/api/logout', (req, res) => {
     console.log('Server - Logout request received');
@@ -792,7 +2327,7 @@ app.post('/api/signup', publicLimiter, csrfProtection, async (req, res) => {
                 return res.status(500).json({ error: 'Database error', details: err.message });
             }
             const token = jwt.sign({ id: this.lastID, role: 'user' }, JWT_SECRET, { expiresIn: '1d' });
-            req.session.user = { id: this.lastID, username, isAdmin: false };
+            req.session.user = { id: this.lastID, username: username, isAdmin: false };
             res.cookie('userToken', token, {
                 httpOnly: true,
                 sameSite: 'Strict',
@@ -840,7 +2375,59 @@ app.post('/api/users/register', publicLimiter, csrfProtection, async (req, res) 
 app.get('/api/user', authenticateUser, (req, res) => {
     console.log('Server - Request: GET /api/user');
     const userId = req.user.id;
-    handleLoginStreak(userId, res);
+
+    db.get('SELECT id, username, email, points, last_login FROM users WHERE id = ?', [userId], (err, user) => {
+        if (err) {
+            console.error('Server - Error fetching user:', err.message);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // Fetch user badges
+        db.all('SELECT ub.badge_name, ub.created_at FROM user_badges ub WHERE ub.user_id = ?', [userId], (err, badges) => {
+            if (err) {
+                console.error('Server - Error fetching badges:', err.message);
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            // Handle login streak
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayISO = yesterday.toISOString().split('T')[0];
+            const lastLogin = user.last_login ? user.last_login.split('T')[0] : null;
+
+            const handleLoginStreak = (callback) => {
+                if (lastLogin === yesterdayISO) {
+                    updateUserPoints(userId, 5, 'Login streak bonus', db, (err) => {
+                        if (err) {
+                            console.error('Server - Error awarding streak points:', err.message);
+                            return callback(err);
+                        }
+                        // Update last_login and fetch updated user data
+                        db.run('UPDATE users SET last_login = ? WHERE id = ?', [new Date().toISOString(), userId], (err) => {
+                            if (err) return callback(err);
+                            db.get('SELECT id, username, email, points FROM users WHERE id = ?', [userId], (err, updatedUser) => {
+                                if (err) return callback(err);
+                                callback(null, updatedUser);
+                            });
+                        });
+                    });
+                } else {
+                    // Just update last_login if no streak
+                    db.run('UPDATE users SET last_login = ? WHERE id = ?', [Date.now(), userId], (err) => {
+                        if (err) return callback(err);
+                        callback(null, user);
+                    });
+                }
+            };
+
+            handleLoginStreak((err, updatedUser) => {
+                if (err) return res.status(500).json({ error: 'Login streak error' });
+                res.json({ ...updatedUser, badges });
+            });
+        });
+    });
 });
 
 app.post('/api/users/login', publicLimiter, csrfProtection, async (req, res) => {
@@ -875,14 +2462,6 @@ app.post('/api/users/login', publicLimiter, csrfProtection, async (req, res) => 
     });
 });
 
-app.post('/api/users/logout', csrfProtection, (req, res) => {
-    req.session.destroy((err) => {
-        if (err) console.error('Server - Error destroying session:', err.message);
-    });
-    res.clearCookie('userToken', { httpOnly: true, sameSite: 'Strict', secure: process.env.NODE_ENV === 'production' });
-    res.json({ message: 'Logged out successfully' });
-});
-
 app.get('/api/user/votes', authenticateUser, (req, res) => {
     const userId = req.user.id;
     db.all(`
@@ -899,6 +2478,7 @@ app.get('/api/user/votes', authenticateUser, (req, res) => {
         res.json(rows);
     });
 });
+
 app.put('/api/vote/:id', authenticateUser, csrfProtection, (req, res) => {
     const voteId = req.params.id;
     const { rating, comment } = req.body;
@@ -928,22 +2508,20 @@ app.put('/api/vote/:id', authenticateUser, csrfProtection, (req, res) => {
         });
     });
 });
-function updateTeacherStats(teacherId, res) {
+
+function updateTeacherStats(teacherId) {
     db.all('SELECT rating FROM votes WHERE teacher_id = ?', [teacherId], (err, rows) => {
         if (err) {
-            console.error('Server - Error fetching ratings:', err.message);
-            return res.status(500).json({ error: 'Database error fetching ratings' });
+            return console.error('Server - Error fetching ratings:', err.message);
         }
         const avgRating = rows.length ? rows.reduce((sum, r) => sum + r.rating, 0) / rows.length : 0;
         const ratingCount = rows.length;
 
         db.run('UPDATE teachers SET avg_rating = ?, rating_count = ? WHERE id = ?', [avgRating, ratingCount, teacherId], (err) => {
             if (err) {
-                console.error('Server - Error updating teacher stats:', err.message);
-                return res.status(500).json({ error: 'Database error updating teacher stats' });
+                return console.error('Server - Error updating teacher stats:', err.message);
             }
             console.log('Server - Teacher stats updated:', { teacherId, avgRating, ratingCount });
-            res.json({ avg_rating: avgRating, rating_count: ratingCount });
         });
     });
 }
@@ -1230,7 +2808,7 @@ app.get('/pages/auth/login.html', (req, res) => {
     if (req.cookies.userToken) {
         try {
             jwt.verify(req.cookies.userToken, JWT_SECRET);
-            return res.redirect('/pages/user/dashboard.html');
+            return res.redirect('/pages/user/user-dashboard.html');
         } catch {
             res.clearCookie('userToken');
         }
@@ -1242,7 +2820,7 @@ app.get('/pages/signup.html', (req, res) => {
     if (req.cookies.userToken) {
         try {
             jwt.verify(req.cookies.userToken, JWT_SECRET);
-            return res.redirect('/pages/user/dashboard.html');
+            return res.redirect('/pages/user/user-dashboard.html');
         } catch {
             res.clearCookie('userToken');
         }
@@ -1250,9 +2828,9 @@ app.get('/pages/signup.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'pages', 'signup.html'));
 });
 
-app.get('/pages/user/dashboard.html', authenticateUser, (req, res) => {
+app.get('/pages/user/user-dashboard.html', authenticateUser, (req, res) => {
     if (!req.user) return res.redirect('/pages/auth/login.html');
-    res.sendFile(path.join(__dirname, 'pages', 'user', 'dashboard.html'));
+    res.sendFile(path.join(__dirname, 'pages', 'user', 'user-dashboard.html'));
 });
 
 app.post('/api/admin/login', publicLimiter, csrfProtection, async (req, res) => {
@@ -1284,8 +2862,8 @@ app.post('/api/admin/login', publicLimiter, csrfProtection, async (req, res) => 
   });
 });
 
-app.get('/pages/admin/dashboard.html', authenticateAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'pages', 'admin', 'dashboard.html'));
+app.get('/pages/admin/admin-dashboard.html', authenticateAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin', 'admin-dashboard.html'));
 });
 
 app.post('/api/admin-request', publicLimiter, csrfProtection, (req, res) => {
@@ -1564,7 +3142,6 @@ app.post('/api/admins/create', (req, res) => {
     });
 });
 
-
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
     const csrfToken = req.csrfToken();
     console.log('Server - Generating CSRF token:', csrfToken, 'Session ID:', req.sessionID);
@@ -1597,73 +3174,26 @@ app.post('/api/users/create', csrfProtection, (req, res) => {
     });
 });
 
-app.post('/api/admins/create', csrfProtection, (req, res) => {
-    const { username, password, role } = req.body;
 
-    if (!username || !password || role !== 'admin') {
-        return res.status(400).json({ error: 'Username, password, and admin role are required' });
-    }
-
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        if (row) return res.status(400).json({ error: 'Username already taken' });
-
-        bcrypt.hash(password, 10, (err, hash) => {
-            if (err) return res.status(500).json({ error: 'Password hashing failed' });
-
-            db.run(
-                'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-                [username, hash, 'admin'],
-                function (err) {
-                    if (err) return res.status(500).json({ error: 'Database error' });
-                    res.status(201).json({ message: 'Admin created successfully', userId: this.lastID });
-                }
-            );
-        });
-    });
-});
-
-app.post('/api/users/create', (req, res) => {
-    const { username, email, password } = req.body;
-
-    if (!username || !email || !password) {
-        return res.status(400).json({ error: 'Username, email, and password are required' });
-    }
-
-    // Check if username or email already exists
-    db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, email], (err, row) => {
+app.get('/api/admin/spotlight', authenticateAdmin, (req, res) => {
+    db.get('SELECT id, name, bio, image_link FROM teachers WHERE is_spotlight = 1', (err, teacher) => {
         if (err) {
-            console.error('Server - Error checking user existence:', err.message);
+            console.error('Server - Error fetching spotlight teacher for admin:', err.message);
             return res.status(500).json({ error: 'Database error' });
         }
-        if (row) {
-            return res.status(400).json({ error: 'Username or email already taken' });
+        if (!teacher) {
+            return res.json({ teacherId: null, name: '', bio: '', image: '/public/images/default-teacher.jpg' });
         }
-
-        // Hash password and insert user
-        bcrypt.hash(password, saltRounds, (err, hash) => {
-            if (err) {
-                console.error('Server - Error hashing password:', err.message);
-                return res.status(500).json({ error: 'Password hashing failed' });
-            }
-
-            db.run(
-                'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-                [username, email, hash, 'user'],
-                function (err) {
-                    if (err) {
-                        console.error('Server - Error creating user:', err.message);
-                        return res.status(500).json({ error: 'Database error' });
-                    }
-                    console.log('Server - User created:', { username, email });
-                    res.status(201).json({ message: 'User created successfully', userId: this.lastID });
-                }
-            );
+        res.json({
+            teacherId: teacher.id,
+            name: teacher.name,
+            bio: teacher.bio,
+            image: teacher.image_link || '/public/images/default-teacher.jpg',
         });
     });
 });
 
-app.post('/api/vote', authenticateUser, csrfProtection, (req, res) => {
+app.post('/api/vote', authenticateUser, csrfProtection, async (req, res) => {
     const { teacher_id, rating, comment } = req.body;
     const userId = req.user.id;
 
@@ -1671,40 +3201,94 @@ app.post('/api/vote', authenticateUser, csrfProtection, (req, res) => {
         return res.status(400).json({ error: 'Teacher ID and rating (1-5) are required' });
     }
 
-    // Check if this user has already voted for this teacher
-    db.get('SELECT * FROM votes WHERE teacher_id = ? AND user_id = ?', [teacher_id, userId], (err, row) => {
-        if (err) {
-            console.error('Server - Error checking existing vote:', err.message);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        if (row) {
-            console.log('Server - User already voted:', { userId, teacher_id });
-            return res.status(403).json({ error: 'Already voted' });
-        }
+    try {
+        // Check for existing vote
+        const existingVote = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM votes WHERE teacher_id = ? AND user_id = ?', [teacher_id, userId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+        if (existingVote) return res.status(403).json({ error: 'Already voted' });
 
-        // Insert the new vote
-        db.run(
-            'INSERT INTO votes (teacher_id, rating, comment, user_id) VALUES (?, ?, ?, ?)',
-            [teacher_id, rating, comment || null, userId],
-            function (err) {
-                if (err) {
-                    console.error('Server - Error inserting vote:', err.message);
-                    return res.status(500).json({ error: 'Database error' });
+        // Verify teacher exists
+        const teacher = await new Promise((resolve, reject) => {
+            db.get('SELECT name FROM teachers WHERE id = ?', [teacher_id], (err, row) => {
+                if (err) reject(err);
+                else if (!row) reject(new Error('Teacher not found'));
+                else resolve(row);
+            });
+        });
+
+        // Filter comment
+        const { cleanedComment, isExplicit } = filterComment(comment);
+
+        // Insert vote
+        await new Promise((resolve, reject) => {
+            db.run(
+                'INSERT INTO votes (teacher_id, rating, comment, user_id, is_explicit) VALUES (?, ?, ?, ?, ?)',
+                [teacher_id, rating, cleanedComment || null, userId, isExplicit ? 1 : 0],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
                 }
-                console.log('Server - Vote recorded:', { teacher_id, rating, userId });
+            );
+        });
 
-                // Update user points and teacher stats
-                updateUserPoints(userId, 2, 'Vote submitted', (err) => {
-                    if (err) {
-                        console.error('Server - Error updating points:', err.message);
-                        return res.status(500).json({ error: 'Points update failed' });
-                    }
-                    updateTeacherStats(teacher_id, res);
-                });
-            }
-        );
-    });
+        // Award points for voting
+        await new Promise((resolve, reject) => {
+            updateUserPoints(userId, 2, `Voted for ${teacher.name}`, db, (err) => {
+                if (err) {
+                    console.error('Server - Failed to award vote points:', err.message);
+                    reject(err);
+                } else {
+                    console.log('Server - Points awarded for vote');
+                    resolve();
+                }
+            });
+        });
+
+        // Check and award badges after voting
+        await checkAndAwardBadges(userId);
+
+        // Get user's current badges
+        const userBadges = await new Promise((resolve, reject) => {
+            db.all('SELECT badge_name FROM user_badges WHERE user_id = ?', [userId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows.map(row => row.badge_name));
+            });
+        });
+
+        // Update teacher stats
+        await updateTeacherStats(teacher_id, res);
+
+        // Check vote-based badges
+        const voteCount = await new Promise((resolve, reject) => {
+            db.get('SELECT COUNT(*) as count FROM votes WHERE user_id = ?', [userId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row.count);
+            });
+        });
+        if (voteCount === 1) await awardBadge(userId, 1, 'First Vote');
+        if (voteCount === 5) await awardBadge(userId, 4, 'Frequent Voter', 5);
+        if (voteCount === 10) await awardBadge(userId, 5, 'Voting Veteran', 10);
+        await checkEngagedContributor(userId);
+
+        // Update teacher stats and respond
+        updateTeacherStats(teacher_id, res);
+    } catch (err) {
+        console.error('Server - Error in /api/vote:', err.message);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
+
+// Helper function to award badges
+function awardBadge(userId, badgeId, badgeName) {
+    db.run('INSERT OR IGNORE INTO user_badges (user_id, badge_name) VALUES (?, ?)', [userId, badgeName], (err) => {
+        if (err) console.error('Server - Error awarding badge:', err.message);
+        else console.log('Server - Badge awarded:', { userId, badgeName });
+    });
+}
 
 app.post('/api/ratings', publicLimiter, (req, res) => {
     const { teacher_id, rating, comment } = req.body;
@@ -1997,21 +3581,31 @@ app.get('/api/admin/teacher-proposals', authenticateAdmin, (req, res) => {
 app.put('/api/admin/teacher-submissions/:id', authenticateAdmin, (req, res) => {
     const submissionId = req.params.id;
     const { approved } = req.body;
-    db.get('SELECT user_id FROM teacher_submissions WHERE id = ?', [submissionId], (err, submission) => {
+
+    db.get('SELECT user_id FROM teacher_proposals WHERE id = ?', [submissionId], (err, submission) => {
         if (err || !submission) {
             console.error('Server - Error fetching submission:', err?.message);
             return res.status(404).json({ error: 'Submission not found' });
         }
         if (approved) {
-            db.run('UPDATE teacher_submissions SET approved = 1 WHERE id = ?', [submissionId], (err) => {
+            db.get('SELECT name FROM teacher_proposals WHERE id = ?', [submissionId], (err, proposal) => {
                 if (err) {
-                    console.error('Server - Error approving submission:', err.message);
+                    console.error('Server - Error fetching proposal name:', err.message);
                     return res.status(500).json({ error: 'Database error' });
                 }
-updateUserPoints(submission.user_id, 10, 'Teacher submission approved', (err) => {
-    if (err) return res.status(500).json({ error: 'Points update failed' });
-    res.json({ message: 'Submission approved, points awarded' });
-});
+                db.run('UPDATE teacher_proposals SET approved = 1 WHERE id = ?', [submissionId], (err) => {
+                    if (err) {
+                        console.error('Server - Error approving submission:', err.message);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    updateUserPoints(submission.user_id, 10, `Submitted profile for ${proposal.name}`, (err) => {
+                        if (err) {
+                            console.error('Server - Error updating points:', err.message);
+                            return res.status(500).json({ error: 'Points update failed' });
+                        }
+                        res.json({ message: 'Submission processed' });
+                    });
+                });
             });
         } else {
             res.json({ message: 'Submission processed' });
@@ -2049,75 +3643,70 @@ app.get('/api/admin/corrections', authenticateAdmin, (req, res) => {
 });
 
 app.post('/api/admin/teacher-proposals/:id/approve', authenticateAdmin, csrfProtection, (req, res) => {
-  const proposalId = req.params.id;
+    const proposalId = req.params.id;
 
-  // Step 1: Fetch the proposal
-  db.get('SELECT * FROM teacher_proposals WHERE id = ?', [proposalId], (err, proposal) => {
-    if (err) {
-      console.error('Server - Error fetching teacher proposal:', err.message);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    if (!proposal) {
-      console.log('Server - Proposal not found:', proposalId);
-      return res.status(404).json({ error: 'Teacher proposal not found' });
-    }
+    db.get('SELECT * FROM teacher_proposals WHERE id = ?', [proposalId], (err, proposal) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        if (!proposal) return res.status(404).json({ error: 'Teacher proposal not found' });
 
-    // Step 2: Insert into teachers table
-    const teacherData = {
-      id: proposal.id.startsWith('TEMP-') ? `T${uuidv4().slice(0, 8)}` : proposal.id, // Generate a permanent ID if temp
-      name: proposal.name,
-      bio: proposal.bio,
-      description: proposal.description,
-      classes: proposal.classes,
-      tags: proposal.tags,
-      room_number: proposal.room_number,
-      schedule: proposal.schedule,
-      image_link: proposal.image_link,
-      avg_rating: 0,
-      rating_count: 0,
-    };
+        const teacherData = {
+            id: proposal.id.startsWith('TEMP-') ? `T${uuidv4().slice(0, 8)}` : proposal.id,
+            name: proposal.name,
+            bio: proposal.bio,
+            description: proposal.description,
+            classes: proposal.classes,
+            tags: proposal.tags,
+            room_number: proposal.room_number,
+            schedule: proposal.schedule,
+            image_link: proposal.image_link,
+            avg_rating: 0,
+            rating_count: 0,
+            is_spotlight: 0
+        };
 
-    db.run(
-      'INSERT INTO teachers (id, name, bio, description, classes, tags, room_number, schedule, image_link, avg_rating, rating_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      Object.values(teacherData),
-      (err) => {
-        if (err) {
-          console.error('Server - Error inserting teacher:', err.message);
-          return res.status(500).json({ error: 'Database error inserting teacher' });
+        if (proposal.user_id) {
+            updateUserPoints(proposal.user_id, 10, `Teacher proposal approved for ${proposal.name}`, db, (err) => {
+                if (err) {
+                    console.error('Server - Error updating points:', err.message);
+                    return res.status(500).json({ error: 'Points update failed' });
+                }
+
+                // Award badge after points are successfully updated
+                awardBadge(proposal.user_id, 3, 'Teacher Contributor', 5, (err) => {
+                    if (err) console.error('Server - Error awarding badge:', err.message);
+                });
+
+                // Send notification
+                db.run(
+                    'INSERT INTO notifications (visitor_id, message, type) VALUES (?, ?, ?)',
+                    [proposal.user_id, `Your teacher proposal for ${proposal.name} has been approved!`, 'success'],
+                    (err) => {
+                        if (err) console.error('Server - Error adding notification:', err.message);
+                    }
+                );
+
+                res.json({ message: 'Teacher proposal approved', teacherId: teacherData.id });
+            });
+        } else {
+            res.json({ message: 'Teacher proposal approved', teacherId: teacherData.id });
         }
-
-        // Step 3: Delete from teacher_proposals
-        db.run('DELETE FROM teacher_proposals WHERE id = ?', [proposalId], (err) => {
-          if (err) {
-            console.error('Server - Error deleting proposal:', err.message);
-            return res.status(500).json({ error: 'Database error deleting proposal' });
-          }
-
-          // Step 4: Award points to user (if user_id exists)
-          if (proposal.user_id) {
-            updateUserPoints(proposal.user_id, 10, 'Teacher proposal approved', (err) => {
-    if (err) {
-        console.error('Server - Error updating user points:', err.message);
-        return res.status(500).json({ error: 'Points update failed' });
-    }
-    console.log('Server - Proposal approved and points awarded:', { proposalId, userId: proposal.user_id });
+    });
 });
-          }
 
-          // Step 5: Notify the user (optional)
-          db.run(
-            'INSERT INTO notifications (visitor_id, message, type) VALUES (?, ?, ?)',
-            [req.cookies.visitorId || proposal.user_id, `Your teacher proposal for ${proposal.name} has been approved!`, 'success'],
-            (err) => {
-              if (err) console.error('Server - Error adding notification:', err.message);
-            }
-          );
-
-          res.json({ message: 'Teacher proposal approved', teacherId: teacherData.id });
-        });
-      }
-    );
-  });
+app.post('/api/user/theme', authenticateUser, csrfProtection, (req, res) => {
+    const { theme } = req.body;
+    if (!['light', 'dark'].includes(theme)) {
+        return res.status(400).json({ error: 'Theme must be "light" or "dark"' });
+    }
+    db.run('UPDATE users SET theme = ? WHERE id = ?', [theme, req.user.id], function(err) {
+        if (err) {
+            console.error('Server - Error updating user theme:', err.message);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+        console.log('Server - User theme updated:', { userId: req.user.id, theme });
+        res.json({ success: true, theme });
+    });
 });
 
 app.post('/api/admin/corrections/:correctionId/implement', authenticateAdmin, csrfProtection, (req, res) => {
@@ -2253,20 +3842,6 @@ app.get('/api/admin/section-settings', authenticateAdmin, (req, res) => {
     });
 });
 
-app.patch('/api/teachers/:id', authenticateAdmin, csrfProtection, (req, res) => {
-    const { id } = req.params;
-    const { description } = req.body;
-    if (!description) return res.status(400).json({ error: 'Description required' });
-    db.run('UPDATE teachers SET description = ? WHERE id = ?', [description, id], function(err) {
-        if (err) {
-            console.error('Server - Error updating teacher description:', err.message);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        if (this.changes === 0) return res.status(404).json({ error: 'Teacher not found' });
-        res.json({ message: 'Description updated' });
-    });
-});
-
 app.put('/api/admin/section-settings', authenticateAdmin, csrfProtection, (req, res) => {
     const settings = req.body;
     if (!settings || typeof settings !== 'object') return res.status(400).json({ error: 'Invalid settings' });
@@ -2350,16 +3925,6 @@ app.use((err, req, res, next) => {
 
 app.use((req, res) => {
     res.status(404).json({ error: 'Not found' });
-});
-
-const server = app.listen(port, () => {
-    console.log(`Server running on port ${port} - Version 1.25 - Started at ${new Date().toISOString()}`);
-}).on('error', (err) => {
-    console.error(`Server - Failed to start on port ${port}:`, err.message);
-    if (err.code === 'EADDRINUSE') {
-        console.log(`Server - Port ${port} is in use, try a different port.`);
-    }
-    process.exit(1);
 });
 
 process.on('SIGINT', () => {

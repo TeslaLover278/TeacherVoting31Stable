@@ -1,106 +1,495 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="">
     <title>Submit a Teacher - Teacher Tally</title>
-    <link rel="stylesheet" href="/css/global.css">
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
     <style>
-        /* Page-specific styles */
-        .centered-container {
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .form-group { margin-bottom: 15px; }
-        .form-group label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        .form-group input, .form-group textarea {
-            width: 100%;
-            padding: 8px;
-            font-size: 14px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
-        .form-group textarea { min-height: 150px; resize: vertical; }
-        .schedule-block label { display: block; margin-bottom: 5px; }
-        .submit-btn {
-            padding: 8px 16px;
-            font-size: 14px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            background-color: #00B7D1;
-            color: white;
-            transition: background-color 0.3s ease;
+
+        :root[data-theme="light"] {
+            --background: #d3d3d3;
+            --text: #2d3748;
+            --heading: #2d3748;
+            --text-secondary: #6b7280;
+            --link: #00B7D1;
+            --link-hover: #009bb5;
+            --input-bg: #fff;
+            --input-border: #00B7D1;
+            --button-bg: #00B7D1;
+            --button-hover: #03a4bb;
+            --button-disabled: #cbd5e0;
+            --card-bg: #fff;
+            --card-border: #eeeeee;
+            --footer-bg: #333;
+            --footer-text: #fff;
+            --footer-link: #fff;
+            --footer-link-hover: #f0f8ff;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --shadow-hover: rgba(0, 0, 0, 0.25);
+            --notification-error-bg: #f8d7da;
+            --notification-error-text: #721c24;
+            --form-bg: #f9f9f9;
+            --message-bg-start: #d1d5db;
+            --message-bg-end: #e5e7eb;
+            --message-border: #d1d5db;
+            --message-bar: #00B7D1;
+            --message-close-bg: #e5e7eb;
+            --message-close-text: #6b7280;
         }
-        .submit-btn:hover { background-color: #0056b3; }
+        :root[data-theme="dark"] {
+            --background: #1a1a1a;
+            --text: #ddd;
+            --heading: #fff;
+            --text-secondary: #999;
+            --link: #4ECDC4;
+            --link-hover: #45B7AF;
+            --input-bg: #2a2a2a;
+            --input-border: #4ECDC4;
+            --button-bg: #4ECDC4;
+            --button-hover: #3BA8A1;
+            --button-disabled: #444;
+            --card-bg: #2a2a2a;
+            --card-border: #444;
+            --footer-bg: #2a2a2a;
+            --footer-text: #bbb;
+            --footer-link: #4ECDC4;
+            --footer-link-hover: #66e0d8;
+            --shadow: rgba(255, 255, 255, 0.1);
+            --shadow-hover: rgba(255, 255, 255, 0.25);
+            --notification-error-bg: #5c1e24;
+            --notification-error-text: #f8d7da;
+            --form-bg: #3a3a3a;
+            --message-bg-start: #2a2a2a;
+            --message-bg-end: #3a3a3a;
+            --message-border: #444;
+            --message-bar: #4ECDC4;
+            --message-close-bg: #3a3a3a;
+            --message-close-text: #bbb;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #header-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 50;
+        }
+
+        .centered-container {
+            flex: 1;
+            margin-top: 150px;
+            margin-bottom: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .content-container {
+            background-color: var(--card-bg);
+            max-width: 800px;
+            width: 100%;
+            padding: 2rem;
+            border-radius: 5%;
+            box-shadow: 0 6px 16px var(--shadow);
+            transition: box-shadow 0.3s ease;
+        }
+        .content-container:hover {
+            box-shadow: 0 10px 24px var(--shadow-hover);
+        }
+
+        h2 {
+            color: var(--heading);
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        p {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .signup-form {
+            background-color: var(--form-bg);
+            padding: 1.5rem;
+            border-radius: 5%;
+            box-shadow: 0 4px 8px var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .signup-form:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 16px var(--shadow-hover);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--text);
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--input-border);
+            border-radius: 5%;
+            font-size: 1rem;
+            background: var(--input-bg);
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: var(--link-hover);
+            box-shadow: 0 0 5px var(--shadow-hover);
+            outline: none;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .tooltip {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            padding: 5px 10px;
+            border-radius: 5%;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 4px var(--shadow);
+            z-index: 10;
+        }
+        .form-group:hover .tooltip {
+            display: block;
+        }
+
+        .schedule-edit {
+            margin-bottom: 1.5rem;
+        }
+        .schedule-edit label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--text);
+        }
+        .schedule-block {
+            margin-bottom: 10px;
+        }
+        .schedule-block label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        .schedule-block input {
+            width: 45%;
+            margin-right: 5%;
+            display: inline-block;
+            padding: 0.75rem;
+            border: 2px solid var(--input-border);
+            border-radius: 5%;
+            font-size: 1rem;
+            background: var(--input-bg);
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+        .schedule-block input:last-child {
+            margin-right: 0;
+        }
+        .schedule-block input:focus {
+            border-color: var(--link-hover);
+            box-shadow: 0 0 5px var(--shadow-hover);
+            outline: none;
+        }
+
+        .submit-btn, .cancel-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5%;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        .submit-btn {
+            background-color: var(--button-bg);
+            color: #fff;
+        }
+        .submit-btn:hover {
+            background-color: var(--button-hover);
+            transform: scale(1.1);
+        }
+        .cancel-btn {
+            background-color: var(--button-disabled);
+            color: var(--text);
+        }
+        .cancel-btn:hover {
+            background-color: #b0b7c2;
+            transform: scale(1.1);
+        }
+
+        .info-message {
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--text);
+        }
+        .error-message {
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--notification-error-text);
+        }
+
+        .site-footer {
+            flex-shrink: 0;
+            width: 100%;
+            text-align: center;
+            padding: 1rem;
+            background: var(--footer-bg);
+            color: var(--footer-text);
+        }
+        .footer-email, .footer-message {
+            margin: 0.75rem 0;
+            font-size: 1rem;
+        }
+        .footer-email a {
+            color: var(--footer-link);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .footer-email a:hover {
+            color: var(--footer-link-hover);
+            text-decoration: underline;
+        }
+
         .notification {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 10px 20px;
-            border-radius: 5px;
-            color: white;
-            z-index: 1002;
-            display: none;
-            transition: opacity 0.5s ease;
+            padding: 15px 25px;
+            border-radius: 5%;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            z-index: 2000;
+            transform: translateY(-10px);
+            opacity: 0;
         }
-        .notification.success { background: #28a745; }
-        .notification.error { background: #dc3545; }
+        .notification.error {
+            background-color: var(--notification-error-bg);
+            color: var(--notification-error-text);
+        }
+        .notification.success {
+            background-color: var(--button-bg);
+            color: #fff;
+        }
+        .notification.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
         .main-message {
             position: fixed;
-            top: 20px;
+            top: 35%;
             left: 50%;
-            transform: translateX(-50%);
-            background: #f8d7da;
-            padding: 10px 20px;
-            border-radius: 5px;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, var(--message-bg-start), var(--message-bg-end));
+            padding: 25px 35px;
+            border-radius: 5%;
+            box-shadow: 0 4px 20px var(--shadow);
             z-index: 1001;
-            display: none;
+            max-width: 600px;
+            width: 90%;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            color: var(--text);
+            text-align: center;
+            pointer-events: auto;
+            border: 1px solid var(--message-border);
         }
-        .main-message.active { display: block; }
+        .main-message.active {
+            opacity: 1;
+        }
+        .main-message::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--message-bar);
+            border-radius: 12px 12px 0 0;
+        }
+        .main-message p {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            padding: 10px;
+        }
+        #message-text {
+            margin: 12px 0 10px 0;
+            font-size: 20px;
+            line-height: 1.5;
+        }
         .close-btn {
             position: absolute;
-            top: 5px;
-            right: 5px;
+            top: 10px;
+            right: 10px;
+            background: var(--message-close-bg);
             border: none;
-            background: none;
-            font-size: 18px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--message-close-text);
             cursor: pointer;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+        .close-btn:hover {
+            background: var(--link);
+            color: #fff;
+            transform: scale(1.1);
+        }
+        body.main-message-active::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            .centered-container {
+                margin-top: 120px;
+                margin-bottom: 120px;
+                padding: 1rem;
+            }
+            .content-container {
+                padding: 1rem;
+            }
+            h2 {
+                font-size: 1.75rem;
+            }
+            .signup-form {
+                padding: 1rem;
+            }
+            .form-group input,
+            .form-group textarea,
+            .schedule-block input {
+                padding: 0.6rem;
+                font-size: 0.95rem;
+            }
+            .submit-btn, .cancel-btn {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.95rem;
+            }
+            .schedule-block input {
+                width: 47%;
+                margin-right: 3%;
+            }
+            .notification {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+            .main-message {
+                padding: 20px 25px;
+                max-width: 90%;
+            }
+            .main-message p {
+                font-size: 1.1rem;
+            }
+            #message-text {
+                font-size: 18px;
+            }
+        }
+        @media (max-width: 480px) {
+            .centered-container {
+                margin-top: 110px;
+                margin-bottom: 110px;
+                padding: 0.5rem;
+            }
+            .content-container {
+                padding: 0.75rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            .signup-form {
+                padding: 0.75rem;
+            }
+            .form-group input,
+            .form-group textarea,
+            .schedule-block input {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+            .submit-btn, .cancel-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+            .schedule-block input {
+                width: 100%;
+                margin-right: 0;
+                margin-bottom: 0.5rem;
+            }
+            .notification {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+            .main-message {
+                padding: 15px 20px;
+            }
+            .main-message p {
+                font-size: 1rem;
+            }
+            #message-text {
+                font-size: 16px;
+            }
         }
     </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" id="header-logo">
-            <a href="/" class="header-title-link">
-                <h1 class="header-title">Teacher Tally</h1>
-            </a>
-            <div class="header-buttons desktop-only">
-                <button id="desktop-auth-btn" class="admin-btn">Loading...</button>
-            </div>
-            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
-            <div class="dropdown-menu" id="dropdown-menu">
-                <button id="mobile-auth-btn" class="header-btn">Loading...</button>
-            </div>
-        </div>
-    </header>
+    <div id="header-placeholder"></div>
 
     <main class="centered-container">
-        <div class="content-container">
+        <div class="content-container signup-container">
             <h2>Submit a New Teacher Proposal</h2>
             <p>Please fill out the form below to propose a new teacher. All fields are required unless marked optional.</p>
-            <form id="teacher-submit-form" class="edit-form" enctype="multipart/form-data">
+            <form id="teacher-submit-form" class="signup-form" enctype="multipart/form-data">
                 <input type="hidden" id="csrf-token" name="_csrf">
                 <div class="form-group">
                     <label for="name">Name:</label>
@@ -114,7 +503,7 @@
                 </div>
                 <div class="form-group">
                     <label for="bio">Bio:</label>
-                    <textarea id="bio" name="bio" required placeholder="Short biography" aria-label="Teacher bio"></textarea>
+                    <textarea id="bio" name="bio" required placeholder="Short biography" aria-label="Teacher bio" rows="4"></textarea>
                     <span class="tooltip">Brief background about the teacher</span>
                 </div>
                 <div class="form-group">
@@ -140,25 +529,25 @@
                 <div class="schedule-edit">
                     <label>Schedule (optional):</label>
                     <span class="tooltip">Enter subject and grade for each block (optional)</span>
-                    <div class="schedule-block" style="margin-bottom: 10px;">
+                    <div class="schedule-block">
                         <label>Block 1:</label>
-                        <input type="text" name="schedule[0][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 1 Subject">
-                        <input type="text" name="schedule[0][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 1 Grade">
+                        <input type="text" name="schedule[0][subject]" placeholder="Subject" aria-label="Block 1 Subject">
+                        <input type="text" name="schedule[0][grade]" placeholder="Grade" aria-label="Block 1 Grade">
                     </div>
-                    <div class="schedule-block" style="margin-bottom: 10px;">
+                    <div class="schedule-block">
                         <label>Block 2:</label>
-                        <input type="text" name="schedule[1][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 2 Subject">
-                        <input type="text" name="schedule[1][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 2 Grade">
+                        <input type="text" name="schedule[1][subject]" placeholder="Subject" aria-label="Block 2 Subject">
+                        <input type="text" name="schedule[1][grade]" placeholder="Grade" aria-label="Block 2 Grade">
                     </div>
-                    <div class="schedule-block" style="margin-bottom: 10px;">
+                    <div class="schedule-block">
                         <label>Block 3:</label>
-                        <input type="text" name="schedule[2][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 3 Subject">
-                        <input type="text" name="schedule[2][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 3 Grade">
+                        <input type="text" name="schedule[2][subject]" placeholder="Subject" aria-label="Block 3 Subject">
+                        <input type="text" name="schedule[2][grade]" placeholder="Grade" aria-label="Block 3 Grade">
                     </div>
-                    <div class="schedule-block" style="margin-bottom: 10px;">
+                    <div class="schedule-block">
                         <label>Block 4:</label>
-                        <input type="text" name="schedule[3][subject]" placeholder="Subject" style="width: 45%; margin-right: 5%;" aria-label="Block 4 Subject">
-                        <input type="text" name="schedule[3][grade]" placeholder="Grade" style="width: 45%;" aria-label="Block 4 Grade">
+                        <input type="text" name="schedule[3][subject]" placeholder="Subject" aria-label="Block 4 Subject">
+                        <input type="text" name="schedule[3][grade]" placeholder="Grade" aria-label="Block 4 Grade">
                     </div>
                 </div>
                 <div class="form-group">
@@ -166,15 +555,18 @@
                     <input type="file" id="image" name="image" accept="image/jpeg, image/png" aria-label="Upload teacher image">
                     <span class="tooltip">Upload a JPEG or PNG image (optional)</span>
                 </div>
-                <button type="submit" class="submit-btn">Submit Proposal</button>
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn">Submit Proposal</button>
+                    <button type="button" class="cancel-btn">Cancel</button>
+                </div>
             </form>
             <p id="submit-message" class="info-message"></p>
         </div>
     </main>
 
     <footer class="site-footer">
-        <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
-        <p id="footer-message">Welcome to Teacher Tally!</p>
+        <p id="footer-email" class="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-message" class="footer-message">Welcome to Teacher Tally!</p>
     </footer>
 
     <div id="notification" class="notification"></div>
@@ -182,10 +574,12 @@
         <button id="close-message" class="close-btn" aria-label="Close message">×</button>
         <p id="message-text"></p>
     </div>
-    <script src="/public/footer.js" defer></script>
+
     <script src="/public/header.js" defer></script>
+    <script src="/public/footer.js" defer></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Load header
             fetch('/pages/components/header.html')
                 .then(response => {
                     if (!response.ok) throw new Error('Failed to load header HTML');
@@ -207,216 +601,198 @@
                 })
                 .catch(err => console.error('Error loading header:', err));
 
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', () => {
-                    if (typeof window.logout === 'function') {
-                        window.logout();
-                    } else {
-                        console.warn('Logout function not yet available');
-                    }
-                });
+            // Apply saved theme
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+
+            // DOM elements
+            const submitForm = document.getElementById('teacher-submit-form');
+            const submitMessage = document.getElementById('submit-message');
+            const notification = document.getElementById('notification');
+            const messageDiv = document.getElementById('main-message');
+            const messageText = document.getElementById('message-text');
+            const closeButton = document.getElementById('close-message');
+
+            if (!submitForm || !submitMessage || !notification) {
+                console.error('Required form elements not found');
+                return;
             }
-        });
-    document.addEventListener('DOMContentLoaded', () => {
-        // Load universal header and initialize via header.js
-        fetch('/pages/components/header.html')
-            .then(response => {
-                if (!response.ok) throw new Error('Failed to load header HTML');
-                return response.text();
-            })
-            .then(html => {
-                document.getElementById('header-placeholder').innerHTML = html;
-                // header.js will handle initialization via its own DOMContentLoaded listener
-            })
-            .catch(err => console.error('Error loading header:', err));
-
-        const submitForm = document.getElementById('teacher-submit-form');
-        const submitMessage = document.getElementById('submit-message');
-        const notification = document.getElementById('notification');
-        const messageDiv = document.getElementById('main-message');
-        const messageText = document.getElementById('message-text');
-        const closeButton = document.getElementById('close-message');
-
-        if (!submitForm || !submitMessage || !notification) {
-            console.error('Client - Required elements for submit teacher page not found');
-            return;
-        }
-        if (!messageDiv || !messageText || !closeButton) {
-            console.error('Client - Main message elements not found in DOM');
-        }
-
-        let csrfToken = null;
-
-        async function fetchCsrfToken() {
-            try {
-                const response = await fetch('/api/csrf-token', { credentials: 'include' });
-                if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.status}`);
-                const data = await response.json();
-                csrfToken = data.csrfToken;
-                document.querySelector('meta[name="csrf-token"]').content = csrfToken;
-                document.getElementById('csrf-token').value = csrfToken;
-                console.log('Client - CSRF token fetched:', csrfToken);
-            } catch (error) {
-                console.error('Client - Error fetching CSRF token:', error.message);
-                showNotification('Error initializing security token', true);
-            }
-        }
-
-        function showNotification(message, isError = false) {
-            notification.textContent = message;
-            notification.className = `notification ${isError ? 'error' : 'success'}`;
-            notification.style.display = 'block';
-            notification.style.opacity = '1';
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                notification.addEventListener('transitionend', () => {
-                    notification.style.display = 'none';
-                    notification.style.opacity = '1';
-                }, { once: true });
-            }, 3000);
-        }
-
-        function validateRoomNumber(roomNumber, tags) {
-            const trimmedRoomNumber = roomNumber.trim();
-            const trimmedTags = tags.trim();
-
-            if (trimmedRoomNumber === trimmedTags) {
-                return { valid: false, message: 'Room number cannot be the same as tags' };
-            }
-            if (trimmedRoomNumber.startsWith('[') || trimmedRoomNumber.includes(',')) {
-                return { valid: false, message: 'Room number must be a single value (e.g., Room 101), not a list' };
-            }
-            return { valid: true };
-        }
-
-        const currentPath = window.location.pathname;
-        const isAdminPage = currentPath.includes('/pages/admin/');
-        if (!isAdminPage && messageDiv) {
-            function shouldShowMessage(newMessage) {
-                const lastClosed = localStorage.getItem('mainMessageClosedTime');
-                const lastMessage = localStorage.getItem('mainMessageContent');
-                const now = Date.now();
-                const fiveMinutes = 300000;
-                return !lastClosed || lastMessage !== newMessage || (now - parseInt(lastClosed) >= fiveMinutes);
+            if (!messageDiv || !messageText || !closeButton) {
+                console.error('Main message elements not found');
             }
 
-            async function loadMainMessage() {
+            // Fetch CSRF token
+            async function fetchCsrfToken() {
                 try {
-                    const response = await fetch('/api/message-settings', { credentials: 'include' });
-                    if (!response.ok) throw new Error(`Failed to fetch message settings: ${response.status}`);
+                    const response = await fetch('/api/csrf-token', { credentials: 'include' });
+                    if (!response.ok) throw new Error(`Server error: ${response.status}`);
                     const data = await response.json();
-                    messageText.textContent = data.message;
-                    if (data.showMessage && shouldShowMessage(data.message)) {
-                        messageDiv.classList.add('active');
-                        messageDiv.style.display = 'block';
-                    } else {
-                        messageDiv.classList.remove('active');
-                        messageDiv.style.display = 'none';
-                    }
-                    localStorage.setItem('mainMessageContent', data.message);
+                    document.querySelector('meta[name="csrf-token"]').setAttribute('content', data.csrfToken);
+                    document.getElementById('csrf-token').value = data.csrfToken;
+                    return data.csrfToken;
                 } catch (error) {
-                    console.error('Error fetching main message:', error.message);
-                    messageDiv.classList.remove('active');
-                    messageDiv.style.display = 'none';
+                    console.error('Error fetching CSRF token:', error.message);
+                    showNotification('Failed to load security token', true);
+                    throw error;
                 }
             }
 
-            closeButton.addEventListener('click', () => {
-                messageDiv.classList.remove('active');
-                messageDiv.style.display = 'none';
-                localStorage.setItem('mainMessageClosedTime', Date.now().toString());
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && messageDiv.classList.contains('active')) {
-                    messageDiv.classList.remove('active');
-                    messageDiv.style.display = 'none';
-                    localStorage.setItem('mainMessageClosedTime', Date.now().toString());
-                }
-            }, { once: true });
-
-            loadMainMessage();
-        }
-
-        submitForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(submitForm);
-            const schedule = [];
-            for (let i = 0; i < 4; i++) {
-                const subject = formData.get(`schedule[${i}][subject]`)?.trim();
-                const grade = formData.get(`schedule[${i}][grade]`)?.trim();
-                if (subject || grade) {
-                    schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
-                }
-                formData.delete(`schedule[${i}][subject]`);
-                formData.delete(`schedule[${i}][grade]`);
-            }
-            formData.set('schedule', JSON.stringify(schedule));
-            formData.set('_csrf', csrfToken);
-
-            const requiredFields = ['name', 'bio', 'description', 'classes', 'tags', 'room_number', 'email'];
-            const roomNumber = formData.get('room_number')?.trim();
-            const tags = formData.get('tags')?.trim();
-
-            for (let field of requiredFields) {
-                const value = formData.get(field)?.trim();
-                if (!value) {
-                    submitMessage.textContent = `Error: ${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
-                    submitMessage.className = 'error-message';
-                    showNotification(`Error: ${field.charAt(0).toUpperCase() + field.slice(1)} is required.`, true);
-                    return;
-                }
-            }
-
-            const roomValidation = validateRoomNumber(roomNumber, tags);
-            if (!roomValidation.valid) {
-                submitMessage.textContent = `Error: ${roomValidation.message}`;
-                submitMessage.className = 'error-message';
-                showNotification(`Error: ${roomValidation.message}`, true);
+            let csrfToken;
+            try {
+                csrfToken = await fetchCsrfToken();
+            } catch (error) {
                 return;
             }
 
-            const imageFile = formData.get('image');
-            if (imageFile && imageFile.size > 0) {
-                const maxSize = 5 * 1024 * 1024; // 5MB
-                if (imageFile.size > maxSize) {
-                    showNotification('Image file size exceeds 5MB limit.', true);
-                    return;
-                }
-                const validTypes = ['image/jpeg', 'image/png'];
-                if (!validTypes.includes(imageFile.type)) {
-                    showNotification('Invalid image type. Use JPG or PNG.', true);
-                    return;
-                }
+            // Notification function
+            function showNotification(message, isError = false) {
+                notification.textContent = message;
+                notification.className = `notification ${isError ? 'error' : 'success'}`;
+                notification.classList.add('active');
+                setTimeout(() => notification.classList.remove('active'), 3000);
             }
 
-            try {
-                const response = await fetch('/api/teacher-proposals', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'X-CSRF-Token': csrfToken },
-                    body: formData
+            // Room number validation
+            function validateRoomNumber(roomNumber, tags) {
+                const trimmedRoomNumber = roomNumber.trim();
+                const trimmedTags = tags.trim();
+                if (trimmedRoomNumber === trimmedTags) {
+                    return { valid: false, message: 'Room number cannot be the same as tags' };
+                }
+                if (trimmedRoomNumber.startsWith('[') || trimmedRoomNumber.includes(',')) {
+                    return { valid: false, message: 'Room number must be a single value (e.g., Room 101), not a list' };
+                }
+                return { valid: true };
+            }
+
+            // Main message handling
+            const isAdminPage = window.location.pathname.includes('/pages/admin/');
+            if (!isAdminPage) {
+                function shouldShowMessage(newMessage) {
+                    const lastClosed = localStorage.getItem('mainMessageClosedTime');
+                    const lastMessage = localStorage.getItem('mainMessageContent');
+                    const now = Date.now();
+                    const fiveMinutes = 300000;
+                    return !lastClosed || lastMessage !== newMessage || (now - parseInt(lastClosed) >= fiveMinutes);
+                }
+
+                async function loadMainMessage() {
+                    try {
+                        const response = await fetch('/api/message-settings', { credentials: 'include' });
+                        if (!response.ok) throw new Error(`Failed to fetch message settings: ${response.status}`);
+                        const data = await response.json();
+                        messageText.textContent = data.message;
+                        if (data.showMessage && shouldShowMessage(data.message)) {
+                            messageDiv.classList.add('active');
+                        } else {
+                            messageDiv.classList.remove('active');
+                        }
+                        localStorage.setItem('mainMessageContent', data.message);
+                    } catch (error) {
+                        console.error('Error fetching main message:', error.message);
+                        messageDiv.classList.remove('active');
+                    }
+                }
+
+                closeButton.addEventListener('click', () => {
+                    messageDiv.classList.remove('active');
+                    localStorage.setItem('mainMessageClosedTime', Date.now().toString());
                 });
-                const data = await response.json();
-                if (response.ok) {
-                    submitMessage.textContent = 'Teacher proposal submitted successfully! Awaiting admin approval.';
-                    submitMessage.className = 'info-message';
-                    showNotification('Proposal submitted successfully!');
-                    submitForm.reset();
-                } else {
-                    throw new Error(data.error || `Failed to submit proposal: ${response.status}`);
-                }
-            } catch (error) {
-                console.error('Client - Error submitting teacher proposal:', error.message);
-                submitMessage.textContent = `Error submitting proposal: ${error.message}`;
-                submitMessage.className = 'error-message';
-                showNotification(`Error submitting proposal: ${error.message}`, true);
-            }
-        });
 
-        fetchCsrfToken();
-    });
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && messageDiv.classList.contains('active')) {
+                        messageDiv.classList.remove('active');
+                        localStorage.setItem('mainMessageClosedTime', Date.now().toString());
+                    }
+                }, { once: true });
+
+                await loadMainMessage();
+            }
+
+            // Form submission
+            submitForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(submitForm);
+                const schedule = [];
+                for (let i = 0; i < 4; i++) {
+                    const subject = formData.get(`schedule[${i}][subject]`)?.trim();
+                    const grade = formData.get(`schedule[${i}][grade]`)?.trim();
+                    if (subject || grade) {
+                        schedule.push({ block: `Block ${i + 1}`, subject: subject || '', grade: grade || 'N/A' });
+                    }
+                    formData.delete(`schedule[${i}][subject]`);
+                    formData.delete(`schedule[${i}][grade]`);
+                }
+                formData.set('schedule', JSON.stringify(schedule));
+
+                const requiredFields = ['name', 'bio', 'description', 'classes', 'tags', 'room_number', 'email'];
+                for (const field of requiredFields) {
+                    const value = formData.get(field)?.trim();
+                    if (!value) {
+                        submitMessage.textContent = `Error: ${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
+                        submitMessage.className = 'error-message';
+                        showNotification(`Error: ${field.charAt(0).toUpperCase() + field.slice(1)} is required`, true);
+                        return;
+                    }
+                }
+
+                const roomValidation = validateRoomNumber(formData.get('room_number'), formData.get('tags'));
+                if (!roomValidation.valid) {
+                    submitMessage.textContent = `Error: ${roomValidation.message}`;
+                    submitMessage.className = 'error-message';
+                    showNotification(`Error: ${roomValidation.message}`, true);
+                    return;
+                }
+
+                const imageFile = formData.get('image');
+                if (imageFile && imageFile.size > 0) {
+                    const maxSize = 5 * 1024 * 1024; // 5MB
+                    if (imageFile.size > maxSize) {
+                        submitMessage.textContent = 'Image file size exceeds 5MB limit';
+                        submitMessage.className = 'error-message';
+                        showNotification('Image file size exceeds 5MB limit', true);
+                        return;
+                    }
+                    const validTypes = ['image/jpeg', 'image/png'];
+                    if (!validTypes.includes(imageFile.type)) {
+                        submitMessage.textContent = 'Invalid image type. Use JPG or PNG';
+                        submitMessage.className = 'error-message';
+                        showNotification('Invalid image type. Use JPG or PNG', true);
+                        return;
+                    }
+                }
+
+                try {
+                    const response = await fetch('/api/teacher-proposals', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'X-CSRF-Token': csrfToken },
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        submitMessage.textContent = 'Teacher proposal submitted successfully! Awaiting admin approval.';
+                        submitMessage.className = 'info-message';
+                        showNotification('Proposal submitted successfully!', false);
+                        submitForm.reset();
+                    } else {
+                        throw new Error(data.error || 'Unknown error');
+                    }
+                } catch (error) {
+                    console.error('Error submitting proposal:', error.message);
+                    submitMessage.textContent = `Error: ${error.message}`;
+                    submitMessage.className = 'error-message';
+                    showNotification(`Error: ${error.message}`, true);
+                }
+            });
+
+            // Cancel button
+            document.querySelector('.cancel-btn').addEventListener('click', () => {
+                submitForm.reset();
+                submitMessage.textContent = '';
+                submitMessage.className = 'info-message';
+            });
+        });
     </script>
 </body>
 </html>

@@ -1,4 +1,3 @@
-// /public/header.js
 let headerInitialized = false;
 let cachedCsrfToken = null;
 
@@ -9,6 +8,30 @@ function initializeHeader() {
     }
     headerInitialized = true;
     console.log('Header - Initializing');
+
+    // Cookie handling functions
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // Theme application
+    function applyTheme(isDark) {
+        document.body.dataset.theme = isDark ? 'dark' : 'light';
+        // Assuming styles.css now handles both themes with [data-theme="dark"]
+        // If using separate styles-dark.css, uncomment and adjust:
+        // document.getElementById('theme-stylesheet').href = isDark ? '/public/styles-dark.css' : '/public/styles.css';
+        const toggle = document.getElementById('dark-mode-toggle');
+        const status = toggle?.nextElementSibling.nextElementSibling;
+        if (toggle) toggle.checked = isDark;
+        if (status) status.textContent = isDark ? 'Dark' : 'Light';
+    }
+
+    // Apply theme on load
+    const themeCookie = getCookie('theme');
+    applyTheme(themeCookie === 'dark');
 
     fetchCsrfToken().then(token => {
         cachedCsrfToken = token;
@@ -50,12 +73,12 @@ async function updateAuthButtons() {
         const existing = document.getElementById(id);
         if (existing) existing.remove();
     };
+    cleanupButtons(desktopAuthBtn.parentElement, 'desktop-submit-teacher-btn');
     cleanupButtons(desktopAuthBtn.parentElement, 'desktop-admin-btn');
     cleanupButtons(desktopAuthBtn.parentElement, 'desktop-logout-btn');
-    cleanupButtons(desktopAuthBtn.parentElement, 'desktop-submit-teacher-btn');
+    cleanupButtons(mobileAuthBtn.parentElement, 'mobile-submit-teacher-btn');
     cleanupButtons(mobileAuthBtn.parentElement, 'mobile-admin-btn');
     cleanupButtons(mobileAuthBtn.parentElement, 'mobile-logout-btn');
-    cleanupButtons(mobileAuthBtn.parentElement, 'mobile-submit-teacher-btn');
 
     const adminResponse = await fetch('/api/admin/verify', { 
         credentials: 'include',
@@ -64,11 +87,11 @@ async function updateAuthButtons() {
     if (adminResponse.ok) {
         console.log('Header - Admin authenticated');
         desktopAuthBtn.textContent = 'Admin Dashboard';
-        desktopAuthBtn.href = '/pages/admin/dashboard.html';
-        desktopAuthBtn.addEventListener('click', () => window.location.href = '/pages/admin/dashboard.html');
+        desktopAuthBtn.href = '/pages/admin/admin-dashboard.html';
+        desktopAuthBtn.addEventListener('click', () => window.location.href = '/pages/admin/admin-dashboard.html');
         mobileAuthBtn.textContent = 'Admin Dashboard';
-        mobileAuthBtn.href = '/pages/admin/dashboard.html';
-        mobileAuthBtn.addEventListener('click', () => window.location.href = '/pages/admin/dashboard.html');
+        mobileAuthBtn.href = '/pages/admin/admin-dashboard.html';
+        mobileAuthBtn.addEventListener('click', () => window.location.href = '/pages/admin/admin-dashboard.html');
 
         addSubmitTeacherButtons(desktopAuthBtn, mobileAuthBtn);
         addLogoutButtons(desktopAuthBtn, mobileAuthBtn);
@@ -83,11 +106,11 @@ async function updateAuthButtons() {
         const data = await userResponse.json();
         console.log('Header - User authenticated:', data.username);
         desktopAuthBtn.textContent = 'Dashboard';
-        desktopAuthBtn.href = '/pages/user/dashboard.html';
-        desktopAuthBtn.addEventListener('click', () => window.location.href = '/pages/user/dashboard.html');
+        desktopAuthBtn.href = '/pages/user/user-dashboard.html';
+        desktopAuthBtn.addEventListener('click', () => window.location.href = '/pages/user/user-dashboard.html');
         mobileAuthBtn.textContent = 'Dashboard';
-        mobileAuthBtn.href = '/pages/user/dashboard.html';
-        mobileAuthBtn.addEventListener('click', () => window.location.href = '/pages/user/dashboard.html');
+        mobileAuthBtn.href = '/pages/user/user-dashboard.html';
+        mobileAuthBtn.addEventListener('click', () => window.location.href = '/pages/user/user-dashboard.html');
 
         addSubmitTeacherButtons(desktopAuthBtn, mobileAuthBtn);
         addLogoutButtons(desktopAuthBtn, mobileAuthBtn);
@@ -192,7 +215,6 @@ function setupMobileMenu() {
     const toggle = document.getElementById('mobile-menu-toggle');
     const menu = document.getElementById('dropdown-menu');
 
-    // Log element availability
     if (!toggle) {
         console.error('Header - Mobile menu toggle not found (#mobile-menu-toggle)');
         return;
@@ -206,16 +228,11 @@ function setupMobileMenu() {
         console.log('Header - Dropdown menu found:', menu);
     }
 
-    // Log initial menu state
-    console.log('Header - Initial menu display style:', menu.style.display || 'unset (relying on CSS)');
-
-    // Ensure menu is hidden by default if no inline style is set
     if (!menu.style.display) {
         menu.style.display = 'none';
         console.log('Header - Set initial menu display to "none"');
     }
 
-    // Toggle menu visibility
     toggle.addEventListener('click', (e) => {
         e.stopPropagation();
         console.log('Header - Toggle clicked, current menu display:', menu.style.display);
@@ -224,7 +241,6 @@ function setupMobileMenu() {
         console.log('Header - Menu display toggled to:', newDisplay);
     });
 
-    // Handle clicks on menu buttons
     menu.addEventListener('click', (e) => {
         const btn = e.target.closest('button');
         if (btn) {
@@ -237,7 +253,6 @@ function setupMobileMenu() {
         }
     });
 
-    // Close menu when clicking outside
     document.addEventListener('click', (e) => {
         const isOutside = !menu.contains(e.target) && !toggle.contains(e.target);
         console.log('Header - Document click detected, is outside menu/toggle:', isOutside, 'Menu display:', menu.style.display);
@@ -265,7 +280,7 @@ function showNotification(message, type) {
     notification.className = `notification ${type}`;
     notification.style.cssText = `
         position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-        padding: 12px 24px; border-radius: 8px; color: #fff; opacity: 1;
+        padding: 12px 24px; border-radius: 8px; color: var(--button-text); opacity: 1;
         transition: opacity 0.3s ease-in-out; z-index: 2000; max-width: 600px;
     `;
     notification.style.background = type === 'error' ? '#ef4444' : '#10b981';

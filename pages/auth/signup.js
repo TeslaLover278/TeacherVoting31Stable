@@ -85,7 +85,7 @@ async function signup(event) {
         const result = await response.json();
         console.log('Client - Signup response:', result);
         if (response.ok) {
-            window.location.href = '/pages/auth/login.html';
+            window.location.href = '/pages/user/user-dashboard.html';
         } else {
             console.log('Client - Signup error:', result.error);
             notify('Error: ' + result.error, true);
@@ -127,8 +127,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const usernameInput = document.getElementById('username');
     const debouncedCheckUsername = debounce(async (username) => {
         const feedback = document.getElementById('usernameFeedback');
-        if (username.length < 3) {
-            feedback.textContent = 'Username must be at least 3 characters';
+        if (username.length < 8 || username.length > 16) {
+            feedback.textContent = 'Username must be between 8 and 16 characters';
             feedback.className = 'feedback taken';
         } else {
             const available = await checkUsernameAvailability(username);

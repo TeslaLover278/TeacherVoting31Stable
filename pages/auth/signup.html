@@ -1,91 +1,357 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="">
     <title>Signup - Teacher Tally</title>
     <link rel="stylesheet" href="/public/styles.css">
+    <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
     <style>
-        .site-footer {
-            position: absolute; /* Position footer at bottom */
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100%; /* Full width of viewport */
-            text-align: center;
-            padding: 1.5rem;
-            background: linear-gradient(135deg, #00B7D1 0%, #00A3C4 100%);
-            color: #fff;
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-            z-index: 30;
+        /* Color Schemes */
+        :root[data-theme="light"] {
+            --background: #fff;
+            --text: #333;
+            --heading: #000;
+            --link: #00B7D1;
+            --link-hover: #008FA1;
+            --input-border: #ccc;
+            --container-bg: #fff;
+            --container-border: #888;
+            --button-bg: #00B7D1;
+            --button-hover: #0056b3;
+            --footer-bg: linear-gradient(135deg, #00B7D1 0%, #00A3C4 100%);
+            --footer-text: #fff;
+            --info-message: #28a745;
+            --error-message: #dc3545;
+            --notification-success: #28a745;
+            --notification-error: #dc3545;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --shadow-hover: rgba(0, 0, 0, 0.25);
+            --card-bg: #fff; /* From styles.css */
+            --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* From styles.css */
+        }
+        :root[data-theme="dark"] {
+            --background: #1a1a1a;
+            --text: #ddd;
+            --heading: #fff;
+            --link: #4ECDC4;
+            --link-hover: #45B7AF;
+            --input-border: #555;
+            --container-bg: #2a2a2a;
+            --container-border: #666;
+            --button-bg: #4ECDC4;
+            --button-hover: #3BA8A1;
+            --footer-bg: linear-gradient(135deg, #028a9e 0%, #027a8e 100%);
+            --footer-text: #e0e0e0;
+            --info-message: #34c759;
+            --error-message: #e63946;
+            --notification-success: #34c759;
+            --notification-error: #e63946;
+            --shadow: rgba(255, 255, 255, 0.1);
+            --card-bg: #2a2a2a; /* From styles.css */
+            --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* From styles.css */
+        }
+
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         html, body {
             height: 100%;
             margin: 0;
+            padding: 0;
+            overflow-x: hidden;
         }
         body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            background-color: var(--background);
+            color: var(--text);
             display: flex;
             flex-direction: column;
             min-height: 100vh;
         }
-        .signup-container {
+        main {
             flex: 1 0 auto;
+            display: flex;
+            justify-content: center;
         }
-        .signup-footer {
-            flex-shrink: 0;
+
+        /* Header Styles */
+        #header-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 50;
+        }
+
+        /* Signup Container Styles */
+        .signup-container {
+            background: var(--card-bg); /* From styles.css */
+            max-width: 400px; /* Adjusted from width: 400px */
+            width: 100%; /* Ensure responsiveness */
+            padding: 30px; /* From styles.css, overrides previous 2rem */
+            border-radius: 5%; /* Standardized container radius */
+            border: 2px solid var(--container-border); /* Keep our border */
+            z-index: 30;
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+            margin: 150px auto 0; /* From styles.css margin: auto, adjusted */
+            display: flex; /* From styles.css */
+            flex-direction: column; /* From styles.css */
+            justify-content: center; /* From styles.css */
+            text-align: center; /* From styles.css */
+        }
+        .signup-container:hover {
+            box-shadow: 0 8px 20px var(--shadow-hover, var(--shadow));
+            transform: translateY(-5px);
+        }
+        .signup-container h2 {
+            color: var(--heading);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.25rem;
+            font-weight: 600;
+            text-shadow: 1px 1px 3px var(--shadow);
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--link);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--input-border);
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            background: var(--container-bg);
+            color: var(--text);
+        }
+        .form-group input:focus {
+            border-color: var(--link-hover);
+            box-shadow: 0 0 5px var(--shadow);
+            outline: none;
+        }
+        .privacy-note {
+            font-size: 0.85rem;
+            color: var(--text);
+            margin-top: 5px;
+        }
+        .tos-group {
+            margin-bottom: 1rem;
+        }
+        .tos-group label {
+            display: inline;
+            margin-left: 5px;
+            color: var(--text);
+        }
+        .tos-group a {
+            color: var(--link);
+            text-decoration: none;
+        }
+        .tos-group a:hover {
+            color: var(--link-hover);
+            text-decoration: underline;
+        }
+        .signup-btn {
+            padding: 0.75rem 1.5rem;
+            background-color: var(--button-bg);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px var(--shadow);
+            min-width: 48px;
+            min-height: 48px;
+            z-index: 30;
+            pointer-events: auto;
+            width: 100%;
+        }
+        .signup-btn:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+        .signup-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #login-message {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+        .info-message {
+            color: var(--info-message);
+            background: #e6f0ff;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .error-message {
+            color: var(--error-message);
+            background: #fff1f0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        /* Admin Link Styles */
+        .admin-link {
+            text-align: center;
+            margin-top: 10px;
+        }
+        .admin-link a {
+            color: var(--container-bg);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+        .admin-link a:hover {
+            color: var(--link);
+            text-decoration: underline;
+        }
+
+        /* Notification Styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            z-index: 2000;
+            transform: translateY(-10px);
+            color: #fff;
+        }
+        .notification.success {
+            background-color: var(--notification-success);
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .notification.error {
+            background-color: var(--notification-error);
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .notification.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Footer Styles */
+        .site-footer {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--footer-bg);
+            color: var(--footer-text);
+            position: relative;
+            bottom: 0;
+            width: 100%;
+            box-shadow: 0 -2px 8px var(--shadow);
+            z-index: 30;
+        }
+        .footer-email, .footer-message {
+            margin: 0.75rem 0;
+            font-size: 1rem;
+        }
+        .site-footer a {
+            color: var(--footer-text);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .site-footer a:hover {
+            color: #f0f8ff;
+            text-decoration: underline;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .signup-container {
+                padding: 1rem;
+                margin: 120px auto 0;
+            }
+            .site-footer {
+                padding: 1rem;
+            }
+        }
+        @media (max-width: 500px) {
+            .signup-container h2 {
+                font-size: 1.75rem;
+            }
+            .signup-btn {
+                padding: 0.5rem 1rem;
+            }
+            .signup-container {
+                margin: 100px auto 0;
+            }
         }
     </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" id="header-logo">
-            <a href="/" class="header-title-link">
-                <h1 class="header-title">Teacher Tally</h1>
-            </a>
-            <div class="header-buttons desktop-only">
-                <button id="desktop-auth-btn" class="admin-btn">Loading...</button>
-            </div>
-            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
-            <div class="dropdown-menu" id="dropdown-menu">
-                <button id="mobile-auth-btn" class="header-btn">Loading...</button>
-            </div>
+    <!-- Header -->
+    <div id="header-placeholder"></div>
+
+    <!-- Main Content -->
+    <main>
+        <div class="signup-container">
+            <h2>Sign Up</h2>
+            <form id="signupForm" class="signup-form">
+                <input type="hidden" id="csrf-token" name="_csrf">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter username">
+                    <div id="usernameFeedback" class="feedback"></div>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required placeholder="e.g., your.email@example.com">
+                    <div class="privacy-note">Your email will be kept strictly confidential and never shared.</div>
+                    <div id="emailFeedback" class="feedback"></div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter password">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Confirm password">
+                    <div id="passwordFeedback" class="feedback"></div>
+                </div>
+                <div class="tos-group">
+                    <input type="checkbox" id="tosAgree" name="tosAgree" required>
+                    <label for="tosAgree">I agree to the <a href="/pages/tos.html" target="_blank">Terms of Service</a></label>
+                </div>
+                <button type="submit" id="signupButton" class="signup-btn" disabled>Sign Up</button>
+            </form>
+            <p id="login-message"></p>
         </div>
-    </header>
-    <div class="signup-container">
-        <h2>Sign Up</h2>
-        <form id="signupForm" class="signup-form">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required>
-                <div id="usernameFeedback" class="feedback"></div>
-            </div>
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" required>
-                <div class="privacy-note">Your email will be kept strictly confidential and never shared.</div>
-                <div id="emailFeedback" class="feedback"></div>
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <div class="form-group">
-                <label for="confirmPassword">Confirm Password</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required>
-                <div id="passwordFeedback" class="feedback"></div>
-            </div>
-            <button type="submit" id="signupButton" class="signup-btn" disabled>Sign Up</button>
-        </form>
-    </div>
-    <footer id="footer" class="signup-footer">
-        <p id="footer-email" class="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
-        <p id="footer-message" class="footer-message">Welcome to Teacher Tally!</p>
+        <div id="notification" class="notification"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer id="footer" class="site-footer">
+        <p class="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p class="footer-message">Welcome to Teacher Tally!</p>
     </footer>
+
+    <!-- Scripts -->
     <script src="/pages/auth/signup.js"></script>
     <script src="/public/footer.js" defer></script>
-    <script src="/public/header.js" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             fetch('/pages/components/header.html')
@@ -119,7 +385,31 @@
                     }
                 });
             }
+
+            const signupForm = document.getElementById('signupForm');
+            const signupButton = document.getElementById('signupButton');
+            const tosCheckbox = document.getElementById('tosAgree');
+            const inputs = signupForm.querySelectorAll('input:not([type="checkbox"])');
+
+            function checkFormValidity() {
+                const allInputsFilled = Array.from(inputs).every(input => input.value.trim() !== '');
+                const passwordsMatch = document.getElementById('password').value === 
+                                    document.getElementById('confirmPassword').value;
+                const tosChecked = tosCheckbox.checked;
+                
+                signupButton.disabled = !(allInputsFilled && passwordsMatch && tosChecked);
+            }
+
+            tosCheckbox.addEventListener('click', (e) => {
+                window.open('/pages/tos.html', '_blank');
+                checkFormValidity();
+            });
+
+            inputs.forEach(input => input.addEventListener('input', checkFormValidity));
+
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
         });
     </script>
-</body>
-</html>
+</head>
+<body>

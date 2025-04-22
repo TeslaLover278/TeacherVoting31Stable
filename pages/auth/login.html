@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,135 +7,290 @@
     <title>User Login - Teacher Tally</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" type="image/x-icon" href="/public/favicon.ico">
+    <script>
+        // Apply theme from localStorage, default to light (matches admin-login.html)
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
     <style>
-        /* Flexbox for full height */
+        :root[data-theme="light"] {
+            --background: #fff;
+            --text: #1a1a1a; /* Improved readability */
+            --heading: #0d0d0d; /* Improved readability */
+            --link: #00B7D1;
+            --link-hover: #008FA1;
+            --input-border: #ccc;
+            --container-bg: #fff;
+            --container-border: #888;
+            --button-bg: #00B7D1;
+            --button-hover: #0056b3;
+            --footer-bg: linear-gradient(135deg, #00B7D1 0%, #00A3C4 100%);
+            --footer-text: #fff;
+            --info-message: #28a745;
+            --error-message: #dc3545;
+            --notification-success: #28a745;
+            --notification-error: #dc3545;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --shadow-hover: rgba(0, 0, 0, 0.25);
+            --card-bg: #fff; /* Added from admin-login.html */
+        }
+        :root[data-theme="dark"] {
+            --background: #1a1a1a;
+            --text: #ddd;
+            --heading: #fff;
+            --link: #4ECDC4;
+            --link-hover: #45B7AF;
+            --input-border: #555;
+            --container-bg: #2a2a2a;
+            --container-border: #666;
+            --button-bg: #4ECDC4;
+            --button-hover: #3BA8A1;
+            --footer-bg: linear-gradient(135deg, #028a9e 0%, #027a8e 100%);
+            --footer-text: #e0e0e0;
+            --info-message: #34c759;
+            --error-message: #e63946;
+            --notification-success: #34c759;
+            --notification-error: #e63946;
+            --shadow: rgba(255, 255, 255, 0.1);
+            --card-bg: #2a2a2a; /* Added from admin-login.html */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
+            overflow-x: hidden;
         }
         body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            background-color: var(--background);
+            color: var(--text);
             display: flex;
             flex-direction: column;
             min-height: 100vh;
         }
         main {
             flex: 1 0 auto;
+            display: flex;
+            justify-content: center;
         }
 
-        /* Login Form Styles */
-        .login-container {
-            max-width: 400px;
-            margin: 50px auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background: #fff;
+        #header-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 50;
         }
+
+        .login-container {
+            background: var(--card-bg);
+            max-width: 400px;
+            width: 100%;
+            padding: 20px;
+            border-radius: 5%;
+            border: 1px solid var(--container-border);
+            z-index: 30;
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+            margin: 150px auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .login-container:hover {
+            box-shadow: 0 8px 20px var(--shadow-hover, var(--shadow));
+            transform: translateY(-5px);
+        }
+        .login-container h2 {
+            color: var(--heading);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.25rem;
+            font-weight: 600;
+            text-shadow: 1px 1px 3px var(--shadow);
+        }
+
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 1rem;
+            position: relative;
         }
         .form-group label {
             display: block;
-            margin-bottom: 5px;
-            color: #333;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--link);
         }
         .form-group input {
             width: 100%;
-            padding: 8px;
+            padding: 0.75rem;
+            border: 2px solid var(--input-border);
+            border-radius: 5%;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            background: var(--container-bg);
+            color: var(--text);
             box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        }
+        .form-group input:focus {
+            border-color: var(--link-hover);
+            box-shadow: 0 0 5px var(--shadow);
+            outline: none;
         }
         .submit-btn {
-            width: 100%;
-            padding: 10px;
-            background: #00B7D1;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--button-bg);
             color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 5%;
             cursor: pointer;
-            transition: background 0.2s;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px var(--shadow);
+            min-width: 48px;
+            min-height: 48px;
+            z-index: 30;
+            pointer-events: auto;
+            width: 100%;
+            box-sizing: border-box;
         }
         .submit-btn:hover {
-            background: #0056b3;
+            background-color: var(--button-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
         }
-        #login-message {
-            margin-top: 10px;
-            text-align: center;
-        }
-        .info-message { color: #28a745; }
-        .error-message { color: #dc3545; }
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            border-radius: 5px;
-            color: #fff;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .notification.success { background: #28a745; }
-        .notification.error { background: #dc3545; }
 
-        /* Admin Link Styles */
+        #login-message {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+        .info-message {
+            color: var(--info-message);
+            background: #e6f0ff;
+            padding: 10px;
+            border-radius: 5%;
+        }
+        .error-message {
+            color: var(--error-message);
+            background: #fff1f0;
+            padding: 10px;
+            border-radius: 5%;
+        }
         .admin-link {
             text-align: center;
             margin-top: 10px;
         }
         .admin-link a {
-            color: #fff; /* Matches background to blend in */
+            color: var(--card-bg);
             text-decoration: none;
             font-size: 14px;
-            transition: color 0.2s, text-decoration 0.2s;
+            transition: color 0.3s ease;
         }
         .admin-link a:hover {
-            color: #00B7D1; /* Highlights on hover */
+            color: var(--link);
             text-decoration: underline;
         }
 
-        /* Footer Styles */
-        .site-footer {
-            background: #00B7D1;
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 5%;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            z-index: 2000;
+            transform: translateY(-10px);
             color: #fff;
-            padding: 10px;
-            text-align: center;
-            flex-shrink: 0;
-            width: 100%;
+            opacity: 0;
         }
-        .site-footer a {
-            color: #00B7D1;
-            text-decoration: none;
+        .notification.success {
+    background: linear-gradient(90deg, #28a745 0%, #34d058 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 12px rgba(40, 167, 69, 0.12);
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    font-weight: 500;
+    border-radius: 12px;
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: fadeInSlideDown 0.5s forwards;
+}
+@keyframes fadeInSlideDown {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+        .notification.error {
+            background-color: var(--notification-error);
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
-        .site-footer a:hover {
-            color: #0056b3;
+        .notification.active {
+            transform: translateY(0);
+            opacity: 1;
         }
 
-        /* Responsive Design */
+        .site-footer {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--footer-bg);
+            color: var(--footer-text);
+            position: relative;
+            bottom: 0;
+            width: 100%;
+            box-shadow: 0 -2px 8px var(--shadow);
+            z-index: 30;
+        }
+        .footer-email, .footer-message {
+            margin: 0.75rem 0;
+            font-size: 1rem;
+        }
+        .site-footer a {
+            color: var(--footer-text);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .site-footer a:hover {
+            color: #f0f8ff;
+            text-decoration: underline;
+        }
+
         @media (max-width: 768px) {
             .login-container {
-                margin: 20px 15px;
+                padding: 1rem;
+                margin: 120px auto 0;
+            }
+            .site-footer {
+                padding: 1rem;
+            }
+        }
+        @media (max-width: 500px) {
+            .login-container h2 {
+                font-size: 1.75rem;
+            }
+            .submit-btn {
+                padding: 0.5rem 1rem;
+            }
+            .login-container {
+                margin: 100px auto 0;
             }
         }
     </style>
 </head>
 <body>
-    <header class="site-header">
-        <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" id="header-logo">
-            <a href="/" class="header-title-link">
-                <h1 class="header-title">Teacher Tally</h1>
-            </a>
-            <div class="header-buttons desktop-only">
-                <button id="desktop-auth-btn" class="admin-btn">Loading...</button>
-            </div>
-            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
-            <div class="dropdown-menu" id="dropdown-menu">
-                <button id="mobile-auth-btn" class="header-btn">Loading...</button>
-            </div>
-        </div>
-    </header>
+    <div id="header-placeholder"></div>
 
     <main>
         <div class="login-container">
@@ -157,51 +312,150 @@
                 <a href="/pages/admin/login.html">Admin Login</a>
             </div>
         </div>
-
         <div id="notification" class="notification"></div>
     </main>
 
     <footer id="footer" class="site-footer">
-        <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
-        <p id="footer-message">Welcome to Teacher Tally!</p>
+        <p class="footer-email"><a href="/cdn-cgi/l/email-protection#29484d444047694c51484459454c074a4644"><span class="__cf_email__" data-cfemail="b5d4d1d8dcdbf5d0cdd4d8c5d9d09bd6dad8">[email protected]</span></a></p>
+        <p class="footer-message">Welcome to Teacher Tally!</p>
     </footer>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
     <script src="/public/footer.js" defer></script>
     <script src="/pages/auth/login.js" defer></script>
-    <script src="/public/header.js" defer></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch('/pages/components/header.html')
-                .then(response => {
-                    if (!response.ok) throw new Error('Failed to load header HTML');
-                    return response.text();
-                })
-                .then(html => {
-                    document.getElementById('header-placeholder').innerHTML = html;
-                    const script = document.createElement('script');
-                    script.src = '/public/header.js';
-                    script.onload = () => {
-                        if (typeof initializeHeader === 'function') {
-                            initializeHeader();
-                        } else {
-                            console.error('initializeHeader function not found');
-                        }
-                    };
-                    script.onerror = () => console.error('Failed to load header.js');
-                    document.body.appendChild(script);
-                })
-                .catch(err => console.error('Error loading header:', err));
-
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', () => {
-                    if (typeof window.logout === 'function') {
-                        window.logout();
-                    } else {
-                        console.warn('Logout function not yet available');
-                    }
-                });
+        document.addEventListener('DOMContentLoaded', async () => {
+    // Check user authentication status before showing the login form
+    try {
+        const response = await fetch('/api/user', { credentials: 'include' });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.role === 'admin') {
+                showRedirectMessage('You are already logged in as an admin. Redirecting to admin dashboard...');
+                setTimeout(() => window.location.href = '/pages/admin/login.html', 1800);
+                return;
+            } else if (data.role === 'user') {
+                showRedirectMessage('You are already logged in as a user. Redirecting to user dashboard...');
+                setTimeout(() => window.location.href = '/pages/user/user-dashboard.html', 1800);
+                return;
             }
+        }
+    } catch (err) {
+        // Not logged in or error, continue to show login form
+    }
+
+            // Load header dynamically
+            try {
+                const response = await fetch('/pages/components/header.html');
+                if (!response.ok) throw new Error('Failed to load header');
+                const html = await response.text();
+                document.getElementById('header-placeholder').innerHTML = html;
+
+                const script = document.createElement('script');
+                script.src = '/public/header.js';
+                script.onload = () => {
+                    if (typeof initializeHeader === 'function') {
+                        initializeHeader();
+                    } else {
+                        console.error('initializeHeader function not found');
+                    }
+                };
+                script.onerror = () => console.error('Failed to load header.js');
+                document.body.appendChild(script);
+            } catch (err) {
+                console.error('Error loading header:', err);
+            }
+
+            // Fetch CSRF token
+            let csrfToken;
+            try {
+                csrfToken = await fetchCsrfToken();
+            } catch (error) {
+                return; // Exit if CSRF fetch fails
+            }
+
+            // Login form submission
+            const loginForm = document.getElementById('login-form');
+            const loginMessage = document.getElementById('login-message');
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(loginForm);
+                const username = formData.get('username')?.trim();
+                const password = formData.get('password');
+
+                if (!username || !password) {
+                    showNotification('Username and password are required', 'error');
+                    loginMessage.textContent = 'Please fill out all fields';
+                    loginMessage.className = 'error-message';
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/users/login', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken
+                        },
+                        body: JSON.stringify({ username, password, _csrf: csrfToken })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+    // Clear any previous error
+    loginMessage.textContent = '';
+    showNotification('Login successful!', 'success');
+    loginMessage.textContent = 'Login successful! Redirecting...';
+    loginMessage.className = 'info-message';
+    loginMessage.style.color = 'var(--info-message)'; // green
+    setTimeout(() => window.location.href = '/pages/user/user-dashboard.html', 1000);
+} else {
+    showNotification(`Login failed: ${data.error || 'Unknown error'}`, 'error');
+    loginMessage.textContent = data.error || 'Login failed';
+    loginMessage.className = 'error-message';
+    loginMessage.style.color = 'var(--error-message)'; // red
+}
+                } catch (error) {
+                    console.error('Client - Login error:', error.message);
+                    showNotification('Server error during login', 'error');
+                    loginMessage.textContent = 'Server error during login';
+                    loginMessage.className = 'error-message';
+                }
+            });
+
+            // Apply theme from localStorage
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
         });
+
+        async function fetchCsrfToken() {
+            try {
+                const response = await fetch('/api/csrf-token', { credentials: 'include' });
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                const data = await response.json();
+
+                document.querySelector('meta[name="csrf-token"]').setAttribute('content', data.csrfToken);
+                document.getElementById('csrf-token').value = data.csrfToken;
+
+                return data.csrfToken;
+            } catch (error) {
+                console.error('Client - Error fetching CSRF token:', error.message);
+                showNotification('Failed to load CSRF token. Please refresh.', 'error');
+                throw error;
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} active`;
+            setTimeout(() => notification.className = `notification ${type}`, 3000);
+        }
     </script>
+    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92cd58b89f762588',t:'MTc0NDA2ODk4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'930f23c85d8553c3',t:'MTc0NDc1ODg3Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>

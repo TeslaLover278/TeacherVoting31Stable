@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service - Teacher Tally</title>
+    <link rel="stylesheet" href="/public/styles.css">
+    <style>
+        :root[data-theme="light"] {
+            --background: #fff;
+            --text: #333;
+            --heading: #000;
+            --link: #00B7D1;
+            --link-hover: #008FA1;
+            --footer-bg: #f8f8f8;
+            --footer-text: #555;
+        }
+        :root[data-theme="dark"] {
+            --background: #1a1a1a;
+            --text: #ddd;
+            --heading: #fff;
+            --link: #4ECDC4;
+            --link-hover: #45B7AF;
+            --footer-bg: #2a2a2a;
+            --footer-text: #bbb;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: var(--background);
+            color: var(--text);
+        }
+        #header-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 50;
+        }
+        .tos-container {
+            flex: 1;
+            max-width: 800px;
+            margin: 120px auto 100px auto;
+            padding: 20px;
+        }
+        .tos-container h1 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--heading);
+        }
+        .tos-container h2 {
+            font-size: 1.25rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--heading);
+        }
+        .tos-container p, .tos-container ul {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: var(--text);
+        }
+        .tos-container ul {
+            padding-left: 20px;
+        }
+        .tos-container li {
+            margin-bottom: 0.5rem;
+        }
+        .tos-container a {
+            color: var(--link);
+            text-decoration: none;
+        }
+        .tos-container a:hover {
+            color: var(--link-hover);
+            text-decoration: underline;
+        }
+        .return-link {
+            display: block;
+            margin-top: 1.5rem;
+            font-size: 1rem;
+            text-align: center;
+            color: var(--link);
+        }
+        .return-link:hover {
+            color: var(--link-hover);
+            text-decoration: underline;
+        }
+        .site-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 50;
+            text-align: center;
+            padding: 1rem;
+            background: var(--footer-bg);
+            color: var(--footer-text);
+        }
+        .site-footer a {
+            color: var(--link);
+            text-decoration: none;
+        }
+        .site-footer a:hover {
+            color: var(--link-hover);
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .tos-container {
+                margin-top: 120px;
+                padding: 15px;
+            }
+            .tos-container h1 {
+                font-size: 1.75rem;
+            }
+            .tos-container h2 {
+                font-size: 1.1rem;
+            }
+            .tos-container p, .tos-container ul {
+                font-size: 0.95rem;
+            }
+            .return-link {
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tos-container {
+                margin-top: 110px;
+                padding: 10px;
+            }
+            .tos-container h1 {
+                font-size: 1.5rem;
+            }
+            .tos-container h2 {
+                font-size: 1rem;
+            }
+            .tos-container p, .tos-container ul {
+                font-size: 0.9rem;
+            }
+            .return-link {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header-placeholder"></div>
+    <div class="tos-container">
+        <h1>Terms of Service</h1>
+        
+        <h2>1. Purpose of Teacher Tally</h2>
+        <p>Teacher Tally is an independent website created to allow students to post anonymous, user-generated feedback about their academic experiences with teachers, classes, and the school. It is intended for informational and entertainment purposes only.</p>
+        <p>The creators of Teacher Tally are not affiliated with, endorsed by, or operating under the authority of Grassfield High School or Chesapeake Public Schools.</p>
+
+        <h2>2. User Responsibility & Content Disclaimer</h2>
+        <p>All content posted on Teacher Tally is created by users. Users must acknowledge and agree that:</p>
+        <ul>
+            <li>Users are solely responsible for the content that they post. Teacher Tally takes no responsibility for what users post.</li>
+            <li>The opinions expressed on Teacher Tally are those of individual users and do not represent the views of Teacher Tally, its creators, or administrators.</li>
+            <li>The creators and administrators do not guarantee the accuracy, reliability, or legitimacy of any user-generated content.</li>
+            <li>Teacher Tally does not endorse, support, or verify any claims made by users about teachers, classes, or institutions.</li>
+        </ul>
+
+        <h2>3. Moderation & Content Guidelines</h2>
+        <p>Teacher Tally uses automated content filters and manual moderation to attempt to maintain a respectful and constructive environment. Moderation may not be real-time, accurate, or exhaustive.</p>
+        <p>Users may not post content that includes:</p>
+        <ul>
+            <li>Hate speech, threats, or harassment</li>
+            <li>Defamatory, libelous, or knowingly false statements</li>
+            <li>Personal or private information (including doxxing)</li>
+            <li>Obscene, sexual, or otherwise inappropriate content as determined by the student handbook</li>
+            <li>Commercial spam or irrelevant material</li>
+        </ul>
+        <p>Teacher Tally reserves the right to remove content or restrict accounts at its admins sole discretion.</p>
+
+        <h2>4. Limitation of Liability</h2>
+        <p>To the fullest extent permitted by law, Teacher Tally and its creators shall not be held liable for:</p>
+        <ul>
+            <li>Any damages, losses, or consequences resulting from the use of Teacher Tally or its affiliates</li>
+            <li>Any content posted by users, whether or not it violates these Terms</li>
+            <li>Disciplinary or legal action taken by Grassfield High School or any third party based on content posted on Teacher Tally</li>
+        </ul>
+        <p>Users use Teacher Tally entirely at their own risk.</p>
+
+        <h2>5. School Handbook & Institutional Policies</h2>
+        <p>Teacher Tally is operated independently from any school system including CPS or Grassfield. It is not governed by Grassfield High School’s handbook or code of conduct, and its creators do not represent the school in any capacity.</p>
+        <p>Teacher Tally is not responsible for enforcing or ensuring compliance with school rules. Users are individually responsible for adhering to their own school’s policies.</p>
+
+        <h2>6. User Conduct</h2>
+        <p>By using Teacher Tally, users agree not to:</p>
+        <ul>
+            <li>Impersonate any person or entity</li>
+            <li>Violate any applicable local, state, or federal laws</li>
+            <li>Use Teacher Tally to initiate bullying, harassment, or targeted attacks</li>
+            <li>Attempt to bypass content moderation or abuse anonymous posting features</li>
+        </ul>
+
+        <h2>7. Rights and Ownership</h2>
+        <p>All content remains the intellectual property of its respective authors. By submitting content to Teacher Tally, users grant us a non-exclusive, royalty-free, worldwide license to display and archive the users submission.</p>
+        <p>We may retain or remove content at our discretion.</p>
+
+        <h2>8. Termination of Access</h2>
+        <p>Teacher Tally may suspend or terminate users access at any time, without notice, for any conduct that violates these Terms or is harmful to other users or the platform at the sole discretion of the site admin. This includes, but is not limited to:</p>
+        <ul>
+            <li>Accounts registered with fake or invalid email addresses, which will be terminated upon detection.</li>
+            <li>Multiple infractions of these Terms, which may result in the blocking of the user’s IP address to prevent further access.</li>
+        </ul>
+
+        <h2>9. Privacy</h2>
+        <p>Teacher Tally collects minimal user data. IP addresses may be logged temporarily for moderation or abuse-prevention purposes. Teacher Tally also stores minimal cookies. No personal information is sold or shared with third parties.</p>
+        <p>By signing up, you agree to receive email updates from Teacher Tally regarding your account, platform changes, or other relevant information. You may opt out of non-essential communications by emailing <a href="mailto:accounts@teachertally.com">accounts@teachertally.com</a>.</p>
+        <p>For any privacy-related questions, contact us at: <a href="mailto:admin@teachertally.com">admin@teachertally.com</a></p>
+
+        <h2>10. Changes to These Terms</h2>
+        <p>We reserve the right to update or revise these Terms at any time. Continued use of Teacher Tally after changes constitutes acceptance of the updated Terms.</p>
+
+        <h2>11. Contact Information</h2>
+        <p>For questions, feedback, or legal concerns, please contact:</p>
+        <p><a href="mailto:admin@teachertally.com">admin@teachertally.com</a></p>
+
+        <a href="/pages/auth/signup.html" class="return-link">Return to Signup Page</a>
+    </div>
+    <footer id="footer" class="site-footer">
+        <p id="footer-email" class="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-message" class="footer-message">Welcome to Teacher Tally!</p>
+    </footer>
+    <script src="/public/footer.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/pages/components/header.html')
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to load header HTML');
+                    return response.text();
+                })
+                .then(html => {
+                    document.getElementById('header-placeholder').innerHTML = html;
+                    const script = document.createElement('script');
+                    script.src = '/public/header.js';
+                    script.onload = () => {
+                        if (typeof initializeHeader === 'function') {
+                            initializeHeader();
+                        } else {
+                            console.error('initializeHeader function not found');
+                        }
+                    };
+                    script.onerror = () => console.error('Failed to load header.js');
+                    document.body.appendChild(script);
+                })
+                .catch(err => console.error('Error loading header:', err));
+
+            // Apply theme from localStorage or server
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        });
+    </script>
+</body>
+</html>

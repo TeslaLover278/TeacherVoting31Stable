@@ -55,7 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             csrfToken = data.csrfToken;
             console.log('Client - CSRF token fetched:', csrfToken);
-            await Promise.all([checkAdminStatus(), loadFooterSettings()]);
+            // Check user status and load footer after CSRF token is fetched
+            await checkUserStatus();
+            await loadFooterSettings();
+            return csrfToken;
         } catch (error) {
             console.error(`Client - CSRF fetch attempt ${attempt} failed:`, error.message);
             if (attempt < MAX_RETRIES) {
@@ -64,10 +67,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return fetchCsrfToken(attempt + 1);
             }
             showMessage(`Security setup failed: ${error.message}. Please refresh.`, 'error');
+            return null;
         }
     }
 
-    fetchCsrfToken();
+    // Call fetchCsrfToken and handle it asynchronously
+    fetchCsrfToken().catch(error => {
+        console.error('Client - Failed to initialize CSRF token:', error.message);
+    });
 
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
@@ -86,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            console.log('Client - Submitting login with:', { username }); // Debug log
+            console.log('Client - Submitting login with:', { username });
 
             try {
                 const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/login`, {
@@ -104,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     console.log('Client - Login response:', data);
                     showMessage(data.message || 'Login successful!', 'success');
-                    const redirectUrl = data.isAdmin ? '/pages/admin/dashboard.html' : '/pages/user/dashboard.html';
+                    const redirectUrl = data.isAdmin ? '/pages/admin/admin-dashboard.html' : '/pages/user/user-dashboard.html';
                     console.log('Client - Redirecting to:', redirectUrl);
                     setTimeout(() => window.location.href = redirectUrl, 1000);
                 } else {
@@ -123,22 +130,36 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage('Login form not found. Check page structure.', 'error');
     }
 
-    async function checkAdminStatus() {
-        if (window.location.pathname.includes('/dashboard.html')) return;
+    async function checkUserStatus() {
+        // Skip if already on a dashboard
+        if (window.location.pathname.includes('/dashboard.html')) {
+            console.log('Client - Already on a dashboard, no redirect needed');
+            return;
+        }
 
         try {
-            const response = await fetchWithTimeout(`${API_BASE_URL}/api/admin/verify`, {
+            const response = await fetchWithTimeout(`${API_BASE_URL}/api/user`, {
                 credentials: 'include',
             });
 
             if (response.ok) {
-                console.log('Client - Admin authenticated, redirecting...');
-                window.location.href = '/pages/admin/dashboard.html';
+                const data = await response.json();
+                if (data.role === 'user') {
+                    console.log('Client - User authenticated as non-admin, redirecting to user dashboard...');
+                    showMessage('You are already logged in. Redirecting to dashboard...', 'success');
+                    setTimeout(() => window.location.href = '/pages/user/user-dashboard.html', 1000);
+                } else if (data.role === 'admin') {
+                    console.log('Client - User authenticated as admin, staying on login page');
+                    // Admins stay on the login page (or redirect elsewhere if desired)
+                } else {
+                    console.log('Client - Unknown user role, staying on login page');
+                }
             } else {
-                console.log('Client - Not an admin or not authenticated');
+                console.log('Client - User not authenticated, staying on login page');
             }
         } catch (error) {
-            console.error('Client - Error verifying admin status:', error.message);
+            console.error('Client - Error verifying user status:', error.message);
+            // Stay on login page if verification fails
         }
     }
 
@@ -176,12 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function sanitizeInput(input) {
-        return input ? String(input).replace(/[&<>"']/g, match => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#x27;'
-        })[match]) : '';
+        return window.DOMPurify ? DOMPurify.sanitize(input || '') : input || '';
     }
 });

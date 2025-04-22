@@ -4,12 +4,454 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="">
-    <title>Admin Dashboard - Teacher Tally</title>
+    <title>User Dashboard - Teacher Tally</title>
     <link rel="stylesheet" href="/public/styles.css">
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Header Styling (inserted from previous files) */
+        .site-header {
+            background: var(--header-bg, #f8f9fa);
+            padding: 1rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .logo {
+            height: 40px;
+            width: auto;
+        }
+        .header-title-link {
+            text-decoration: none;
+            color: inherit;
+        }
+        .header-title {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text, #333);
+        }
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .desktop-only {
+            display: block;
+        }
+        .admin-btn, .header-btn {
+            padding: 8px 16px;
+            background: var(--button-bg, #00B7D1);
+            color: var(--button-text, white);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .admin-btn:hover, .header-btn:hover {
+            background: var(--button-hover-bg, #0056b3);
+        }
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text, #333);
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--card-bg, white);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            padding: 10px;
+            z-index: 1001;
+        }
+        .dropdown-menu.active {
+            display: block;
+        }
+        @media (max-width: 768px) {
+            .desktop-only {
+                display: none;
+            }
+            .mobile-menu-toggle {
+                display: block;
+            }
+            .header-content {
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Other Inline Styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--background, #f0f2f5);
+            color: var(--text, #333);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .centered-container {
+            max-width: 1200px;
+            margin: 80px auto 20px;
+            padding: 20px;
+            flex: 1 0 auto;
+        }
+        .content-container {
+            background: var(--card-bg, white);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .tab-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: var(--button-bg, #e9ecef);
+            color: var(--text, #333);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .tab-btn.active {
+            background: var(--button-bg, #00B7D1);
+            color: var(--button-text, white);
+        }
+        .tab-btn:hover {
+            background: var(--button-hover-bg, #0056b3);
+            color: var(--button-text, white);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .admin-section {
+            margin-bottom: 20px;
+        }
+        .section-toggle {
+            font-size: 1.5rem;
+            margin: 0 0 10px;
+            cursor: pointer;
+        }
+        .section-content {
+            padding: 10px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid var(--border, #ccc);
+            border-radius: 4px;
+            width: 200px;
+        }
+        .sort-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .sort-select {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid var(--border, #ccc);
+            border-radius: 4px;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .filter-group label {
+            font-size: 14px;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        .admin-dashboard {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg, white);
+        }
+        .admin-table th, .admin-table td {
+            padding: 10px;
+            border: 1px solid var(--border, #ddd);
+            text-align: left;
+        }
+        .admin-table th {
+            background: var(--header-bg, #f8f9fa);
+            font-weight: bold;
+        }
+        .info-message {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid var(--border, #ccc);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .form-group input[type="file"] {
+            padding: 3px;
+        }
+        .tooltip {
+            font-size: 12px;
+            color: var(--text-muted, #666);
+            display: block;
+            margin-top: 2px;
+        }
+        .schedule-edit {
+            margin-bottom: 15px;
+        }
+        .schedule-block {
+            margin-bottom: 10px;
+        }
+        .schedule-block label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .schedule-block input {
+            width: 45%;
+            margin-right: 5%;
+            display: inline-block;
+        }
+        .schedule-block input:last-child {
+            margin-right: 0;
+        }
+        .submit-btn, .cancel-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .submit-btn {
+            background: var(--button-bg, #00B7D1);
+            color: var(--button-text, white);
+        }
+        .submit-btn:hover {
+            background: var(--button-hover-bg, #0056b3);
+        }
+.admin-table th.spotlight, .admin-table td.spotlight {
+    width: 80px;
+    text-align: center;
+}
+.toggle-spotlight-btn {
+    padding: 5px 10px;
+    background: var(--button-bg, #00B7D1);
+    color: var(--button-text, white);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.toggle-spotlight-btn:hover {
+    background: var(--button-hover-bg, #0056b3);
+}
+.toggle-spotlight-btn.unset {
+    background: var(--button-cancel-bg, #6c757d);
+}
+.toggle-spotlight-btn.unset:hover {
+    background: var(--button-cancel-hover-bg, #5a6268);
+}
+#current-spotlight {
+    padding: 10px;
+}
+        .cancel-btn {
+            background: var(--button-cancel-bg, #6c757d);
+            color: var(--button-text, white);
+        }
+        .cancel-btn:hover {
+            background: var(--button-cancel-hover-bg, #5a6268);
+        }
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--border, #ccc);
+            transition: 0.4s;
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background: var(--card-bg, white);
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .slider {
+            background: var(--button-bg, #00B7D1);
+        }
+        .toggle-switch input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+        .toggle-status {
+            font-size: 14px;
+        }
+        .logout-btn {
+            padding: 8px 16px;
+            background: var(--button-danger-bg, #dc3545);
+            color: var(--button-text, white);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .logout-btn:hover {
+            background: var(--button-danger-hover-bg, #c82333);
+        }
+        .site-footer {
+            background: var(--footer-bg, #f8f9fa);
+            padding: 1rem;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .footer-email, .footer-message {
+            margin: 5px 0;
+            font-size: 14px;
+            color: var(--text, #333);
+        }
+        .footer-email a {
+            color: var(--link, #00B7D1);
+            text-decoration: none;
+        }
+        .footer-email a:hover {
+            text-decoration: underline;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: var(--button-text, white);
+            z-index: 1002;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .notification.success {
+            background: var(--notification-success-bg, #28a745);
+        }
+        .notification.error {
+            background: var(--notification-error-bg, #dc3545);
+        }
+        .chart-grid {
+            display: grid;
+            gap: 20px;
+        }
+    </style>
 </head>
-<body>
+<body onload="checkAdminAuth()">
+<script>
+function checkAdminAuth() {
+    fetch('/api/user', { credentials: 'include' })
+        .then(response => {
+            if (!response.ok) {
+                showRedirectMessage('You must be logged in as an admin to access the dashboard. Redirecting to admin login...');
+                setTimeout(() => window.location.href = '/pages/admin/login.html', 1800);
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data || data.role !== 'admin') {
+                showRedirectMessage('You must be logged in as an admin to access the dashboard. Redirecting to admin login...');
+                setTimeout(() => window.location.href = '/pages/admin/login.html', 1800);
+            }
+        })
+        .catch(() => {
+            showRedirectMessage('You must be logged in as an admin to access the dashboard. Redirecting to admin login...');
+            setTimeout(() => window.location.href = '/pages/admin/login.html', 1800);
+        });
+
+function showRedirectMessage(msg) {
+    let div = document.createElement('div');
+    div.textContent = msg;
+    div.style.position = 'fixed';
+    div.style.top = '20px';
+    div.style.left = '50%';
+    div.style.transform = 'translateX(-50%)';
+    div.style.background = '#ffc107';
+    div.style.color = '#222';
+    div.style.padding = '12px 24px';
+    div.style.borderRadius = '8px';
+    div.style.fontWeight = 'bold';
+    div.style.zIndex = '9999';
+    document.body.appendChild(div);
+}
+
+}
+</script>
     <header class="site-header">
         <div class="header-content">
             <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" id="header-logo">
@@ -31,6 +473,7 @@
             <!-- Tab Navigation -->
             <nav id="tab-nav" class="tab-nav">
                 <button class="tab-btn active" data-tab="teachers">Teachers</button>
+                <button class="tab-btn" data-tab="spotlight">Spotlight</button>
                 <button class="tab-btn" data-tab="add-teacher">Add New Teacher</button>
                 <button class="tab-btn" data-tab="votes">Votes</button>
                 <button class="tab-btn" data-tab="proposals">Proposals</button>
@@ -44,55 +487,69 @@
             </nav>
 
             <!-- Teachers Tab (Manage Teachers) -->
-            <div id="teachers" class="tab-content active">
+            <!-- Spotlight Tab -->
+            <div id="spotlight" class="tab-content">
                 <div class="admin-section">
-                    <h2 class="section-toggle" data-section="Manage Teachers">Manage Teachers</h2>
+                    <h2>Teacher Spotlight</h2>
                     <div class="section-content">
-                        <div class="controls">
-                            <input type="text" id="teacher-search" class="search-input" placeholder="Search by ID or Name" aria-label="Search teachers">
-                            <div class="sort-options">
-                                <select id="teachers-per-page" class="sort-select" aria-label="Teachers per page">
-                                    <option value="5">5 per page</option>
-                                    <option value="10" selected>10 per page</option>
-                                    <option value="20">20 per page</option>
-                                </select>
-                                <select id="teacher-sort" class="sort-select" aria-label="Sort teachers by">
-                                    <option value="id">Sort by ID</option>
-                                    <option value="name">Sort by Name</option>
-                                    <option value="tags">Sort by Tags</option>
-                                    <option value="email">Sort by Email</option>
-                                </select>
-                                <select id="teacher-sort-direction" class="sort-select" aria-label="Sort direction">
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
-                                </select>
-                            </div>
+                        <label for="spotlight-dropdown">Select Spotlight Teacher:</label>
+                        <select id="spotlight-dropdown"></select>
+                        <button id="set-spotlight-btn" class="submit-btn">Set Spotlight</button>
+                        <div id="current-spotlight" style="margin-top:1rem;">
+                            <p><strong>Current Spotlight:</strong> <span id="spotlight-name">Loading...</span></p>
                         </div>
-                        <div class="table-wrapper">
-                            <div id="teachers-table">
-                                <table class="admin-table">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Name</th>
-                                            <th>Description</th>
-                                            <th>Schedule</th>
-                                            <th>Tags</th>
-                                            <th>Email</th>
-                                            <th>Phone</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr><td colspan="8">Loading teachers...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <p id="teachers-message" class="info-message"></p>
+                        <div id="spotlight-message" class="info-message"></div>
                     </div>
                 </div>
             </div>
+<div id="teachers" class="tab-content active">
+    <div class="admin-section">
+        <h2 class="section-toggle" data-section="Manage Teachers">Manage Teachers</h2>
+        <div class="section-content">
+            <div class="controls">
+                <input type="text" id="teacher-search" class="search-input" placeholder="Search by ID or Name" aria-label="Search teachers">
+                <div class="sort-options">
+                    <select id="teachers-per-page" class="sort-select" aria-label="Teachers per page">
+                        <option value="5">5 per page</option>
+                        <option value="10" selected>10 per page</option>
+                        <option value="20">20 per page</option>
+                    </select>
+                    <select id="teacher-sort" class="sort-select" aria-label="Sort teachers by">
+                        <option value="id">Sort by ID</option>
+                        <option value="name">Sort by Name</option>
+                        <option value="tags">Sort by Tags</option>
+                        <option value="email">Sort by Email</option>
+                    </select>
+                    <select id="teacher-sort-direction" class="sort-select" aria-label="Sort direction">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <div id="teachers-table">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Schedule</th>
+                                <th>Tags</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6">Loading teachers...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <p id="teachers-message" class="info-message"></p>
+        </div>
+    </div>
+
+</div>
 
             <!-- Add New Teacher Tab -->
             <div id="add-teacher" class="tab-content">
@@ -156,7 +613,7 @@
                             <div class="schedule-block">
                                 <label>Block 3:</label>
                                 <input type="text" name="schedule[2][subject]" placeholder="Subject" aria-label="Block 3 Subject">
-                                <input type="text" name="schedule[2][grade]" placeholder="Grade" aria-label="Block 3 Grade">
+                                <input type="text" name="schedule[2][grade]" placeholder="Grade" aria-label="Block 2 Grade">
                             </div>
                             <div class="schedule-block">
                                 <label>Block 4:</label>
@@ -165,6 +622,7 @@
                             </div>
                         </div>
                         <button type="submit" class="submit-btn">Add Teacher</button>
+                        <button type="button" class="cancel-btn">Cancel</button>
                     </form>
                     <p id="add-teacher-message" class="info-message"></p>
                 </div>
@@ -222,8 +680,20 @@
                         <div class="table-wrapper">
                             <div id="votes-table">
                                 <table class="admin-table">
-                                    <thead><tr><th>Vote ID</th><th>Teacher ID</th><th>Teacher Name</th><th>Rating</th><th>Comment</th><th>Explicit</th><th>Actions</th></tr></thead>
-                                    <tbody><tr><td colspan="7">Loading votes...</td></tr></tbody>
+                                    <thead>
+                                        <tr>
+                                            <th>Vote ID</th>
+                                            <th>Teacher ID</th>
+                                            <th>Teacher Name</th>
+                                            <th>Rating</th>
+                                            <th>Comment</th>
+                                            <th>Explicit</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="7">Loading votes...</td></tr>
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
@@ -240,8 +710,18 @@
                         <div class="table-wrapper">
                             <div id="proposals-table">
                                 <table class="admin-table">
-                                    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Description</th><th>Actions</th></tr></thead>
-                                    <tbody><tr><td colspan="5">Loading proposals...</td></tr></tbody>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Description</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="5">Loading proposals...</td></tr>
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
@@ -258,8 +738,18 @@
                         <div class="table-wrapper">
                             <div id="corrections-table">
                                 <table class="admin-table">
-                                    <thead><tr><th>ID</th><th>Teacher</th><th>Suggestion</th><th>Submitted</th><th>Actions</th></tr></thead>
-                                    <tbody><tr><td colspan="5">Loading corrections...</td></tr></tbody>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Teacher</th>
+                                            <th>Suggestion</th>
+                                            <th>Submitted</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="5">Loading corrections...</td></tr>
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
@@ -294,8 +784,17 @@
                         <div class="table-wrapper">
                             <div id="suggestions-table">
                                 <table class="admin-table">
-                                    <thead><tr><th>Email</th><th>Suggestion</th><th>Timestamp</th><th>Actions</th></tr></thead>
-                                    <tbody><tr><td colspan="4">Loading suggestions...</td></tr></tbody>
+                                    <thead>
+                                        <tr>
+                                            <th>Email</th>
+                                            <th>Suggestion</th>
+                                            <th>Timestamp</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="4">Loading suggestions...</td></tr>
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
@@ -330,8 +829,18 @@
                         <div class="table-wrapper">
                             <div id="admin-requests-table">
                                 <table class="admin-table">
-                                    <thead><tr><th>Name</th><th>Email</th><th>Reason</th><th>Timestamp</th><th>Actions</th></tr></thead>
-                                    <tbody><tr><td colspan="5">Loading admin requests...</td></tr></tbody>
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Reason</th>
+                                            <th>Timestamp</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="5">Loading admin requests...</td></tr>
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
@@ -405,6 +914,7 @@
                                 <input type="password" id="create-password" name="password" required placeholder="Enter password" aria-label="Password">
                             </div>
                             <button type="submit" class="submit-btn">Create Account</button>
+                            <button type="button" class="cancel-btn">Cancel</button>
                         </form>
                         <p id="create-account-message" class="info-message"></p>
                     </div>
@@ -451,6 +961,7 @@
                                 <span class="toggle-status">Off</span>
                             </div>
                             <button type="submit" class="submit-btn">Save</button>
+                            <button type="button" class="cancel-btn">Cancel</button>
                         </form>
                         <p id="message-status" class="info-message"></p>
                     </div>
@@ -477,6 +988,7 @@
                                 <span class="toggle-status">Off</span>
                             </div>
                             <button type="submit" class="submit-btn">Save</button>
+                            <button type="button" class="cancel-btn">Cancel</button>
                         </form>
                         <p id="footer-message-status" class="info-message"></p>
                     </div>
@@ -499,38 +1011,41 @@
     </main>
 
     <footer class="site-footer">
-        <p id="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
-        <p id="footer-message">Welcome to Teacher Tally!</p>
+        <p id="footer-email" class="footer-email"><a href="mailto:admin@example.com">admin@example.com</a></p>
+        <p id="footer-message" class="footer-message">Welcome to Teacher Tally!</p>
     </footer>
 
     <div id="notification" class="notification"></div>
 
-    <script src="/pages/admin/dashboard.js" defer></script>
+    <script src="/pages/admin/admin-dashboard.js" defer></script>
     <script src="/public/header.js" defer></script>
     <script src="/public/footer.js" defer></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch('/pages/components/header.html')
-                .then(response => {
-                    if (!response.ok) throw new Error('Failed to load header HTML');
-                    return response.text();
-                })
-                .then(html => {
-                    document.getElementById('header-placeholder').innerHTML = html;
-                    const script = document.createElement('script');
-                    script.src = '/public/header.js';
-                    script.onload = () => {
-                        if (typeof initializeHeader === 'function') {
-                            initializeHeader();
-                        } else {
-                            console.error('initializeHeader function not found');
-                        }
-                    };
-                    script.onerror = () => console.error('Failed to load header.js');
-                    document.body.appendChild(script);
-                })
-                .catch(err => console.error('Error loading header:', err));
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Load header dynamically
+            try {
+                const response = await fetch('/pages/components/header.html');
+                if (!response.ok) throw new Error('Failed to load header');
+                const html = await response.text();
+                const headerContent = document.querySelector('.header-content');
+                headerContent.innerHTML = html;
 
+                const script = document.createElement('script');
+                script.src = '/public/header.js';
+                script.onload = () => {
+                    if (typeof initializeHeader === 'function') {
+                        initializeHeader();
+                    } else {
+                        console.error('initializeHeader function not found');
+                    }
+                };
+                script.onerror = () => console.error('Failed to load header.js');
+                document.body.appendChild(script);
+            } catch (err) {
+                console.error('Error loading header:', err);
+            }
+
+            // Logout button handler
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', () => {
@@ -538,8 +1053,40 @@
                         window.logout();
                     } else {
                         console.warn('Logout function not yet available');
+                        showNotification('Logout function not available', 'error');
                     }
                 });
+            }
+
+            // Fetch CSRF token for forms
+            async function fetchCsrfToken() {
+                try {
+                    const response = await fetch('/api/csrf-token', { credentials: 'include' });
+                    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                    const data = await response.json();
+                    document.querySelector('meta[name="csrf-token"]').setAttribute('content', data.csrfToken);
+                    document.querySelectorAll('input[name="_csrf"]').forEach(input => input.value = data.csrfToken);
+                    return data.csrfToken;
+                } catch (error) {
+                    console.error('Error fetching CSRF token:', error.message);
+                    showNotification('Failed to load CSRF token', 'error');
+                    throw error;
+                }
+            }
+
+            try {
+                await fetchCsrfToken();
+            } catch (error) {
+                return;
+            }
+
+            // Notification function
+            function showNotification(message, type) {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.style.opacity = '1';
+                setTimeout(() => notification.style.opacity = '0', 3000);
             }
         });
     </script>

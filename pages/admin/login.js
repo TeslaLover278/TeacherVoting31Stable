@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             csrfToken = data.csrfToken;
             console.log('Client - CSRF token fetched:', csrfToken);
-            await Promise.all([checkAdminStatus(), loadFooterSettings()]);
+            loadFooterSettings();
         } catch (error) {
             console.error(`Client - CSRF fetch attempt ${attempt} failed:`, error.message);
             if (attempt < MAX_RETRIES) {
@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    checkAdminStatus();
     fetchCsrfToken();
 
     if (loginForm) {
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const response = await fetchWithTimeout(`${API_BASE_URL}/api/login`, { // Changed to /api/login
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -93,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (response.ok) {
                     showMessage(data.message || 'Login successful!', 'success');
-                    const redirectUrl = data.isAdmin ? '/pages/admin/dashboard.html' : '/'; // Use isAdmin from response
+                    const redirectUrl = data.isAdmin ? '/pages/admin/admin-dashboard.html' : '/';
                     console.log('Client - Redirecting to:', redirectUrl);
                     setTimeout(() => window.location.href = redirectUrl, 1000);
                 } else {
@@ -110,7 +111,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function checkAdminStatus() {
-        if (window.location.pathname.includes('/dashboard.html')) return;
+        if (window.location.pathname === '/pages/admin/admin-dashboard.html') {
+            console.log('Client - Already on dashboard, no redirect needed');
+            return;
+        }
 
         try {
             const response = await fetchWithTimeout(`${API_BASE_URL}/api/admin/verify`, {
@@ -119,9 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) {
                 console.log('Client - Admin authenticated, redirecting...');
-                window.location.href = '/pages/admin/dashboard.html';
+                window.location.href = '/pages/admin/admin-dashboard.html';
             } else {
-                console.log('Client - Not authenticated');
+                console.log('Client - Not authenticated as admin');
             }
         } catch (error) {
             console.error('Client - Error verifying admin status:', error.message);
@@ -155,8 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function sanitizeInput(input) {
-        return input ? String(input).replace(/[&<>"']/g, match => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;'
-        })[match]) : '';
+        return window.DOMPurify ? DOMPurify.sanitize(input || '') : input || '';
     }
 });
