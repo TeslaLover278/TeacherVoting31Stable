@@ -2857,6 +2857,8 @@ app.post('/api/admin/login', publicLimiter, csrfProtection, async (req, res) => 
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000,
     });
+    // Set admin session for CSRF and dashboard persistence
+    req.session.admin = { id: admin.id, username: admin.username, isAdmin: true };
     console.log('Server - Admin login successful:', username, 'Token:', token);
     res.json({ message: 'Login successful', isAdmin: true });
   });
@@ -3100,17 +3102,14 @@ app.get('/api/teachers/:id', (req, res) => {
 });
 
 app.post('/api/admins/create', (req, res) => {
-    const { username, password, role } = req.body;
+    const { username, password } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required' });
     }
-    if (role !== 'admin') {
-        return res.status(400).json({ error: 'Invalid role for admin creation' });
-    }
 
-    // Check if username already exists
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
+    // Check if username already exists in admins table
+    db.get('SELECT * FROM admins WHERE username = ?', [username], (err, row) => {
         if (err) {
             console.error('Server - Error checking admin existence:', err.message);
             return res.status(500).json({ error: 'Database error' });
@@ -3120,22 +3119,22 @@ app.post('/api/admins/create', (req, res) => {
         }
 
         // Hash password and insert admin
-        bcrypt.hash(password, saltRounds, (err, hash) => {
+        bcrypt.hash(password, 10, (err, hash) => {
             if (err) {
                 console.error('Server - Error hashing password:', err.message);
                 return res.status(500).json({ error: 'Password hashing failed' });
             }
 
             db.run(
-                'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-                [username, hash, 'admin'],
+                'INSERT INTO admins (username, password_hash) VALUES (?, ?)',
+                [username, hash],
                 function (err) {
                     if (err) {
                         console.error('Server - Error creating admin:', err.message);
                         return res.status(500).json({ error: 'Database error' });
                     }
                     console.log('Server - Admin created:', { username });
-                    res.status(201).json({ message: 'Admin created successfully', userId: this.lastID });
+                    res.status(201).json({ message: 'Admin created successfully', username });
                 }
             );
         });

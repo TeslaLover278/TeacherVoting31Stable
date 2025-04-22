@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const response = await fetchWithTimeout(`${API_BASE_URL}/api/login`, {
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/admin/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

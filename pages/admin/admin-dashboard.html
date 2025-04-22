@@ -9,6 +9,255 @@
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Unified Site Theme for Admin Dashboard */
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .site-header {
+            background: var(--header-bg);
+            color: var(--header-text);
+            padding: 1rem 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 5px var(--shadow);
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+        .header-title-link {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+        }
+        .header-title {
+            font-size: 1.6rem;
+            color: var(--heading);
+            margin: 0;
+        }
+        .header-motto {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .admin-btn, .header-btn, .logout-btn, .submit-btn, .cancel-btn {
+            padding: 8px 18px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: var(--button-bg);
+            color: var(--button-text);
+            transition: background 0.2s;
+        }
+        .admin-btn:hover, .header-btn:hover, .logout-btn:hover, .submit-btn:hover, .cancel-btn:hover {
+            background: var(--button-hover-bg);
+        }
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--card-bg);
+            box-shadow: 0 2px 5px var(--shadow);
+            border-radius: 6px;
+            padding: 10px;
+            z-index: 1001;
+        }
+        .dropdown-menu.active {
+            display: block;
+        }
+        @media (max-width: 900px) {
+            .header-content { flex-wrap: wrap; }
+        }
+        @media (max-width: 600px) {
+            .header-content { flex-direction: column; align-items: flex-start; }
+            .logo { margin-bottom: 0.5rem; }
+            .header-title { font-size: 1.2rem; }
+            .header-motto { font-size: 0.8rem; }
+            .desktop-only { display: none; }
+            .mobile-menu-toggle { display: block; }
+        }
+        main.centered-container {
+            flex: 1 0 auto;
+            margin-top: 110px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 1rem;
+        }
+        .content-container.card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 6px 32px var(--shadow);
+            padding: 2rem 2.5rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .tab-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 1.5rem;
+        }
+        .tab-btn {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            background: var(--button-bg);
+            color: var(--button-text);
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--button-hover-bg);
+            color: var(--button-text);
+        }
+        .tab-btn:hover {
+            background: var(--button-hover-bg);
+        }
+        .section-content {
+            padding: 1.5rem 0.5rem;
+        }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            box-shadow: 0 2px 8px var(--shadow);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .admin-table th, .admin-table td {
+            padding: 14px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .admin-table th {
+            background: var(--header-bg);
+            color: var(--header-text);
+            font-weight: bold;
+            border-bottom: 2px solid var(--card-border);
+        }
+        .admin-table tr:last-child td {
+            border-bottom: none;
+        }
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text);
+            font-size: 1rem;
+            margin-top: 0.2rem;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--button-bg);
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 1.5rem;
+        }
+        .notification {
+            padding: 16px 28px;
+            border-radius: 8px;
+            margin: 1.2rem 0;
+            font-size: 1rem;
+            font-weight: 500;
+            background: var(--notification-success-bg);
+            color: var(--notification-success-text);
+            box-shadow: 0 2px 8px var(--shadow);
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: 1002;
+        }
+        .notification.success {
+            background: var(--notification-success-bg);
+            color: var(--notification-success-text);
+            opacity: 1;
+        }
+        .notification.error {
+            background: var(--notification-error-bg);
+            color: var(--notification-error-text);
+            opacity: 1;
+        }
+        .logout-btn {
+            background: var(--button-danger-bg, #dc3545);
+            color: var(--button-text);
+        }
+        .logout-btn:hover {
+            background: #b52d3a;
+        }
+        .info-message {
+            margin-top: 10px;
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+        .site-footer {
+            background: var(--footer-bg);
+            color: var(--footer-text);
+            padding: 1.2rem 0;
+            text-align: center;
+            margin-top: auto;
+        }
+        .site-footer a {
+            color: var(--footer-link);
+            text-decoration: underline;
+        }
+        .site-footer a:hover {
+            color: var(--footer-link-hover);
+        }
+        @media (max-width: 700px) {
+            .content-container.card { padding: 1rem; }
+            .tab-btn { padding: 8px 12px; font-size: 0.95rem; }
+            .admin-table th, .admin-table td { padding: 8px 6px; }
+        }
+    
         /* Header Styling (inserted from previous files) */
         .site-header {
             background: var(--header-bg, #f8f9fa);
@@ -414,20 +663,14 @@
 <body onload="checkAdminAuth()">
 <script>
 function checkAdminAuth() {
-    fetch('/api/user', { credentials: 'include' })
+    fetch('/api/admin/verify', { credentials: 'include' })
         .then(response => {
             if (!response.ok) {
                 showRedirectMessage('You must be logged in as an admin to access the dashboard. Redirecting to admin login...');
                 setTimeout(() => window.location.href = '/pages/admin/login.html', 1800);
                 return;
             }
-            return response.json();
-        })
-        .then(data => {
-            if (!data || data.role !== 'admin') {
-                showRedirectMessage('You must be logged in as an admin to access the dashboard. Redirecting to admin login...');
-                setTimeout(() => window.location.href = '/pages/admin/login.html', 1800);
-            }
+            // Optionally, handle successful admin verification here
         })
         .catch(() => {
             showRedirectMessage('You must be logged in as an admin to access the dashboard. Redirecting to admin login...');
@@ -452,24 +695,27 @@ function showRedirectMessage(msg) {
 
 }
 </script>
+    <!-- Unified header start -->
     <header class="site-header">
         <div class="header-content">
-            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" id="header-logo">
+            <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" onclick="window.location.href='/'">
             <a href="/" class="header-title-link">
                 <h1 class="header-title">Teacher Tally</h1>
+                <p class="header-motto">What they won’t put in the syllabus.</p>
             </a>
             <div class="header-buttons desktop-only">
-                <button id="desktop-auth-btn" class="admin-btn">Loading...</button>
+                <button id="desktop-auth-btn" class="admin-btn" onclick="window.location.href='/pages/auth/login.html'">Login</button>
             </div>
-            <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">☰</button>
-            <div class="dropdown-menu" id="dropdown-menu">
-                <button id="mobile-auth-btn" class="header-btn">Loading...</button>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-label="Toggle mobile menu">☰</button>
+            <div id="dropdown-menu" class="dropdown-menu">
+                <button id="mobile-auth-btn" class="admin-btn" onclick="window.location.href='/pages/auth/login.html'">Login</button>
             </div>
         </div>
     </header>
+    <!-- Unified header end -->
 
     <main class="centered-container admin-dashboard">
-        <div class="content-container">
+        <div class="content-container card">
             <!-- Tab Navigation -->
             <nav id="tab-nav" class="tab-nav">
                 <button class="tab-btn active" data-tab="teachers">Teachers</button>
