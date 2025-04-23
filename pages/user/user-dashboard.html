@@ -481,7 +481,8 @@
             z-index: 1000;
         }
         #vote-edit-modal.modal,
-        #history-modal.modal {
+        #history-modal.modal,
+        #points-info-modal.modal {
             display: none;
             position: fixed;
             top: 50%;
@@ -502,7 +503,8 @@
         }
 
         #vote-edit-modal.modal.active,
-        #history-modal.modal.active {
+        #history-modal.modal.active,
+        #points-info-modal.modal.active {
             display: block;
         }
         .modal::before {
@@ -660,6 +662,68 @@
             }
         }
     </style>
+    <style>
+        /* Themed modal for points info */
+        .themed-modal {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 6px 24px var(--shadow-hover);
+            padding: 2rem 2.5rem 2rem 2.5rem;
+            max-width: 420px;
+            margin: 0 auto;
+            color: var(--text);
+        }
+        .themed-modal h3 {
+            color: var(--heading);
+            font-size: 1.5rem;
+            margin-bottom: 1.25rem;
+            text-align: center;
+        }
+        .themed-modal .modal-content {
+            background: var(--highlight-bg);
+            border-radius: 8px;
+            padding: 1.2rem 1rem;
+            color: var(--text);
+            box-shadow: 0 1px 4px var(--shadow);
+        }
+        .themed-modal ul {
+            list-style: disc inside;
+            margin: 0.5rem 0 0.5rem 1rem;
+            padding: 0;
+        }
+        .themed-modal li {
+            margin-bottom: 0.65rem;
+            font-size: 1.05rem;
+        }
+        .themed-modal a {
+            color: var(--link);
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+        .themed-modal a:hover {
+            color: var(--link-hover);
+        }
+        .themed-modal .points-balance {
+            font-size: 2.7rem;
+            font-weight: bold;
+            color: var(--link);
+        }
+        .themed-modal .points-balance-label {
+            margin-top: 0.2rem;
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+        .highlight-animate {
+            animation: highlightPulse 1s cubic-bezier(0.4,0,0.2,1);
+            box-shadow: 0 0 0 4px var(--link), 0 4px 16px var(--shadow-hover);
+            z-index: 2;
+        }
+        @keyframes highlightPulse {
+            0% { box-shadow: 0 0 0 0 var(--link), 0 4px 16px var(--shadow-hover); }
+            60% { box-shadow: 0 0 0 8px var(--link), 0 4px 24px var(--shadow-hover); }
+            100% { box-shadow: 0 0 0 0 var(--link), 0 4px 16px var(--shadow-hover); }
+        }
+    </style>
 </head>
 <body>
     <div id="header-placeholder"></div>
@@ -677,17 +741,17 @@
                     <span class="toggle-status">Light</span>
                 </div>
             </div>
-            <div class="dashboard-card points-card">
-                <h2>Total Points</h2>
-                <p class="points-value" id="points-value">0</p>
-            </div>
+            <div class="dashboard-card points-card" id="points-card" style="cursor:pointer;">
+    <h2>Total Points</h2>
+    <p class="points-value" id="points-value">0</p>
+</div>
             <div class="dashboard-card spotlight-card">
                 <h2>Teacher Spotlight</h2>
                 <div id="spotlight-content">
                     <p>Feature coming in later update!</p>
                 </div>
             </div>
-            <div class="dashboard-card badges-card">
+            <div class="dashboard-card badges-card" id="badges-card">
                 <h2>Your Badges</h2>
                 <div id="badges-container" class="badges-list">
                     <p class="no-badges">Loading badges...</p>
@@ -695,7 +759,7 @@
                 <div id="badges-list" class="badges-list"></div>
             </div>
 
-            <div class="dashboard-card history-card">
+            <div class="dashboard-card history-card" id="history-card">
                 <h3>Points History</h3>
                 <div id="history-preview" class="history-preview"></div>
             </div>
@@ -713,8 +777,12 @@
         </div>
         <div id="history-modal" class="modal">
             <button class="close-modal" aria-label="Close modal">×</button>
-            <h3>Points History</h3>
             <div class="modal-content" id="history-modal-content"></div>
+        </div>
+        <!-- Points Info Modal -->
+        <div id="points-info-modal" class="modal">
+            <button class="close-modal" aria-label="Close modal">×</button>
+            <div class="modal-content" id="points-info-content"></div>
         </div>
     </main>
 

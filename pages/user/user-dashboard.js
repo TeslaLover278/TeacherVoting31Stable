@@ -15,22 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         div.style.zIndex = '9999';
         document.body.appendChild(div);
     }
-    try {
-        const response = await fetch('/api/user', { credentials: 'include' });
-        if (!response.ok) {
-            showRedirectMessage('You must be logged in as a user to access the dashboard. Redirecting to login...');
-            setTimeout(() => window.location.href = '/pages/auth/login.html', 1800);
-            return;
-        }
-        const data = await response.json();
-        if (data.role !== 'user') {
-            window.location.href = '/pages/auth/login.html';
-            return;
-        }
-    } catch (err) {
-        window.location.href = '/pages/auth/login.html';
-        return;
-    }
 
     console.log('Client - User dashboard script loaded, initializing...');
 
@@ -52,7 +36,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return welcomeMessages[randomIndex];
     }
 
-    const API_BASE_URL = window.location.origin;
     const state = {
         csrfToken: null,
         userVotes: [],
@@ -278,7 +261,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             console.log('Client - Fetching badges from API');
-            const response = await fetch(`${API_BASE_URL}/api/user/badges`, {
+            const response = await fetch('/api/user/badges', {
                 credentials: 'include',
                 headers: { 'X-CSRF-Token': state.csrfToken }
             });
@@ -355,7 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: { 'X-CSRF-Token': state.csrfToken },
             cache: 'no-store'
         };
-        const response = await fetch(`${API_BASE_URL}${url}`, { ...defaultOptions, ...options });
+        const response = await fetch(url, { ...defaultOptions, ...options });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.error || `Request failed: ${response.status}`);
@@ -582,6 +565,113 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialization
     async function initialize() {
+        // --- Points Card Click Handler ---
+        const pointsCard = document.getElementById('points-card');
+        const pointsInfoModal = document.getElementById('points-info-modal');
+        const pointsInfoContent = document.getElementById('points-info-content');
+        const overlay = document.getElementById('modal-overlay');
+        if (pointsCard && pointsInfoModal && pointsInfoContent && overlay) {
+            pointsCard.addEventListener('click', async () => {
+                const currentPoints = document.getElementById('points-value')?.textContent || '0';
+                // Fetch spotlight teacher for vote link
+                let spotlightUrl = '/';
+                try {
+                    const data = await fetchData('/api/spotlight');
+                    if (data && data.teacherId) {
+                        spotlightUrl = `/pages/teacher/teacher.html?id=${data.teacherId}`;
+                    }
+                } catch (e) { /* fallback to home */ }
+                pointsInfoContent.innerHTML = `
+                    <div class="points-balance">${currentPoints}</div>
+                    <div class="points-balance-label">Current Points</div>
+                    <div style="margin: 1.2rem 0 1rem 0; text-align: center;">
+                        <strong>How to Earn Points:</strong><br>
+                        <span style="display:block;margin:0.7rem 0;">
+                            See all teachers: <a href="/" id="points-link-teachers">Teachers</a>
+                        </span>
+                        <span style="display:block;margin:0.7rem 0;">
+                            Vote on the spotlight teacher: <a href="${spotlightUrl}" id="points-link-vote">Vote Now</a>
+                        </span>
+                        <span style="display:block;margin:0.7rem 0;">
+                            Maintain a voting streak: <a href="#" id="points-link-history">See History</a>
+                        </span>
+                        <span style="display:block;margin:0.7rem 0;">
+                            Earn badges for participation: <a href="#" id="points-link-badges">View Badges</a>
+                        </span>
+                    </div>
+                    <div class="points-modal-note">Check the Points History for a detailed breakdown.</div>
+                `;
+                pointsInfoModal.classList.add('active');
+                overlay.classList.add('active');
+                pointsInfoModal.style.display = 'block';
+                overlay.style.display = 'block';
+
+                // Teachers link: home
+                const teachersLink = document.getElementById('points-link-teachers');
+                if (teachersLink) {
+                    teachersLink.onclick = (e) => {
+                        e.preventDefault();
+                        window.location.href = '/';
+                    };
+                }
+                // Vote link: spotlight
+                const voteLink = document.getElementById('points-link-vote');
+                if (voteLink) {
+                    voteLink.onclick = (e) => {
+                        e.preventDefault();
+                        window.location.href = spotlightUrl;
+                    };
+                }
+                // Badges link: close modal, highlight
+                const badgesLink = document.getElementById('points-link-badges');
+                if (badgesLink) {
+                    badgesLink.onclick = (e) => {
+                        e.preventDefault();
+                        pointsInfoModal.classList.remove('active');
+                        overlay.classList.remove('active');
+                        pointsInfoModal.style.display = 'none';
+                        overlay.style.display = 'none';
+                        const badgesCard = document.getElementById('badges-card');
+                        if (badgesCard) {
+                            badgesCard.classList.add('highlight-animate');
+                            setTimeout(() => badgesCard.classList.remove('highlight-animate'), 1000);
+                        }
+                    };
+                }
+                // History link: close modal, highlight
+                const historyLink = document.getElementById('points-link-history');
+                if (historyLink) {
+                    historyLink.onclick = (e) => {
+                        e.preventDefault();
+                        pointsInfoModal.classList.remove('active');
+                        overlay.classList.remove('active');
+                        pointsInfoModal.style.display = 'none';
+                        overlay.style.display = 'none';
+                        const historyCard = document.getElementById('history-card');
+                        if (historyCard) {
+                            historyCard.classList.add('highlight-animate');
+                            setTimeout(() => historyCard.classList.remove('highlight-animate'), 1000);
+                        }
+                    };
+                }
+            });
+            // Close modal on close button or overlay
+            pointsInfoModal.querySelector('.close-modal').onclick = () => {
+                pointsInfoModal.classList.remove('active');
+                overlay.classList.remove('active');
+                pointsInfoModal.style.display = 'none';
+                overlay.style.display = 'none';
+            };
+            overlay.addEventListener('click', () => {
+                if (pointsInfoModal.classList.contains('active')) {
+                    pointsInfoModal.classList.remove('active');
+                    pointsInfoModal.style.display = 'none';
+                    overlay.classList.remove('active');
+                    overlay.style.display = 'none';
+                }
+            });
+        }
+
         try {
             // Initialize modals
             const modals = document.querySelectorAll('.modal');

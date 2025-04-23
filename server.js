@@ -1439,6 +1439,10 @@ function authenticateAdmin(req, res, next) {
 }
 
 function authenticateUser(req, res, next) {
+    console.log('--- AUTHENTICATE USER DEBUG ---');
+    console.log('Cookies:', req.cookies);
+    console.log('Headers:', req.headers);
+    console.log('JWT_SECRET (first 8 chars):', (JWT_SECRET || '').substring(0, 8));
     const token = req.cookies.userToken || req.headers.authorization?.split(' ')[1];
     console.log('Server - Authenticating user with token:', token);
     if (!token) {
@@ -1468,6 +1472,7 @@ function authenticateUser(req, res, next) {
         console.error('Server - Invalid user JWT:', err.message);
         res.status(401).json({ error: 'Unauthorized: Invalid token' });
     }
+    console.log('--- END AUTHENTICATE USER DEBUG ---');
 }
 
 // Login endpoint
@@ -2829,8 +2834,17 @@ app.get('/pages/signup.html', (req, res) => {
 });
 
 app.get('/pages/user/user-dashboard.html', authenticateUser, (req, res) => {
-    if (!req.user) return res.redirect('/pages/auth/login.html');
+    console.log('--- USER DASHBOARD DEBUG ---');
+    console.log('req.user:', req.user);
+    console.log('Cookies:', req.cookies);
+    console.log('Headers:', req.headers);
+    if (!req.user) {
+        console.log('No req.user, returning 401 Unauthorized (no redirect).');
+        return res.status(401).json({ error: 'Not authenticated. Please login.' });
+    }
+    console.log('Authenticated user, serving dashboard.');
     res.sendFile(path.join(__dirname, 'pages', 'user', 'user-dashboard.html'));
+    console.log('--- END USER DASHBOARD DEBUG ---');
 });
 
 app.post('/api/admin/login', publicLimiter, csrfProtection, async (req, res) => {
@@ -3102,14 +3116,17 @@ app.get('/api/teachers/:id', (req, res) => {
 });
 
 app.post('/api/admins/create', (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, role } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required' });
     }
+    if (role !== 'admin') {
+        return res.status(400).json({ error: 'Invalid role for admin creation' });
+    }
 
-    // Check if username already exists in admins table
-    db.get('SELECT * FROM admins WHERE username = ?', [username], (err, row) => {
+    // Check if username already exists
+    db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
         if (err) {
             console.error('Server - Error checking admin existence:', err.message);
             return res.status(500).json({ error: 'Database error' });
@@ -3119,22 +3136,22 @@ app.post('/api/admins/create', (req, res) => {
         }
 
         // Hash password and insert admin
-        bcrypt.hash(password, 10, (err, hash) => {
+        bcrypt.hash(password, saltRounds, (err, hash) => {
             if (err) {
                 console.error('Server - Error hashing password:', err.message);
                 return res.status(500).json({ error: 'Password hashing failed' });
             }
 
             db.run(
-                'INSERT INTO admins (username, password_hash) VALUES (?, ?)',
-                [username, hash],
+                'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+                [username, hash, 'admin'],
                 function (err) {
                     if (err) {
                         console.error('Server - Error creating admin:', err.message);
                         return res.status(500).json({ error: 'Database error' });
                     }
                     console.log('Server - Admin created:', { username });
-                    res.status(201).json({ message: 'Admin created successfully', username });
+                    res.status(201).json({ message: 'Admin created successfully', userId: this.lastID });
                 }
             );
         });
