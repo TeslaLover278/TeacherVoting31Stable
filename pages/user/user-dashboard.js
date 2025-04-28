@@ -1,4 +1,25 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // Global logout for users
+    window.logout = async () => {
+        try {
+            const response = await fetch('/api/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            });
+            if (!response.ok) throw new Error(`Logout failed: ${response.status}`);
+            console.log('Client - User logout successful');
+        } catch (error) {
+            console.error('Client - User logout failed, proceeding with client-side cleanup:', error);
+        } finally {
+            localStorage.removeItem('userToken');
+            document.cookie = 'userToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+            document.cookie = 'connect.sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
+            showNotification('Logged out successfully!');
+            setTimeout(() => window.location.href = '/pages/login.html', 1000);
+        }
+    };
+
     // Redirect if not logged in as user
     function showRedirectMessage(msg) {
         let div = document.createElement('div');

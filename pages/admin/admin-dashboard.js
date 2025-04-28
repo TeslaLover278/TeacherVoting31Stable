@@ -1,31 +1,131 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const BASE_URL = window.location.origin; // https://teachertally.com
+    const BASE_URL = window.location.origin;
     console.log('Client - Dashboard script loaded, initializing...');
 
+    // Import permission utilities
+    const { hasPermission, getAdminPermissions } = await import('/utils/permissions.js');
+
+    // Permission requirements for each tab and operation
+    const TAB_PERMISSIONS = {
+        'teachers': 'manage_teachers',
+        'votes': 'view_votes',
+        'suggestions': 'manage_suggestions',
+        'requests': 'manage_requests',
+        'proposals': 'manage_proposals',
+        'corrections': 'manage_corrections',
+        'accounts': 'manage_accounts',
+        'settings': 'manage_settings'
+    };
+
+    // Check admin status before initializing anything
+    async function verifyAdminStatus() {
+        try {
+            const response = await fetch(`${BASE_URL}/api/admin/verify`, {
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Not authenticated');
+            }
+            
+            const data = await response.json();
+            if (!data.loggedIn) {
+                throw new Error('Not logged in');
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Client - Admin check failed:', error);
+            // Clear any stored data
+            localStorage.removeItem('adminPermissions');
+            state.token = null;
+            state.data = {
+                teachers: [],
+                votes: [],
+                suggestions: [],
+                requests: [],
+                proposals: [],
+                corrections: [],
+                accounts: { users: [], admins: [], totalUsers: 0, totalAdmins: 0 },
+                settings: {},
+                spotlight: { teacherId: null, name: '' }
+            };
+            
+            // Redirect to login
+            window.location.href = '/pages/admin/login.html';
+            return false;
+        }
+    }
+
+    // Hide all admin content initially
+    function hideAdminContent() {
+        const adminElements = document.querySelectorAll('.tab-content, .tab-nav, .admin-section');
+        adminElements.forEach(el => {
+            el.style.display = 'none';
+        });
+    }
+
+    // Show admin content only after verification and permission check
+    function showAdminContent() {
+        const adminElements = document.querySelectorAll('.tab-content, .tab-nav, .admin-section');
+        adminElements.forEach(el => {
+            // Check if element is a tab
+            const tabId = el.getAttribute('data-tab');
+            if (tabId && TAB_PERMISSIONS[tabId]) {
+                // Only show if user has permission
+                el.style.display = hasPermission(TAB_PERMISSIONS[tabId]) ? '' : 'none';
+            } else {
+                el.style.display = '';
+            }
+        });
+
+        // Hide tab buttons for tabs user doesn't have permission for
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            const tabName = btn.getAttribute('data-tab');
+            if (tabName && TAB_PERMISSIONS[tabName]) {
+                btn.style.display = hasPermission(TAB_PERMISSIONS[tabName]) ? '' : 'none';
+            }
+        });
+    }
+
+    // Hide content initially
+    hideAdminContent();
+
+    // Initial admin verification
+    const initialAuthCheck = await verifyAdminStatus();
+    if (!initialAuthCheck) {
+        return; // Stop initialization if not authenticated
+    }
+
+    // Show content if authenticated
+    showAdminContent();
+
+    // Continue with initialization...
     // Centralized state management
-const state = {
-    csrfToken: '',
-    token: localStorage.getItem('adminToken') || getCookie('adminToken'),
-    data: {
-        teachers: [],
-        votes: [],
-        suggestions: [],
-        requests: [],
-        proposals: [],
-        corrections: [],
-        accounts: { users: [], admins: [], totalUsers: 0, totalAdmins: 0 },
-        settings: {},
-        spotlight: { teacherId: null, name: '' }, // Added spotlight state
-    },
-    pages: {
-        teachers: 1,
-        votes: 1,
-        suggestions: 1,
-        requests: 1,
-        accounts: 1,
-    },
-    activeTab: 'teachers',
-};
+    const state = {
+        csrfToken: '',
+        token: localStorage.getItem('adminToken') || getCookie('adminToken'),
+        data: {
+            teachers: [],
+            votes: [],
+            suggestions: [],
+            requests: [],
+            proposals: [],
+            corrections: [],
+            accounts: { users: [], admins: [], totalUsers: 0, totalAdmins: 0 },
+            settings: {},
+            spotlight: { teacherId: null, name: '' },
+        },
+        pages: {
+            teachers: 1,
+            votes: 1,
+            suggestions: 1,
+            requests: 1,
+            accounts: 1,
+        },
+        activeTab: 'teachers',
+    };
+
     console.log('Client - BASE_URL set to:', BASE_URL);
 
     // Element references with lazy loading via Proxy
@@ -132,27 +232,10 @@ const state = {
         };
     }
 
-    // Check admin status
-    async function checkAdminStatus() {
-        try {
-            const response = await fetch(`${BASE_URL}/api/admin/verify`, {
-                headers: { 'Authorization': `Bearer ${state.token}`, 'X-CSRF-Token': state.csrfToken },
-                credentials: 'include',
-            });
-            if (!response.ok) throw new Error(`Not authenticated: ${response.status}`);
-            console.log('Client - Admin authenticated');
-            return true;
-        } catch (error) {
-            console.error('Client - Admin check failed:', error);
-            window.location.href = '/pages/admin/login.html';
-            return false;
-        }
-    }
-
     // Logout function
-    window.logout = async () => {
+    async function handleLogout() {
         try {
-            const response = await fetch(`${BASE_URL}/api/logout`, {
+            const response = await fetch('/api/auth/admin/logout', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -160,18 +243,65 @@ const state = {
                 },
                 credentials: 'include'
             });
-            if (!response.ok) throw new Error(`Logout failed: ${response.status}`);
-            console.log('Client - Logout successful');
+
+            if (response.ok) {
+                // Clear all client-side storage
+                localStorage.clear(); // Clear all localStorage items
+                sessionStorage.clear(); // Clear all sessionStorage items
+                
+                // Clear state
+                state.token = null;
+                state.csrfToken = '';
+                state.data = {
+                    teachers: [],
+                    votes: [],
+                    suggestions: [],
+                    requests: [],
+                    proposals: [],
+                    corrections: [],
+                    accounts: { users: [], admins: [], totalUsers: 0, totalAdmins: 0 },
+                    settings: {},
+                    spotlight: { teacherId: null, name: '' }
+                };
+
+                // Clear cookies by setting expired date
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                // Hide admin content
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    el.style.display = 'none';
+                });
+
+                // Redirect to login page
+                window.location.href = '/pages/admin/login.html';
+            } else {
+                console.error('Logout failed:', response.status);
+                showNotification('Logout failed. Please try again.', true);
+            }
         } catch (error) {
-            console.error('Client - Logout failed, proceeding with client-side cleanup:', error);
-        } finally {
-            localStorage.removeItem('adminToken');
-            document.cookie = 'adminToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
-            document.cookie = 'connect.sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;';
-            showNotification('Logged out successfully!');
-            setTimeout(() => window.location.href = '/pages/admin/login.html', 1000);
+            console.error('Logout error:', error);
+            showNotification('Logout failed. Please try again.', true);
         }
-    };
+    }
+
+    // Make logout function available globally
+    window.handleLogout = handleLogout;
+
+    // Add logout button to UI if not present
+    if (!document.getElementById('admin-logout-btn')) {
+        const logoutBtn = document.createElement('button');
+        logoutBtn.id = 'admin-logout-btn';
+        logoutBtn.textContent = 'Logout';
+        logoutBtn.className = 'logout-btn';
+        logoutBtn.style.position = 'fixed';
+        logoutBtn.style.top = '20px';
+        logoutBtn.style.right = '20px';
+        logoutBtn.style.zIndex = '10000';
+        logoutBtn.onclick = handleLogout;
+        document.body.appendChild(logoutBtn);
+    }
 
     // Update dropdown visibility
     function updateDropdownVisibility(activeTab) {
@@ -234,7 +364,7 @@ async function fetchData(endpoint, params = {}, options = {}, retries = 2) {
             });
             if (res.status === 401) {
                 console.error('Client - Unauthorized, logging out');
-                await window.logout();
+                await handleLogout();
                 return null;
             }
             if (!res.ok) {
@@ -883,6 +1013,10 @@ async function initializeCreateAccountForm() {
 
     form.removeEventListener('submit', handleCreateAccountForm);
     form.addEventListener('submit', handleCreateAccountForm);
+
+    // Initialize permissions section
+    togglePermissionsSection();
+
     console.log('Client - Create Account form initialized');
 }
 
@@ -894,17 +1028,62 @@ async function handleCreateAccountForm(event) {
 
     const role = formData.get('role') || 'user';
     const username = sanitizeInput(formData.get('username'));
-    const email = role === 'user' ? sanitizeInput(formData.get('email')) : null;
+    const email = sanitizeInput(formData.get('email'));
     const password = sanitizeInput(formData.get('password'));
+    const confirmPassword = sanitizeInput(formData.get('confirmPassword'));
 
-    if (!username || !password || (role === 'user' && !email)) {
-        messageDiv.textContent = 'All required fields must be filled.';
+    // Reset feedback messages
+    document.getElementById('username-feedback').textContent = '';
+    document.getElementById('email-feedback').textContent = '';
+    document.getElementById('password-feedback').textContent = '';
+    messageDiv.textContent = '';
+
+    // Validate all fields
+    if (!username || !password || !email || !confirmPassword) {
+        messageDiv.textContent = 'All fields are required.';
         messageDiv.style.color = 'red';
-        showNotification('All required fields must be filled.', true);
+        showNotification('All fields are required.', true);
         return;
     }
 
-    const data = role === 'user' ? { username, email, password } : { username, password, role: 'admin' };
+    // Validate username length
+    if (username.length < 8 || username.length > 16) {
+        document.getElementById('username-feedback').textContent = 'Username must be between 8 and 16 characters';
+        document.getElementById('username-feedback').style.color = 'red';
+        return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        document.getElementById('email-feedback').textContent = 'Please enter a valid email';
+        document.getElementById('email-feedback').style.color = 'red';
+        return;
+    }
+
+    // Validate password match
+    if (password !== confirmPassword) {
+        document.getElementById('password-feedback').textContent = 'Passwords do not match';
+        document.getElementById('password-feedback').style.color = 'red';
+        return;
+    }
+
+    // Get selected permissions for admin accounts
+    const permissions = {};
+    if (role === 'admin') {
+        document.querySelectorAll('#permissions-list input[type="checkbox"]').forEach(checkbox => {
+            permissions[checkbox.value] = checkbox.checked;
+        });
+    }
+
+    const data = {
+        username,
+        email,
+        password,
+        confirmPassword,
+        permissions: role === 'admin' ? permissions : undefined
+    };
+
     const endpoint = role === 'user' ? '/api/users/create' : '/api/admins/create';
 
     try {
@@ -912,7 +1091,7 @@ async function handleCreateAccountForm(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken // Use the fetched token
+                'X-CSRF-Token': state.csrfToken
             },
             credentials: 'include',
             body: JSON.stringify(data)
@@ -927,6 +1106,16 @@ async function handleCreateAccountForm(event) {
         messageDiv.style.color = 'green';
         form.reset();
         showNotification(`${role === 'user' ? 'User' : 'Admin'} account created successfully!`);
+
+        // Reset permissions if it was an admin account
+        if (role === 'admin') {
+            deselectAllPermissions();
+        }
+
+        // Refresh the accounts list if we're creating an admin
+        if (role === 'admin') {
+            loadAccounts();
+        }
     } catch (error) {
         console.error('Client - Error creating account:', error.message);
         messageDiv.textContent = error.message || 'Failed to create account.';
@@ -1292,6 +1481,12 @@ function handleButtonAction(e) {
 
     // Tab switching
     function switchTab(tabName) {
+        // Check if user has permission for this tab
+        if (TAB_PERMISSIONS[tabName] && !hasPermission(TAB_PERMISSIONS[tabName])) {
+            showNotification('You do not have permission to access this section.', true);
+            return;
+        }
+
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
@@ -1827,17 +2022,126 @@ window.viewPointsHistory = async (id) => {
     }
 };
 
-    // Initial load
-    const isAuthenticated = await checkAdminStatus();
-    if (isAuthenticated) {
-        await loadSectionSettings();
-        const defaultTabBtn = document.querySelector('.tab-btn[data-tab="teachers"]');
-        if (defaultTabBtn) switchTab('teachers');
-        else {
-            const firstTab = document.querySelector('.tab-btn');
-            if (firstTab) switchTab(firstTab.dataset.tab);
+    // Initial load with permission check
+    if (await verifyAdminStatus()) {
+        // Load section settings if user has permission
+        if (hasPermission('manage_settings')) {
+            await loadSectionSettings();
         }
-        initializeAddTeacherForm();
+
+        // Find first accessible tab
+        const accessibleTab = Array.from(document.querySelectorAll('.tab-btn'))
+            .find(btn => {
+                const tabName = btn.dataset.tab;
+                return !TAB_PERMISSIONS[tabName] || hasPermission(TAB_PERMISSIONS[tabName]);
+            });
+
+        if (accessibleTab) {
+            switchTab(accessibleTab.dataset.tab);
+        } else {
+            showNotification('You do not have permission to access any sections.', true);
+        }
+
+        if (hasPermission('manage_teachers')) {
+            initializeAddTeacherForm();
+        }
         addButtonListeners();
+    }
+
+    // Load available permissions
+    async function loadAvailablePermissions() {
+        try {
+            const response = await fetch('/api/admin/permissions', {
+                headers: {
+                    'Authorization': `Bearer ${state.token}`,
+                    'X-CSRF-Token': state.csrfToken
+                },
+                credentials: 'include'
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const permissions = await response.json();
+            
+            const permissionsList = document.getElementById('permissions-list');
+            if (permissionsList) {
+                permissionsList.innerHTML = Object.entries(permissions)
+                    .map(([key, label]) => `
+                        <div class="permission-item">
+                            <input type="checkbox" id="perm-${key}" name="permissions" value="${key}">
+                            <label for="perm-${key}">${label}</label>
+                        </div>
+                    `).join('');
+            }
+        } catch (error) {
+            console.error('Client - Error loading permissions:', error);
+            showNotification('Error loading permissions.', true);
+        }
+    }
+
+    // Toggle permissions section visibility
+    function togglePermissionsSection() {
+        const role = document.getElementById('create-role').value;
+        const permissionsSection = document.getElementById('permissions-section');
+        if (permissionsSection) {
+            permissionsSection.style.display = role === 'admin' ? 'block' : 'none';
+            if (role === 'admin' && !permissionsSection.hasAttribute('data-loaded')) {
+                loadAvailablePermissions();
+                permissionsSection.setAttribute('data-loaded', 'true');
+            }
+        }
+    }
+
+    // Select all permissions
+    function selectAllPermissions() {
+        document.querySelectorAll('#permissions-list input[type="checkbox"]')
+            .forEach(checkbox => checkbox.checked = true);
+    }
+
+    // Deselect all permissions
+    function deselectAllPermissions() {
+        document.querySelectorAll('#permissions-list input[type="checkbox"]')
+            .forEach(checkbox => checkbox.checked = false);
+    }
+
+    // Add to window object for HTML onclick access
+    window.togglePermissionsSection = togglePermissionsSection;
+    window.selectAllPermissions = selectAllPermissions;
+    window.deselectAllPermissions = deselectAllPermissions;
+
+    async function makeAuthenticatedRequest(url, options = {}) {
+        try {
+            const csrfToken = await getCsrfToken();
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'X-CSRF-Token': csrfToken
+                },
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+            
+            if (response.status === 403) {
+                // Use our permission system's error message
+                showNotification(`Access denied: Insufficient permissions`, true);
+                return null;
+            }
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    // Token expired or invalid - clear permissions and redirect
+                    localStorage.removeItem('adminPermissions');
+                    window.location.href = '/pages/admin/login.html';
+                    return null;
+                }
+                throw new Error(data.error || 'Request failed');
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Request failed:', error);
+            showNotification(error.message, true);
+            return null;
+        }
     }
 });

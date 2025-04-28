@@ -658,42 +658,97 @@
             display: grid;
             gap: 20px;
         }
+        .permissions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        .permission-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--background-light);
+            border-radius: 4px;
+        }
+        .permission-item input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        .permission-item label {
+            margin: 0;
+            font-weight: normal;
+        }
+        .permissions-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .permissions-actions button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+            background: var(--button-secondary-bg);
+            color: var(--button-text);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .permissions-actions button:hover {
+            background: var(--button-secondary-hover-bg);
+        }
+        .admin-only {
+            display: none; /* Hidden by default */
+        }
     </style>
 </head>
-<body onload="checkAdminAuth()">
+<body class="admin-only">
 <script>
-function checkAdminAuth() {
-    fetch('/api/admin/verify', { credentials: 'include' })
-        .then(response => {
-            if (!response.ok) {
-                showRedirectMessage('You must be logged in as an admin to access the dashboard. Redirecting to admin login...');
-                setTimeout(() => window.location.href = '/pages/admin/login.html', 1800);
-                return;
-            }
-            // Optionally, handle successful admin verification here
-        })
-        .catch(() => {
-            showRedirectMessage('You must be logged in as an admin to access the dashboard. Redirecting to admin login...');
-            setTimeout(() => window.location.href = '/pages/admin/login.html', 1800);
+// Immediately hide admin content and check auth
+document.body.style.display = 'none';
+
+async function checkInitialAuth() {
+    try {
+        // Check if we have required cookies before making the request
+        if (!document.cookie.includes('adminToken')) {
+            window.location.href = '/pages/admin/login.html';
+            return;
+        }
+
+        const response = await fetch('/api/admin/verify', { 
+            credentials: 'include'
         });
-
-function showRedirectMessage(msg) {
-    let div = document.createElement('div');
-    div.textContent = msg;
-    div.style.position = 'fixed';
-    div.style.top = '20px';
-    div.style.left = '50%';
-    div.style.transform = 'translateX(-50%)';
-    div.style.background = '#ffc107';
-    div.style.color = '#222';
-    div.style.padding = '12px 24px';
-    div.style.borderRadius = '8px';
-    div.style.fontWeight = 'bold';
-    div.style.zIndex = '9999';
-    document.body.appendChild(div);
+        const data = await response.json();
+        
+        if (!response.ok || !data.loggedIn) {
+            // Clear any invalid cookies
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            window.location.href = '/pages/admin/login.html';
+            return;
+        }
+        
+        // Show content only if authenticated
+        document.body.style.display = '';
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = '';
+        });
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        // Clear any cookies on error
+        document.cookie.split(";").forEach(function(c) { 
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        window.location.href = '/pages/admin/login.html';
+    }
 }
 
-}
+// Run auth check immediately
+checkInitialAuth();
 </script>
     <!-- Unified header start -->
     <header class="site-header">
@@ -701,20 +756,20 @@ function showRedirectMessage(msg) {
             <img src="/public/images/logo.png" alt="Teacher Tally Logo" class="logo" onclick="window.location.href='/'">
             <a href="/" class="header-title-link">
                 <h1 class="header-title">Teacher Tally</h1>
-                <p class="header-motto">What they won’t put in the syllabus.</p>
+                <p class="header-motto">What they won't put in the syllabus.</p>
             </a>
-            <div class="header-buttons desktop-only">
-                <button id="desktop-auth-btn" class="admin-btn" onclick="window.location.href='/pages/auth/login.html'">Login</button>
+            <div class="header-buttons desktop-only admin-only">
+                <button id="desktop-auth-btn" class="admin-btn" onclick="handleLogout()">Logout</button>
             </div>
-            <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-label="Toggle mobile menu">☰</button>
-            <div id="dropdown-menu" class="dropdown-menu">
-                <button id="mobile-auth-btn" class="admin-btn" onclick="window.location.href='/pages/auth/login.html'">Login</button>
+            <button id="mobile-menu-toggle" class="mobile-menu-toggle admin-only" aria-label="Toggle mobile menu">☰</button>
+            <div id="dropdown-menu" class="dropdown-menu admin-only">
+                <button id="mobile-auth-btn" class="admin-btn" onclick="handleLogout()">Logout</button>
             </div>
         </div>
     </header>
     <!-- Unified header end -->
 
-    <main class="centered-container admin-dashboard">
+    <main class="centered-container admin-dashboard admin-only">
         <div class="content-container card">
             <!-- Tab Navigation -->
             <nav id="tab-nav" class="tab-nav">
@@ -1142,22 +1197,44 @@ function showRedirectMessage(msg) {
                         <form id="create-account-form" class="edit-form">
                             <div class="form-group">
                                 <label for="create-role">Account Type:</label>
-                                <select id="create-role" name="role" aria-label="Account type">
+                                <select id="create-role" name="role" aria-label="Account type" onchange="togglePermissionsSection()">
                                     <option value="user">User</option>
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label for="create-username">Username:</label>
-                                <input type="text" id="create-username" name="username" required placeholder="e.g., johndoe" aria-label="Username">
+                                <input type="text" id="create-username" name="username" required 
+                                       placeholder="8-16 characters" minlength="8" maxlength="16" 
+                                       aria-label="Username">
+                                <div id="username-feedback" class="feedback"></div>
                             </div>
                             <div class="form-group">
-                                <label for="create-email">Email (for users):</label>
-                                <input type="email" id="create-email" name="email" placeholder="e.g., john.doe@example.com" aria-label="Email">
+                                <label for="create-email">Email:</label>
+                                <input type="email" id="create-email" name="email" required 
+                                       placeholder="e.g., admin@example.com" aria-label="Email">
+                                <div id="email-feedback" class="feedback"></div>
                             </div>
                             <div class="form-group">
                                 <label for="create-password">Password:</label>
-                                <input type="password" id="create-password" name="password" required placeholder="Enter password" aria-label="Password">
+                                <input type="password" id="create-password" name="password" required 
+                                       placeholder="Enter password" aria-label="Password">
+                            </div>
+                            <div class="form-group">
+                                <label for="create-confirm-password">Confirm Password:</label>
+                                <input type="password" id="create-confirm-password" name="confirmPassword" required 
+                                       placeholder="Confirm password" aria-label="Confirm password">
+                                <div id="password-feedback" class="feedback"></div>
+                            </div>
+                            <div id="permissions-section" class="form-group" style="display: none;">
+                                <label>Admin Permissions:</label>
+                                <div id="permissions-list" class="permissions-grid">
+                                    <!-- Permissions checkboxes will be populated here -->
+                                </div>
+                                <div class="permissions-actions">
+                                    <button type="button" onclick="selectAllPermissions()">Select All</button>
+                                    <button type="button" onclick="deselectAllPermissions()">Deselect All</button>
+                                </div>
                             </div>
                             <button type="submit" class="submit-btn">Create Account</button>
                             <button type="button" class="cancel-btn">Cancel</button>

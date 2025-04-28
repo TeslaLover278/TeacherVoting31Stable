@@ -80,7 +80,34 @@ async function updateAuthButtons() {
     cleanupButtons(mobileAuthBtn.parentElement, 'mobile-admin-btn');
     cleanupButtons(mobileAuthBtn.parentElement, 'mobile-logout-btn');
 
-    const adminResponse = await fetch('/api/admin/verify', { 
+    // --- Use new /api/auth/status endpoint ---
+    let userResponse;
+    try {
+        userResponse = await fetch('/api/auth/status', {
+            credentials: 'include',
+            cache: 'no-store',
+        });
+    } catch (e) {
+        userResponse = null;
+    }
+    let userData = userResponse && userResponse.ok ? await userResponse.json() : { authenticated: false };
+
+    if (userData.authenticated) {
+        // Show dashboard button and logout (do not show username)
+        desktopAuthBtn.textContent = 'Dashboard';
+        desktopAuthBtn.href = '/pages/user/user-dashboard.html';
+        desktopAuthBtn.onclick = () => { window.location.href = '/pages/user/user-dashboard.html'; };
+        mobileAuthBtn.textContent = 'Dashboard';
+        mobileAuthBtn.href = '/pages/user/user-dashboard.html';
+        mobileAuthBtn.onclick = () => { window.location.href = '/pages/user/user-dashboard.html'; };
+        addSubmitTeacherButtons(desktopAuthBtn, mobileAuthBtn);
+        addLogoutButtons(desktopAuthBtn, mobileAuthBtn);
+        console.log('Header - User authenticated:', userData.username);
+        return;
+    }
+
+    // Check admin as fallback (legacy)
+    const adminResponse = await fetch('/api/admin/verify', {
         credentials: 'include',
         cache: 'no-store',
     });
@@ -88,56 +115,40 @@ async function updateAuthButtons() {
         console.log('Header - Admin authenticated');
         desktopAuthBtn.textContent = 'Admin Dashboard';
         desktopAuthBtn.href = '/pages/admin/admin-dashboard.html';
-        desktopAuthBtn.addEventListener('click', () => window.location.href = '/pages/admin/admin-dashboard.html');
+        desktopAuthBtn.onclick = () => { window.location.href = '/pages/admin/admin-dashboard.html'; };
         mobileAuthBtn.textContent = 'Admin Dashboard';
         mobileAuthBtn.href = '/pages/admin/admin-dashboard.html';
-        mobileAuthBtn.addEventListener('click', () => window.location.href = '/pages/admin/admin-dashboard.html');
-
+        mobileAuthBtn.onclick = () => { window.location.href = '/pages/admin/admin-dashboard.html'; };
         addSubmitTeacherButtons(desktopAuthBtn, mobileAuthBtn);
         addLogoutButtons(desktopAuthBtn, mobileAuthBtn);
         return;
     }
 
-    const userResponse = await fetch('/api/user', { 
-        credentials: 'include',
-        cache: 'no-store',
-    });
-    if (userResponse.ok) {
-        const data = await userResponse.json();
-        console.log('Header - User authenticated:', data.username);
-        desktopAuthBtn.textContent = 'Dashboard';
-        desktopAuthBtn.href = '/pages/user/user-dashboard.html';
-        desktopAuthBtn.addEventListener('click', () => window.location.href = '/pages/user/user-dashboard.html');
-        mobileAuthBtn.textContent = 'Dashboard';
-        mobileAuthBtn.href = '/pages/user/user-dashboard.html';
-        mobileAuthBtn.addEventListener('click', () => window.location.href = '/pages/user/user-dashboard.html');
+    // Not authenticated, show login/signup only (no user/admin/logout/submit buttons)
+    desktopAuthBtn.textContent = 'Log In';
+    desktopAuthBtn.href = '/pages/auth/login.html';
+    desktopAuthBtn.onclick = () => { window.location.href = '/pages/auth/login.html'; };
+    mobileAuthBtn.textContent = 'Log In';
+    mobileAuthBtn.href = '/pages/auth/login.html';
+    mobileAuthBtn.onclick = () => { window.location.href = '/pages/auth/login.html'; };
 
-        addSubmitTeacherButtons(desktopAuthBtn, mobileAuthBtn);
-        addLogoutButtons(desktopAuthBtn, mobileAuthBtn);
-    } else {
-        console.log('Header - No user logged in');
-        desktopAuthBtn.textContent = 'Login';
-        desktopAuthBtn.href = '/pages/auth/login.html';
-        desktopAuthBtn.addEventListener('click', () => window.location.href = '/pages/auth/login.html');
-        mobileAuthBtn.textContent = 'Login';
-        mobileAuthBtn.href = '/pages/auth/login.html';
-        mobileAuthBtn.addEventListener('click', () => window.location.href = '/pages/auth/login.html');
+    // Remove any user/admin/logout/submit buttons if present (should already be handled by cleanupButtons)
+    // Add sign up buttons
+    const desktopSignupBtn = document.createElement('button');
+    desktopSignupBtn.id = 'desktop-signup-btn';
+    desktopSignupBtn.className = 'signup-btn';
+    desktopSignupBtn.textContent = 'Sign Up';
+    desktopSignupBtn.addEventListener('click', () => window.location.href = '/pages/auth/signup.html');
 
-        const desktopSignupBtn = document.createElement('button');
-        desktopSignupBtn.id = 'desktop-signup-btn';
-        desktopSignupBtn.className = 'signup-btn';
-        desktopSignupBtn.textContent = 'Sign Up';
-        desktopSignupBtn.addEventListener('click', () => window.location.href = '/pages/auth/signup.html');
+    const mobileSignupBtn = document.createElement('button');
+    mobileSignupBtn.id = 'mobile-signup-btn';
+    mobileSignupBtn.className = 'signup-btn';
+    mobileSignupBtn.textContent = 'Sign Up';
+    mobileSignupBtn.addEventListener('click', () => window.location.href = '/pages/auth/signup.html');
 
-        const mobileSignupBtn = document.createElement('button');
-        mobileSignupBtn.id = 'mobile-signup-btn';
-        mobileSignupBtn.className = 'signup-btn';
-        mobileSignupBtn.textContent = 'Sign Up';
-        mobileSignupBtn.addEventListener('click', () => window.location.href = '/pages/auth/signup.html');
-
-        desktopAuthBtn.insertAdjacentElement('afterend', desktopSignupBtn);
-        mobileAuthBtn.insertAdjacentElement('afterend', mobileSignupBtn);
-    }
+    desktopAuthBtn.insertAdjacentElement('afterend', desktopSignupBtn);
+    mobileAuthBtn.insertAdjacentElement('afterend', mobileSignupBtn);
+    console.log('Header - User not authenticated, only login/signup shown');
 }
 
 function addSubmitTeacherButtons(desktopAuthBtn, mobileAuthBtn) {
@@ -175,18 +186,11 @@ function addLogoutButtons(desktopAuthBtn, mobileAuthBtn) {
         event.preventDefault();
         console.log('Header - Logging out...');
 
-        let csrfToken = cachedCsrfToken;
-        if (!csrfToken) {
-            console.warn('Header - No cached CSRF token, attempting to fetch');
-            csrfToken = await fetchCsrfToken();
-        }
-
         try {
             const response = await fetch('/api/logout', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken || '',
+                    'Content-Type': 'application/json'
                 },
                 credentials: 'include',
             });

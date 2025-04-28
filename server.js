@@ -33,11 +33,48 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         httpOnly: true,
-        sameSite: 'Strict',
+        sameSite: 'Lax',  // Changed from Strict to Lax
         secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000,
+        path: '/',
     },
+    name: 'teachertally.sid',  // Explicit session cookie name
 }));
+
+// --- AUTH STATUS ENDPOINT ---
+app.get('/api/auth/status', (req, res) => {
+    // Check for session-based login
+    if (req.session && req.session.user) {
+        return res.json({ authenticated: true, username: req.session.user.username });
+    }
+    // Check for JWT-based login
+    const jwtToken = req.cookies.userToken || req.headers.authorization?.split(' ')[1];
+    if (jwtToken) {
+        try {
+            const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
+            const decoded = jwt.verify(jwtToken, JWT_SECRET);
+            return res.json({ authenticated: true, username: decoded.username });
+        } catch (err) {
+            // Invalid token, fall through
+        }
+    }
+    // Not authenticated
+    return res.json({ authenticated: false });
+});
+
+// --- LOGOUT ENDPOINT (EXEMPT FROM CSRF) ---
+app.post('/api/logout', (req, res) => {
+    // Destroy session if exists
+    if (req.session) {
+        req.session.destroy(() => {});
+    }
+    // Clear cookies for both user and admin
+    res.clearCookie('userToken', { path: '/' });
+    res.clearCookie('adminToken', { path: '/' });
+    res.clearCookie('teachertally.sid', { path: '/' });
+    res.clearCookie('connect.sid', { path: '/' });
+    return res.json({ success: true, message: 'Logged out successfully' });
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -306,7 +343,16 @@ const tables = [
             FOREIGN KEY (teacher_id) REFERENCES teachers(id),
             FOREIGN KEY (user_id) REFERENCES users(id)
         )`
-    }
+    },
+    {
+        name: 'admins',
+        sql: `CREATE TABLE IF NOT EXISTS admins (
+            username TEXT PRIMARY KEY,
+            password_hash TEXT NOT NULL,
+            permissions TEXT NOT NULL DEFAULT '{}',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+    },
 ];
 
 // Function to initialize badges in the database
@@ -520,6 +566,46 @@ async function awardBadge(userId, badgeName) {
         });
     });
 }
+
+// Logout endpoint: clears cookies and destroys session
+app.post('/api/logout', (req, res) => {
+    console.log('Server - Logout request received');
+    
+    // Clear all relevant cookies
+    res.clearCookie('userToken', {
+        httpOnly: true,
+        sameSite: 'Lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+    });
+    res.clearCookie('adminToken', {
+        httpOnly: true,
+        sameSite: 'Lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+    });
+    res.clearCookie('teachertally.sid', {
+        httpOnly: true,
+        sameSite: 'Lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+    });
+
+    // Destroy session if it exists
+    if (req.session) {
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Server - Error destroying session:', err.message);
+                return res.status(500).json({ error: 'Logout failed' });
+            }
+            console.log('Server - Session destroyed');
+            res.json({ message: 'Logout successful' });
+        });
+    } else {
+        console.log('Server - No session to destroy');
+        res.json({ message: 'Logout successful' });
+    }
+});
 
 // Function to check and award badges
 async function checkAndAwardBadges(userId) {
@@ -971,7 +1057,7 @@ db.serialize(() => {
         }
     });
 
-    // Define table structures (only create if they don’t exist)
+    // Define table structures (only create if they don't exist)
     const tables = [
         {
             name: 'teachers',
@@ -1074,7 +1160,10 @@ db.serialize(() => {
             name: 'admins',
             sql: `CREATE TABLE IF NOT EXISTS admins (
                 username TEXT PRIMARY KEY,
-                password_hash TEXT NOT NULL)`,
+                password_hash TEXT NOT NULL,
+                permissions TEXT NOT NULL DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
         },
         {
             name: 'suggestions',
@@ -1184,6 +1273,55 @@ db.serialize(() => {
                                 addColumn('teachers', 'is_spotlight INTEGER DEFAULT 0', (err) => {
                                     if (err) return console.error('Server - Failed to migrate teachers.is_spotlight:', err.message);
                                     console.log('Server - Added is_spotlight column to teachers table');
+                                    
+                                    // First ensure permissions column exists in admins table
+                                    addColumn('admins', 'permissions TEXT DEFAULT "{}"', (err) => {
+                                        if (err) {
+                                            console.error('Server - Failed to add permissions column:', err.message);
+                                            return;
+                                        }
+                                        console.log('Server - Added permissions column to admins table');
+
+                                        // Now update existing admin accounts with default permissions
+                                        db.all('SELECT username, permissions FROM admins', [], (err, admins) => {
+                                            if (err) {
+                                                console.error('Server - Failed to fetch admins for permission migration:', err.message);
+                                                return;
+                                            }
+                                            
+                                            const defaultPermissions = {
+                                                'manage_teachers': true,
+                                                'manage_votes': true,
+                                                'manage_users': true,
+                                                'manage_settings': true,
+                                                'view_statistics': true
+                                            };
+
+                                            admins.forEach(admin => {
+                                                let currentPermissions;
+                                                try {
+                                                    currentPermissions = JSON.parse(admin.permissions || '{}');
+                                                } catch (e) {
+                                                    currentPermissions = {};
+                                                }
+
+                                                // Only update if permissions are empty or invalid
+                                                if (!currentPermissions || Object.keys(currentPermissions).length === 0) {
+                                                    db.run('UPDATE admins SET permissions = ? WHERE username = ?',
+                                                        [JSON.stringify(defaultPermissions), admin.username],
+                                                        (err) => {
+                                                            if (err) {
+                                                                console.error(`Server - Failed to update permissions for admin ${admin.username}:`, err.message);
+                                                            } else {
+                                                                console.log(`Server - Updated permissions for admin ${admin.username} with defaults`);
+                                                            }
+                                                        }
+                                                    );
+                                                }
+                                            });
+                                        });
+                                    });
+
                                     // Add timestamp to votes table
                                     addColumn('votes', 'timestamp TIMESTAMP', (err) => {
                                         if (err) return console.error('Server - Failed to migrate votes.timestamp:', err.message);
@@ -1428,26 +1566,63 @@ function validateFields(fields, required) {
 }
 function authenticateAdmin(req, res, next) {
     const token = req.cookies.adminToken || req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Unauthorized: No token' });
+    if (!token) {
+        req.admin = null;
+        return res.status(401).json({ loggedIn: false });
+    }
     try {
-        req.admin = jwt.verify(token, JWT_SECRET);
-        next();
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.role !== 'admin') {
+            throw new Error('Invalid role');
+        }
+
+        // Get admin permissions from database
+        db.get('SELECT username, permissions FROM admins WHERE username = ?', [decoded.id], (err, admin) => {
+            if (err || !admin) {
+                console.error('Server - Error fetching admin permissions:', err?.message);
+                return res.status(401).json({ loggedIn: false });
+            }
+
+            try {
+                const permissions = JSON.parse(admin.permissions);
+                
+                // Get the requested endpoint's required permission
+                const endpoint = req.path.split('/')[2]; // e.g., /api/teachers -> teachers
+                if (endpoint && endpoint !== 'auth' && endpoint !== 'csrf-token') {
+                    // Check if admin has permission for this endpoint
+                    const hasPermission = permissions[endpoint];
+                    if (!hasPermission) {
+                        console.log('Server - Admin lacks permission for:', endpoint);
+                        return res.status(403).json({ 
+                            error: 'Insufficient permissions',
+                            requiredPermission: endpoint
+                        });
+                    }
+                }
+
+                req.admin = {
+                    ...decoded,
+                    permissions
+                };
+                next();
+            } catch (error) {
+                console.error('Server - Error parsing admin permissions:', error.message);
+                return res.status(401).json({ loggedIn: false });
+            }
+        });
     } catch (err) {
-        console.log('Server - Invalid admin JWT:', req.path);
-        res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        req.admin = null;
+        console.log('Server - Invalid admin JWT:', err.message);
+        res.status(401).json({ loggedIn: false });
     }
 }
 
 function authenticateUser(req, res, next) {
-    console.log('--- AUTHENTICATE USER DEBUG ---');
-    console.log('Cookies:', req.cookies);
-    console.log('Headers:', req.headers);
-    console.log('JWT_SECRET (first 8 chars):', (JWT_SECRET || '').substring(0, 8));
     const token = req.cookies.userToken || req.headers.authorization?.split(' ')[1];
-    console.log('Server - Authenticating user with token:', token);
+    console.log('Server - Authenticating user with token:');
     if (!token) {
         console.log('Server - No user token provided');
-        return res.status(401).json({ error: 'Not authenticated. Please login.' });
+        return res.status(200).json({ error: 'No user token provided' });
     }
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
@@ -1459,7 +1634,7 @@ function authenticateUser(req, res, next) {
             }
             if (!row) {
                 console.log('Server - User not found for ID:', decoded.id);
-                return res.status(401).json({ error: 'Unauthorized: User not found' });
+                return res.status(200).json({ info: 'User not found' });
             }
             if (row.is_locked) {
                 console.log('Server - User account locked:', row.username);
@@ -1470,9 +1645,8 @@ function authenticateUser(req, res, next) {
         });
     } catch (err) {
         console.error('Server - Invalid user JWT:', err.message);
-        res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        res.status(200).json({ error: 'Invalid user JWT' });
     }
-    console.log('--- END AUTHENTICATE USER DEBUG ---');
 }
 
 // Login endpoint
@@ -2069,7 +2243,7 @@ app.get('/api/user/points/history', authenticateUser, (req, res) => {
     });
 });
 
-app.get('/api/csrf-token', (req, res) => {
+app.get('/api/csrf-token', csrfProtection, (req, res) => {
     try {
         const token = req.csrfToken();
         console.log('Server - Generating CSRF token:', token, 'Session ID:', req.sessionID);
@@ -2187,6 +2361,194 @@ app.post('/api/users/login', publicLimiter, csrfProtection, async (req, res) => 
     });
 });
 
+// --- ADMIN LOGIN ENDPOINT ---
+app.post('/api/admin/login', publicLimiter, csrfProtection, async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    try {
+        // Get admin from database
+        const admin = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM admins WHERE username = ?', [username], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!admin || !(await bcrypt.compare(password, admin.password_hash))) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Parse permissions, use empty object if not set or invalid
+        let permissions = {};
+        try {
+            permissions = JSON.parse(admin.permissions || '{}');
+        } catch (e) {
+            console.error('Server - Error parsing admin permissions:', e.message);
+        }
+
+        // Create session and token with role
+        const token = jwt.sign({ 
+            username: admin.username, 
+            role: 'admin',
+            isAdmin: true 
+        }, JWT_SECRET, { expiresIn: '1d' });
+        
+        req.session.admin = { 
+            username: admin.username,
+            role: 'admin'
+        };
+        
+        res.cookie('adminToken', token, {
+            httpOnly: true,
+            sameSite: 'Strict',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        console.log('Server - Admin login successful:', username);
+        res.json({ 
+            message: 'Login successful',
+            permissions: permissions
+        });
+    } catch (error) {
+        console.error('Server - Admin login error:', error.message);
+        res.status(500).json({ error: 'Server error during login' });
+    }
+});
+
+// Update the authenticateAdmin middleware
+function authenticateAdmin(req, res, next) {
+    const token = req.cookies.adminToken;
+    
+    if (!token) {
+        console.log('Server - No admin token provided');
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        // Check for both role and isAdmin flag
+        if (!decoded.role || decoded.role !== 'admin' || !decoded.isAdmin) {
+            console.log('Server - Invalid admin role in token');
+            return res.status(401).json({ error: 'Invalid admin credentials' });
+        }
+
+        // Set admin info on request
+        req.admin = {
+            username: decoded.username,
+            role: decoded.role
+        };
+
+        next();
+    } catch (err) {
+        console.error('Server - JWT verification failed:', err.message);
+        res.status(401).json({ error: 'Invalid or expired token' });
+    }
+}
+
+// Update admin verification endpoint
+app.get('/api/admin/verify', (req, res) => {
+    const token = req.cookies.adminToken;
+    
+    if (!token) {
+        // Clear any existing cookies if no token
+        res.clearCookie('adminToken', {
+            httpOnly: true,
+            sameSite: 'Strict',
+            secure: process.env.NODE_ENV === 'production',
+            path: '/'
+        });
+        res.clearCookie('connect.sid', {
+            httpOnly: true,
+            sameSite: 'Strict',
+            secure: process.env.NODE_ENV === 'production',
+            path: '/'
+        });
+        return res.status(401).json({ loggedIn: false });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.role === 'admin' && decoded.isAdmin) {
+            res.json({ loggedIn: true, username: decoded.username });
+        } else {
+            // Clear invalid admin token and session
+            res.clearCookie('adminToken', {
+                httpOnly: true,
+                sameSite: 'Strict',
+                secure: process.env.NODE_ENV === 'production',
+                path: '/'
+            });
+            res.clearCookie('connect.sid', {
+                httpOnly: true,
+                sameSite: 'Strict',
+                secure: process.env.NODE_ENV === 'production',
+                path: '/'
+            });
+            if (req.session) {
+                req.session.destroy();
+            }
+            res.status(401).json({ loggedIn: false });
+        }
+    } catch (err) {
+        // Clear invalid admin token and session
+        res.clearCookie('adminToken', {
+            httpOnly: true,
+            sameSite: 'Strict',
+            secure: process.env.NODE_ENV === 'production',
+            path: '/'
+        });
+        res.clearCookie('connect.sid', {
+            httpOnly: true,
+            sameSite: 'Strict',
+            secure: process.env.NODE_ENV === 'production',
+            path: '/'
+        });
+        if (req.session) {
+            req.session.destroy();
+        }
+        console.error('Server - Admin verification failed:', err.message);
+        res.status(401).json({ loggedIn: false });
+    }
+});
+
+// Consolidated admin logout endpoint
+app.post('/api/auth/admin/logout', csrfProtection, (req, res) => {
+    console.log('Server - Admin logout request received');
+    
+    try {
+        // Clear all cookies
+        const cookiesToClear = ['adminToken', 'connect.sid', 'teachertally.sid'];
+        cookiesToClear.forEach(cookieName => {
+            res.clearCookie(cookieName, {
+                httpOnly: true,
+                sameSite: 'Strict',
+                secure: process.env.NODE_ENV === 'production',
+                path: '/'
+            });
+        });
+
+        // Destroy session
+        if (req.session) {
+            req.session.destroy((err) => {
+                if (err) {
+                    console.error('Server - Error destroying session:', err.message);
+                }
+            });
+        }
+
+        console.log('Server - Admin logout successful');
+        res.json({ message: 'Logout successful' });
+    } catch (error) {
+        console.error('Server - Error during admin logout:', error.message);
+        res.status(500).json({ error: 'Server error during logout' });
+    }
+});
+
 app.get('/api/leaderboard', (req, res) => {
     const { page = 1, perPage = 10 } = req.query;
     const limit = parseInt(perPage);
@@ -2256,6 +2618,76 @@ app.post('/api/logout', (req, res) => {
     }
 });
 
+// --- USER ACCOUNT CREATION ENDPOINT ---
+app.post('/api/users/create', publicLimiter, csrfProtection, async (req, res) => {
+    const { username, email, password } = req.body;
+    if (!validateFields(req.body, ['username', 'email', 'password'])) {
+        return res.status(400).json({ error: 'All fields required' });
+    }
+    try {
+        // Check if username or email already exists
+        db.get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email], async (err, row) => {
+            if (err) {
+                console.error('Server - DB error during user creation:', err.message);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (row) {
+                return res.status(409).json({ error: 'Username or email already exists' });
+            }
+            // Hash password
+            const passwordHash = await bcrypt.hash(password, 10);
+            db.run('INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, ?)',
+                [username, email, passwordHash, new Date().toISOString()],
+                function (err) {
+                    if (err) {
+                        console.error('Server - Error inserting user:', err.message);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    res.json({ message: 'User account created successfully', userId: this.lastID });
+                }
+            );
+        });
+    } catch (err) {
+        console.error('Server - Error during user account creation:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// --- ADMIN ACCOUNT CREATION ENDPOINT ---
+app.post('/api/admin/users/create', authenticateAdmin, csrfProtection, async (req, res) => {
+    const { username, email, password } = req.body;
+    if (!validateFields(req.body, ['username', 'email', 'password'])) {
+        return res.status(400).json({ error: 'All fields required' });
+    }
+    try {
+        // Check if username or email already exists
+        db.get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email], async (err, row) => {
+            if (err) {
+                console.error('Server - DB error during admin user creation:', err.message);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (row) {
+                return res.status(409).json({ error: 'Username or email already exists' });
+            }
+            // Hash password
+            const passwordHash = await bcrypt.hash(password, 10);
+            db.run('INSERT INTO users (username, email, password_hash, created_at, is_admin) VALUES (?, ?, ?, ?, ?)',
+                [username, email, passwordHash, new Date().toISOString(), 1],
+                function (err) {
+                    if (err) {
+                        console.error('Server - Error inserting admin user:', err.message);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    res.json({ message: 'Admin account created successfully', userId: this.lastID });
+                }
+            );
+        });
+    } catch (err) {
+        console.error('Server - Error during admin account creation:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // Updated /api/users route (replacing the original)
 app.get('/api/users', authenticateAdmin, (req, res) => {
     const perPage = parseInt(req.query.perPage) || 10;
@@ -2288,6 +2720,7 @@ app.get('/api/users', authenticateAdmin, (req, res) => {
 });
 
 // Updated /api/admins route (replacing the original)
+
 app.get('/api/admins', authenticateAdmin, (req, res) => {
     const perPage = parseInt(req.query.perPage) || 10;
     const page = parseInt(req.query.page) || 1;
@@ -2308,7 +2741,7 @@ app.get('/api/admins', authenticateAdmin, (req, res) => {
                     id: admin.username, // Using username as ID since no numeric ID exists
                     username: admin.username,
                     role: 'admin',
-                    locked: false // Admins table doesn’t have a locked field; assume false
+                    locked: false // Admins table doesn't have a locked field; assume false
                 })),
                 total: row.total,
                 page,
@@ -2588,7 +3021,10 @@ app.get('/api/check-auth', (req, res) => {
 });
 
 app.get('/api/admin/verify', authenticateAdmin, (req, res) => {
-    res.json({ message: 'Admin session active', username: req.admin.username });
+    if (!req.admin) {
+        return res.status(200).json({ loggedIn: false });
+    }
+    res.json({ loggedIn: true, username: req.admin.username });
 });
 
 app.post('/api/users/login', publicLimiter, csrfProtection, async (req, res) => {
@@ -3115,47 +3551,107 @@ app.get('/api/teachers/:id', (req, res) => {
     });
 });
 
-app.post('/api/admins/create', (req, res) => {
-    const { username, password, role } = req.body;
+app.post('/api/admins/create', authenticateAdmin, csrfProtection, async (req, res) => {
+    const { username, email, password, confirmPassword, permissions } = req.body;
 
-    if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password are required' });
-    }
-    if (role !== 'admin') {
-        return res.status(400).json({ error: 'Invalid role for admin creation' });
+    // Validate all required fields
+    if (!validateFields(req.body, ['username', 'email', 'password', 'confirmPassword'])) {
+        return res.status(400).json({ error: 'All fields required' });
     }
 
-    // Check if username already exists
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
-        if (err) {
-            console.error('Server - Error checking admin existence:', err.message);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        if (row) {
-            return res.status(400).json({ error: 'Username already taken' });
-        }
+    // Validate password match
+    if (password !== confirmPassword) {
+        return res.status(400).json({ error: 'Passwords do not match' });
+    }
 
-        // Hash password and insert admin
-        bcrypt.hash(password, saltRounds, (err, hash) => {
-            if (err) {
-                console.error('Server - Error hashing password:', err.message);
-                return res.status(500).json({ error: 'Password hashing failed' });
-            }
+    // Validate username length (8-16 characters)
+    if (username.length < 8 || username.length > 16) {
+        return res.status(400).json({ error: 'Username must be between 8 and 16 characters' });
+    }
 
-            db.run(
-                'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-                [username, hash, 'admin'],
-                function (err) {
-                    if (err) {
-                        console.error('Server - Error creating admin:', err.message);
-                        return res.status(500).json({ error: 'Database error' });
-                    }
-                    console.log('Server - Admin created:', { username });
-                    res.status(201).json({ message: 'Admin created successfully', userId: this.lastID });
-                }
-            );
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Please enter a valid email' });
+    }
+
+    // Validate permissions
+    let parsedPermissions;
+    try {
+        parsedPermissions = typeof permissions === 'string' ? JSON.parse(permissions) : permissions;
+        if (!parsedPermissions || typeof parsedPermissions !== 'object') {
+            throw new Error('Invalid permissions format');
+        }
+    } catch (err) {
+        return res.status(400).json({ error: 'Invalid permissions format' });
+    }
+
+    try {
+        // Check if username already exists in admins table
+        const existingAdmin = await new Promise((resolve, reject) => {
+            db.get('SELECT username FROM admins WHERE username = ?', [username], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
         });
-    });
+
+        if (existingAdmin) {
+            return res.status(409).json({ error: 'Username already exists' });
+        }
+
+        // Hash password
+        const passwordHash = await bcrypt.hash(password, saltRounds);
+
+        // Insert into admins table with permissions
+        db.run('INSERT INTO admins (username, password_hash, permissions) VALUES (?, ?, ?)',
+            [username, passwordHash, JSON.stringify(parsedPermissions)],
+            function(err) {
+                if (err) {
+                    console.error('Server - Error creating admin:', err.message);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+
+                // Log the creation
+                console.log('Server - Admin account created:', { 
+                    username, 
+                    createdBy: req.admin.username,
+                    permissions: parsedPermissions 
+                });
+
+                // Send success response
+                res.status(201).json({ 
+                    message: 'Admin account created successfully',
+                    username: username
+                });
+
+                // Add notification for the creating admin
+                db.run('INSERT INTO notifications (visitor_id, message, type) VALUES (?, ?, ?)',
+                    [req.admin.id, `New admin account created for ${username} with custom permissions`, 'success'],
+                    err => err && console.error('Server - Error adding notification:', err.message));
+            }
+        );
+    } catch (err) {
+        console.error('Server - Error during admin creation:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Add endpoint to get available admin permissions
+app.get('/api/admin/permissions', authenticateAdmin, (req, res) => {
+    const availablePermissions = {
+        teachers: 'Manage Teachers',
+        spotlight: 'Manage Spotlight',
+        votes: 'Manage Votes',
+        proposals: 'Manage Teacher Proposals',
+        corrections: 'Manage Corrections',
+        suggestions: 'Manage Suggestions',
+        admin_requests: 'Manage Admin Requests',
+        accounts: 'Manage Accounts',
+        create_account: 'Create Accounts',
+        stats: 'View Statistics',
+        settings: 'Manage Settings'
+    };
+    res.json(availablePermissions);
 });
 
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
@@ -3799,7 +4295,7 @@ app.delete('/api/users/:id', authenticateAdmin, csrfProtection, (req, res) => {
                     return res.status(500).json({ error: 'Database error' });
                 }
                 if (this.changes === 0) {
-                    // This shouldn’t happen due to the prior check, but included for robustness
+                    // This shouldn't happen due to the prior check, but included for robustness
                     return res.status(404).json({ error: 'User not found' });
                 }
 
